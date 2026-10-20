@@ -4,8 +4,8 @@
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-only",
   "assets": {
-    "index.html": "5df31b8176c31bffd0ddde62daed90ea747deb7c651e569eca5c854cf1ce732e",
-    "style.css": "ba9effbc99d21f705cc68bcba5789790e200d314341d1b5e597a41c09fa42333",
+    "index.html": "9f700b30c963f03b92d24e2d52209c4b800704040589b678bf2ad810ddd47de9",
+    "style.css": "146871f009171327f619d06046e0da8ed3aceb41d9e4c7bcf5d3f45e496c0c16",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
     "protocol.js": "ddaa507e891657e842b3459735d5eabbc7d32f238d87a09f1bf13a297cf4d570",
     "ble.js": "38bcbdbf0e0a0ad4e61e4a7af23572d42541ad597515bf03c3404eb7656ab761",
