@@ -1,0 +1,19 @@
+{
+  "version": "0.5.3",
+  "repository": "JasonYDG/elink42-control",
+  "pages_url": "https://jasonydg.github.io/elink42-control/",
+  "content": "web-control-only",
+  "assets": {
+    "index.html": "5df31b8176c31bffd0ddde62daed90ea747deb7c651e569eca5c854cf1ce732e",
+    "style.css": "ba9effbc99d21f705cc68bcba5789790e200d314341d1b5e597a41c09fa42333",
+    "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
+    "protocol.js": "ddaa507e891657e842b3459735d5eabbc7d32f238d87a09f1bf13a297cf4d570",
+    "ble.js": "38bcbdbf0e0a0ad4e61e4a7af23572d42541ad597515bf03c3404eb7656ab761",
+    "features.js": "ae6d30fa3f200da640b2e36c651ec792836f32a9fef4bf1f7008ff7f7e7edbea",
+    "archive.js": "40a0c35549d93d78123e3f151c189c607295f92e9a9967516e58db91eec0317f",
+    "ota.js": "c5ee351693d4805217d1c64f45653d8ea027eca3437eb076137eb009d81d84da",
+    "render.js": "e24d81297d5800b1d0168af8bd2594868ae934b58a005981e850b8ac65d5b959",
+    "app.js": "85e80f989e65424c4706777d84da29ae4844214eec026e79544ad7ecf6f9fdca",
+    ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
