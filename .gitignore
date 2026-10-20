@@ -1,0 +1,17 @@
+build/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.bin
+*.hex
+*.zip
+*.elf
+*.pem
+*.key
+firmware/
+local-project/
+SDK/
+backup/
+runtime/
+*-signing.json
