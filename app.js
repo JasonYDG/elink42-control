@@ -434,8 +434,6 @@
     preview();
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) $("preview").addEventListener(event, () => { drag = null; });
-  const table = document.createElement("table");
-  for (const [feature, state] of F.matrix) { const tr = document.createElement("tr"), th = document.createElement("th"), td = document.createElement("td"); th.textContent = feature; td.textContent = state; tr.append(th, td); table.append(tr); } $("feature-matrix").append(table);
   $("compatibility").textContent = supported ? "浏览器支持蓝牙，连接由你点击发起。" : "请使用支持 Web Bluetooth 的桌面 Edge / Chrome，并从本地启动器打开。";
   applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   $("course-text").value = store.data.courses[courseDay]; preview();
