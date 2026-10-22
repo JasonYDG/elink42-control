@@ -23,7 +23,7 @@ def build():
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, dest)
         hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
-    manifest = {'version': '0.5.3', 'repository': 'JasonYDG/elink42-control',
+    manifest = {'version': '0.5.4', 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
                 'content': 'web-control-only', 'assets': hashes}
     (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
