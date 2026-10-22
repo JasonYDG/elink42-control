@@ -16,7 +16,10 @@ test("Pages deploys only the control client with relative paths and exact hashes
     assert.ok(!html.includes("downloads.html")&&!html.includes('href="firmware/'));
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(url.startsWith("https://")){assert.equal(new URL(url).hostname,"github.com");continue;}
-      assert.ok(!url.startsWith("/"),url);assert.ok(fs.existsSync(path.join(site,url)),url);
+      const [file,query]=url.split("?");
+      assert.ok(!file.startsWith("/"),url);
+      assert.equal(new URLSearchParams(query).get("v"),manifest.version,url);
+      assert.ok(fs.existsSync(path.join(site,file)),url);
     }
   }
 });
