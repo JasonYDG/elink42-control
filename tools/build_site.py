@@ -26,7 +26,7 @@ def build():
     manifest = {'version': '0.6.0', 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
                 'content': 'web-control-only', 'assets': hashes}
-    (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+    (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
     print(json.dumps({'directory': str(OUT), 'files': len(hashes) + 1}))
 
 if __name__ == '__main__':
