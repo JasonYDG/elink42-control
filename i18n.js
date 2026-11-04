@@ -487,7 +487,6 @@ const OMTranslations = {
   "屏幕语言": "Display language",
   "校时并启用日历": "Sync time and enable calendar",
   "应用国家和语言": "Apply country and language",
-  "国家日历需要配套 revision 4 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 4 firmware. Resync time after German daylight-saving changes.",
   "预览日期": "Preview date",
   "清除日历图片选择": "Clear calendar image selection",
   "我接受 JD79668 原版频繁全刷时钟": "I accept frequent full refreshes for the JD79668 clock",
@@ -681,7 +680,16 @@ const OMTranslations = {
   "核对国家日历支持": "Check country calendar support",
   "国家日历需要 revision 4 或更新固件，请先安装对应升级包。": "Country calendars require firmware revision 4 or later. Install the matching update first.",
   "实时天气需要本地控制端；网页不会发送天气私钥": "Live weather requires the local console; this page never sends a weather key.",
-  "国家日历、标准/图片版式、校时": "Country calendars, standard/photo presentation and time sync"
+  "国家日历、标准/图片版式、校时": "Country calendars, standard/photo presentation and time sync",
+  "图片适配": "Image fitting",
+  "全屏图片完整缩放": "Fit entire full-screen image",
+  "专用日历图片（256 × 300）": "Prepared calendar image (256 × 300)",
+  "全屏图片完整缩放并留白，不裁切。新图请在图片页选择日历左图 256 × 300，保存至空槽后使用专用日历图片。": "Full-screen images shrink to fit with white margins. For new pictures, select Calendar image 256 × 300 on the Image tab, save to an empty slot, then choose Prepared calendar image.",
+  "读取日历配置": "Read calendar settings",
+  "日历显示设置需要固件版本 6 或更新版本，请升级固件并刷新网页。": "Calendar configuration requires firmware revision 6 or later. Update firmware and reload this page.",
+  "读取日历显示设置": "Read calendar presentation",
+  "日历显示设置读回不符": "Calendar presentation readback mismatch",
+  "国家日历需要配套 revision 6 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 6 firmware. Resync time after German daylight-saving changes."
 };
 const OMI18n = (() => {
   const reverse = Object.fromEntries(Object.entries(OMTranslations).map(([zh,en])=>[en,zh]));

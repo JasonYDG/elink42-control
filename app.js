@@ -94,7 +94,7 @@
       if(calendarTab){
         const region=C.regions[Number($("calendar-layout").value)];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
-        OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value});
+        OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
         $("preview").getContext("2d").drawImage(canvas,0,0);
         $("preview-label").textContent=OMI18n.t(tab==="calendar"?"标准日历":"图片日历")+" · "+OMI18n.t(region.zh)+" · 400 × 300";
         return;
@@ -148,6 +148,12 @@
     gallery = null; await client.connect(device); $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(client.config.layout<6?client.config.layout:0);
     $("calendar-language").value = client.config.alternate&2 ? "zh":"en"; syncCalendar();
+    if(client.calendarProtocol===2){
+      $("photo-source").value=String(client.config.photoSource);
+      options("photo-slot",client.config.photoSlot===255?[]:[[client.config.photoSlot,OMI18n.t("Device slot")+" "+client.config.photoSlot]]);
+      $("photo-fit").value=!(client.config.alternate&1)||client.config.alternate&4?"contain":"prepared";
+      selectTab($(client.config.alternate&1?"tab-photo-calendar":"tab-calendar"));
+    }
     change(data => { if (!data.devices.some(d => d.id === client.device.id)) data.devices.push({id: client.device.id, name: client.device.name || "OM6626"}); });
     $("saved-device").value = client.device.id; await preview();
   }
@@ -160,11 +166,11 @@
   bind("forget-device", () => change(data => { data.devices = data.devices.filter(d => d.id !== $("saved-device").value); }), OMI18n.t("已取消本地记录。系统蓝牙权限可在浏览器站点设置中移除。"));
   $("saved-device").addEventListener("change", update);
   bind("disconnect", () => { client.disconnect(); gallery = null; }, OMI18n.t("已断开，已提交的刷新可能仍在继续。"));
-  const startCalendar=(photo=false,date=new Date())=>client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date);
+  const startCalendar=(photo=false,date=new Date())=>client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value);
   bind("native-calendar", () => startCalendar());
   bind("native-clock", () => client.mode(2, progress, new Date(), $("clock-full").checked));
   $("clock-full").addEventListener("change", update);
-  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return startCalendar(false,date); });
+  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,client.config.alternate&2?"zh":"en",!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
   bind("calendar-style", () => startCalendar());
   bind("photo-calendar-start",()=>startCalendar(true));
   function syncCalendar(fromPhoto=false,persist=true){
@@ -225,7 +231,7 @@
     if (!client.otaActive) return; event.preventDefault(); event.returnValue = "";
   });
   bind("publish", () => client.publish(snapshot(), progress));
-  bind("store-frame", () => client.store(snapshot(), Number($("save-slot").value), external(), progress));
+  bind("store-frame", async () => {await client.store(snapshot(), Number($("save-slot").value), external(), progress);if(tab==="image" && $("image-target").value==="calendar")$("photo-fit").value="prepared";});
   bind("download", () => { snapshot(); const output=newCanvas();if(tab==="image" && $("image-target").value==="calendar")output.width=256;output.getContext("2d").drawImage($("preview"),0,0);return new Promise((resolve, reject) => output.toBlob(blob => { if (!blob) { reject(Error(OMI18n.t("无法导出画面"))); return; } download(`om6626-${tab}-${output.width}x300.png`, blob); resolve(); })); }, OMI18n.t("已导出 PNG。"));
   $("image-file").addEventListener("change", event => action(async () => {
     const file = event.target.files[0], token = ++imageToken; if (!file) return;

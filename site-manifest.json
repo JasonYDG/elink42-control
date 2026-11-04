@@ -1,22 +1,22 @@
 {
-  "version": "0.6.0",
+  "version": "0.6.2",
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-only",
   "assets": {
-    "index.html": "6dcbd3e3f273cb9203a53f35eb5db5eee869883790b3e08247917b4479864774",
+    "index.html": "8b2752371f9bb7e3d7c9e57afa56b3899ba3f567b48e57c8d4fbf58f4048e4e0",
     "style.css": "a1065241e15b8ad1f0fb470b8fdab7141617fe60d0139dd68ea114f46f5f1463",
-    "i18n.js": "372dffe9c8562a9a59d176de6b6ce446529bcfc3585530b66d048a98c1898deb",
-    "holidays.js": "e51ad9888ca34ad42fd7268cb2b9857210a169c74b6fc5d25f085a3b25368162",
-    "calendar.js": "e03700536c303d51cc0d124e45f9da9c65b023ba1143947aeb36535ca8b8fcc6",
+    "i18n.js": "a07e3c6647b86c7077e2384e6a4219cdf6942358cf621b5f56addf2c408c6b7c",
+    "holidays.js": "9a4a67fa2b5280d0935c21563f8b73ac04d5e76ff80a3e9f7acb28f260bc576b",
+    "calendar.js": "2172d71915f9fbe34718a1a4fb84893d5e0ac9d35e7000075f12d28d809968a5",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
     "protocol.js": "77b289e7b91951f9007866a2e32c602922439837eb25668667dcda1f5eebb25b",
-    "ble.js": "3fb9d17a642785da83f47aed7a2069a99616852f2f9c18e85ef2e6dfae4a9977",
+    "ble.js": "a82c62d154dc987e7b9c27d749d2c4749232905a0196170303a51d33c0023050",
     "features.js": "b266b3ada0a46f284c7dac430c1c9df7b14946d72da80f52dfaf005c0b93f12a",
     "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
     "ota.js": "fe060ac71d9c1a6bc4d3a80b1aedecc5368b9903d243fa04a4eeed4a157478de",
-    "render.js": "d3f9badd7a20fe365801bb2fd2d45e82a8d38d73d85f5b2d37da3621de37e241",
-    "app.js": "003b642f837b62c7ef16209ba1111dea7152043b3f2335d833f3c586ea1d1a5b",
+    "render.js": "84e03ac2cf343ca16a958963d98f8447d0cdf1ac000df782b675cb80d4e7ba58",
+    "app.js": "db5cf4d8738d9447c907fa52b3cd92d1ac3ade61f98390a0b388b995eb7fa25c",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }

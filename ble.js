@@ -130,6 +130,7 @@ class OMClient {
     const status = await probe.promise;
     this.refreshStatus = status[0] === 0x51;
     if (!this.refreshStatus) this.log(OMI18n.t("当前固件没有带序号的刷新回执；请升级 refresh-state 配套固件后再操作屏幕"));
+    if (this.refreshStatus) await this.readCalendar();
     if (this.connectCancelled || !this.device.gatt.connected) throw Error(OMI18n.t("连接已断开"));
     this.ready = true;
     this.log(OMI18n.t("已连接 ") + (this.device.name || this.device.id) + OMI18n.t(" · Web 固件 / ") +
@@ -250,17 +251,27 @@ class OMClient {
       await this.checkBoard();
     });
   }
-  async internationalCalendar(country, language, photo, slot, external, progress, date = new Date()) {
+  async readCalendar() {
+    const sequence=this.nextSequence();
+    const reply=await this.request(Uint8Array.of(0x24,0x4A,sequence),b=>
+      (b.length===7 && b[0]===0x55 && b[2]===0x4A) ||
+      (b.length===4 && b[0]===0x51 && b[1]===0x24 && b[2]===sequence),OMI18n.t("Read calendar settings"));
+    this.calendarProtocol=reply.length===7 ? 2 : 0;
+    if(this.calendarProtocol){
+      if(reply[1]>7 || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
+      Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
+    }
+    return this.calendarProtocol===2;
+  }
+  async internationalCalendar(country, language, photo, slot, external, progress, date = new Date(), fit="contain") {
     OMProtocol.integer(country,0,5,OMI18n.t("Country"));
     if (!["en","zh"].includes(language) || typeof photo!=="boolean" || typeof external!=="boolean") throw Error(OMI18n.t("Invalid calendar settings"));
-    const code=OMCalendar.regions[country].code, option=(photo?1:0) | (language==="zh"?2:0);
+    if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
+    const code=OMCalendar.regions[country].code, option=(photo?1:0) | (language==="zh"?2:0) | (photo && fit==="contain"?4:0);
     const time=OMProtocol.time(date,1,OMCalendar.zone(code,date));
     return this.operation(async()=>{
       this.requireRefreshStatus();
-      const sequence=this.nextSequence();
-      const capability=await this.request(Uint8Array.of(0x24,0x49,sequence),b=>
-        (b.length===3 && b[0]===0x55 && b[2]===0x49) || (b.length===4 && b[0]===0x51 && b[1]===0x24 && b[2]===sequence),OMI18n.t("Check country calendar support"));
-      if (capability.length!==3) throw Error(OMI18n.t("Country calendars require firmware revision 4 or later. Install the matching update first."));
+      if (!await this.readCalendar()) throw Error(OMI18n.t("Calendar configuration requires firmware revision 6 or later. Update firmware and reload this page."));
       await this.initialize();
       if(photo){
         OMProtocol.integer(slot,0,44,"Slot");
@@ -269,13 +280,13 @@ class OMClient {
         this.storedFormat(await this.slotMetadata(slot,external));
       }
       await this.command(OMProtocol.time(date,0,OMCalendar.zone(code,date)));
-      await this.write(Uint8Array.of(0x21,country));
-      await this.write(Uint8Array.of(0x23,option));
-      const presentation=await this.request(Uint8Array.of(0x24),b=>b.length===2 && b[0]===0x55,OMI18n.t("Read calendar presentation"));
-      if(presentation[1]!==option)throw Error(OMI18n.t("Calendar presentation readback mismatch"));
       if(photo)await this.write(Uint8Array.of(0x56,slot,external?1:0));
+      const presentation=await this.request(Uint8Array.of(0x24,0x4A,country,option,this.nextSequence()),
+        b=>b.length===7 && b[0]===0x55 && b[2]===0x4A,OMI18n.t("Read calendar presentation"));
+      if(presentation[1]!==option || presentation[3]!==country || (photo && (presentation[5]!==slot || presentation[6]!==Number(external))))throw Error(OMI18n.t("Calendar presentation readback mismatch"));
       await this.command(time,progress);
       this.config.layout=country;this.config.alternate=option;this.config.mode=1;
+      if(photo){this.config.photoSlot=slot;this.config.photoSource=Number(external);}
       await this.checkBoard();
     });
   }
