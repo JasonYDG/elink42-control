@@ -6,6 +6,8 @@ const OMCalendar = (() => {
     if (!found) throw Error("Unknown calendar country");
     return found;
   }
+  const weekdays=(code,language)=>OMHolidays.weekdays[region(code).weekdays || language];
+  const hasAlmanac=code=>region(code).almanac;
   function day(code, date) {
     const r = region(code), key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const row = r.days.find(d => d[0] === key);
@@ -33,7 +35,7 @@ const OMCalendar = (() => {
     return new Date(Number(parts.year),Number(parts.month)-1,Number(parts.day),12);
   }
   const ordinal=(year,month,day)=>Math.round((Date.UTC(year,month,day)-Date.UTC(year,0,1))/86400000);
-  function week(date){const n=ordinal(date.getFullYear(),date.getMonth(),date.getDate())+1,first=(date.getDay()+7-(n-1)%7)%7,anchor=(first+3)%7||7;const w=Math.trunc((n+anchor-5)/7)+1;return w===0?53:w>53?1:w;}
+  function week(date){const thursday=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()+3-(date.getDay()+6)%7));return Math.floor((ordinal(thursday.getUTCFullYear(),thursday.getUTCMonth(),thursday.getUTCDate()))/7)+1;}
   const solarNames=[['Minor Cold','小寒'],['Major Cold','大寒'],['Spring Begins','立春'],['Rain Water','雨水'],['Awakening','惊蛰'],['Spring Equinox','春分'],['Clear Bright','清明'],['Grain Rain','谷雨'],['Summer Begins','立夏'],['Grain Buds','小满'],['Grain in Ear','芒种'],['Summer Solstice','夏至'],['Minor Heat','小暑'],['Major Heat','大暑'],['Autumn Begins','立秋'],['Heat Ends','处暑'],['White Dew','白露'],['Autumn Equinox','秋分'],['Cold Dew','寒露'],['Frost Falls','霜降'],['Winter Begins','立冬'],['Minor Snow','小雪'],['Major Snow','大雪'],['Winter Solstice','冬至']];
   function almanac(date){
     const year=date.getFullYear(),month=date.getMonth()+1,day=date.getDate(),r=OMAlmanacData;
@@ -60,5 +62,5 @@ const OMCalendar = (() => {
     }
     return null;
   }
-  return {regions, region, day, month, zone, localDate, week, almanac, nextHoliday, photoWidth:256};
+  return {regions, region, day, month, zone, localDate, week, weekdays, hasAlmanac, almanac, nextHoliday, photoWidth:256};
 })();

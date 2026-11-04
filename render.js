@@ -58,9 +58,13 @@ const OMRender = (() => {
     if(photo)block(ctx,region[zh?"zh":"en"],left,32,66,14,10);
     else block(ctx,region[zh?"zh":"en"],290,19,100,14,11);
     block(ctx,zh?`第${C.week(date)}周`:`Week ${C.week(date)}`,photo?left:195,photo?112:18,photo?width:90,14,12);
-    if(!photo){const a=C.almanac(date);if(a)block(ctx,zh?a.lunarFull:`L${a.lunarMonth}/${a.lunarDay}`,195,1,90,12,10);}
-    const weeks=zh?["日","一","二","三","四","五","六"]:["Su","Mo","Tu","We","Th","Fr","Sa"];
-    if(photo){ctx.font=`bold 64px ${FONT}`;ctx.textBaseline="top";ctx.fillText(String(date.getDate()).padStart(2,"0"),left,50);}
+    if(!photo && C.hasAlmanac(code)){const a=C.almanac(date);if(a)block(ctx,zh?a.lunarFull:`L${a.lunarMonth}/${a.lunarDay}`,195,1,90,12,10);}
+    const weeks=C.weekdays(code,language);
+    if(photo){
+      ctx.fillStyle=COLORS.red;ctx.font='600 78px "Bahnschrift Condensed", "Arial Narrow", sans-serif';
+      ctx.textBaseline="alphabetic";ctx.textAlign="center";ctx.fillText(String(date.getDate()).padStart(2,"0"),328,109,78);
+      ctx.textAlign="left";
+    }
     const cells=C.month(code,date.getFullYear(),date.getMonth()),first=cells.findIndex(d=>d.current),length=cells.filter(d=>d.current).length;
     const cell=photo?17:54,top=photo?130:34,startX=photo?left:10,rowH=photo?14:first+length>35?34:38;
     weeks.forEach((name,col)=>{
@@ -75,9 +79,8 @@ const OMRender = (() => {
       block(ctx,String(d.date.getDate()),x+(photo?0:13),y,cell-2,photo?12:24,photo?10:24);
       if(d.date.getDate()===date.getDate()){ctx.strokeStyle=COLORS.red;ctx.strokeRect(x-(photo?1:0),y-(photo?1:0),cell-(photo?0:2),rowH-1);}
       if(!photo){
-        const a=C.almanac(d.date);if(a){const sub=a.distance===0?a.solar[zh?1:0]:zh?a.lunar:`L${a.lunarMonth}/${a.lunarDay}`;ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;block(ctx,sub,x+8,y+23,44,12,10);}
-        if(d.holiday||d.work){if(!photo && model===5 && d.date.getDate()===date.getDate()){ctx.fillStyle=COLORS.yellow;ctx.fillRect(x,y,52,rowH-1);}
-      ctx.fillStyle=d.work?COLORS.black:COLORS.red;block(ctx,d.work?"w":"*",x+44,y,10,12,10);}
+        const a=C.hasAlmanac(code)?C.almanac(d.date):null;if(a){const sub=a.distance===0?(zh?a.solar[1]:a.solar[0].slice(0,3)+'.'+(a.solar[0].split(' ')[1]?.[0]||'')):zh?a.lunar:`L${a.lunarMonth}/${a.lunarDay}`;ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;block(ctx,sub,x+8,y+23,44,12,10);}
+        if(d.holiday||d.work){ctx.fillStyle=d.work?COLORS.black:COLORS.red;block(ctx,d.work?"w":"*",x+44,y,10,12,10);}
       }
     });
     const info=C.day(code,date),label=info.names?info.names[zh?1:0]:!info.known?(zh?"假期数据待更新":"Update holiday data"):(zh?"暂无节日":"No public holiday today");
@@ -86,10 +89,10 @@ const OMRender = (() => {
       const next=C.nextHoliday(code,date);
       block(ctx,info.names?label:zh?"下个假期":"Next holiday",left,230,width,28,12);
       ctx.fillStyle=COLORS.red;block(ctx,next?next.names[zh?1:0]:zh?"假期数据待更新":"Update holiday data",left,258,width,28,12);
-      ctx.fillStyle=COLORS.black;if(next)block(ctx,zh?`还有${next.days}天`:`In ${next.days} ${next.days===1?"day":"days"}`,left,286,width,14,12);
+      ctx.fillStyle=COLORS.black;if(next)block(ctx,zh?`下个假期还有${next.days}天`:`Next in ${next.days} ${next.days===1?"day":"days"}`,left,286,width,14,12);
     }else{
       block(ctx,label,left,271,220,28,12);
-      const a=C.almanac(date);if(a){ctx.fillStyle=COLORS.red;block(ctx,`${a.solar[zh?1:0]} +${a.distance}`,292,276,100,14,10);}
+      const a=C.hasAlmanac(code)?C.almanac(date):null;if(a){ctx.fillStyle=COLORS.red;block(ctx,`${a.solar[zh?1:0]} +${a.distance}`,292,276,100,14,10);}
     }
   }
   function textBlock(ctx, text, x, y, width, height, size, lineHeight=size*1.35) {
