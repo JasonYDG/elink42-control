@@ -111,6 +111,17 @@ const OMOTA = (() => {
     target(client);
     const {control, data} = await inspect(client);
     const connected = () => { if (client.device !== device || !device.gatt.connected) throw Error(OMI18n.t("OTA 蓝牙断开，结果未确认；不会自动重发")); };
+    connected();
+    // Keep the panel quiescent across an MCU-only OTA reboot; older OTA clients lack queue ACKs.
+    if (client.refreshStatus) {
+      const now=new Date(),country=client.calendarProtocol===2?OMCalendar.regions[client.config.layout].code:"CN";
+      await client.command(OMProtocol.time(now,0,OMCalendar.zone(country,now)));
+      connected();
+      await client.initialize();
+      connected();
+      await client.command(Uint8Array.of(6));
+      connected();
+    }
     const notify = event => {
       if (event.target !== control) return;
       const value = event.target.value, bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();

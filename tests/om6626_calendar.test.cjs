@@ -52,6 +52,36 @@ test("restored almanac, week numbers and next holiday period handle boundaries",
  assert.equal(C.almanac(new Date(2026,10,7)).distance,0);assert.equal(C.almanac(new Date(2051,0,1)),null);
  assert.equal(C.nextHoliday("DE",new Date(2026,10,4)).days,51);assert.equal(C.nextHoliday("DE",new Date(2026,11,25)).date,"2027-01-01");assert.equal(C.nextHoliday("CN",new Date(2026,9,1)),null);
  assert.equal(C.nextHoliday("DE",new Date(2026,11,31)).days,1);assert.equal(C.nextHoliday("CN",new Date(2027,0,1)),null);
+ assert.equal(C.week(new Date(2027,0,1)),53);assert.equal(C.week(new Date(2023,0,1)),52);assert.equal(C.week(new Date(2024,11,30)),1);
+});
+
+test("country profiles keep local weekdays and confine Chinese almanac to CN and TW",()=>{
+ const {C}=load();
+ for(const language of ['en','zh']){
+  assert.deepEqual(Array.from(C.weekdays('JP',language)),['日','月','火','水','木','金','土']);
+  assert.deepEqual(Array.from(C.weekdays('DE',language)),['So','Mo','Di','Mi','Do','Fr','Sa']);
+  assert.deepEqual(Array.from(C.weekdays('MY',language)),['Ah','Is','Se','Ra','Kh','Ju','Sa']);
+  assert.equal(C.weekdays('SG',language)[1],language==='en'?'Mo':'一');
+ }
+ for(const code of ['CN','TW','DE','SG','JP','MY'])assert.equal(C.hasAlmanac(code),['CN','TW'].includes(code));
+});
+
+test("photo hero is red regular type and a selected holiday never paints over its date",()=>{
+ const {R}=load(),events=[];
+ const ctx={fillRect(...r){events.push(['fill',this.fillStyle,...r]);},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y){events.push(['text',s,this.fillStyle,this.font,x,y]);}};
+ const canvas={getContext:()=>ctx};
+ R.calendar(canvas,{code:'DE',date:new Date(2026,10,4),photo:true});
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='04'&&e[2]==='#b81928'&&e[4]===328&&e[5]===109));
+ events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true});
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='Next in 24 days'));
+ events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true,language:'zh'});
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='下个假期还有24天'));
+ for(const code of ['DE','SG','JP','MY']){
+  events.length=0;R.calendar(canvas,{code,date:new Date(2026,10,7)});
+  assert.ok(!events.some(e=>e[0]==='text' && (/^L\d/.test(e[1]) || e[1].includes('Winter Begins'))));
+ }
+ events.length=0;R.calendar(canvas,{code:'DE',date:new Date(2026,11,25)});
+ assert.equal(events.filter(e=>e[0]==='fill'&&e[1]==='#ffd200').length,1);
 });
 
 test("calendar holiday labels wrap at spaces and fit both footer lines",()=>{
