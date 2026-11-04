@@ -43,33 +43,63 @@ const OMRender = (() => {
     ctx.drawImage(bitmap, -bitmap.width * scale / 2, -bitmap.height * scale / 2, bitmap.width * scale, bitmap.height * scale); ctx.restore();
   }
   const COLORS = {black: "#000", white: "#fff", red: "#b81928", yellow: "#ffd200"};
-  function calendar(canvas,{code,date,language="en",photo=false,bitmap=null,slot=""}){
-    const ctx=start(canvas), region=OMCalendar.region(code), zh=language==="zh", left=photo?266:14, width=photo?124:372;
+  function calendar(canvas,{code,date,language="en",photo=false,bitmap=null,slot="",model=5}){
+    const block=(...args)=>textBlock(...args,14);
+    const ctx=start(canvas), C=OMCalendar, region=C.region(code), zh=language==="zh", left=photo?266:12, width=photo?124:376;
     if(photo){
-      if(bitmap)image(canvas,bitmap,{target:"calendar",fit:"cover"});
-      else {ctx.fillStyle="#eee";ctx.fillRect(0,0,256,300);ctx.fillStyle="#000";textBlock(ctx,OMI18n.t("Device slot")+" "+(slot||"—"),24,130,210,30,16);}
+      if(bitmap)image(canvas,bitmap,{target:"calendar",fit:"contain"});
+      else {ctx.fillStyle="#eee";ctx.fillRect(0,0,256,300);ctx.fillStyle="#000";block(ctx,OMI18n.t("Device slot")+" "+(slot===""?"—":slot),24,130,210,30,16);}
     }
-    ctx.fillStyle="#000";textBlock(ctx,`${date.getFullYear()} / ${String(date.getMonth()+1).padStart(2,"0")}`,left,12,width,25,18);
-    textBlock(ctx,region[zh?"zh":"en"],left,38,width,20,12);
-    const weeks=zh?["日","一","二","三","四","五","六"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-    if(photo){ctx.font=`bold 58px ${FONT}`;ctx.textBaseline="top";ctx.fillText(String(date.getDate()).padStart(2,"0"),left,62);textBlock(ctx,(zh?"星期":"")+weeks[date.getDay()],left,122,width,20,14);}
-    const cell=photo?17:54,top=photo?151:65,startX=photo?left:16,rowH=photo?15:26;
-    weeks.forEach((name,col)=>{ctx.fillStyle=col===0||col===6?COLORS.red:COLORS.black;textBlock(ctx,name,startX+col*cell,top,cell,16,photo?9:12);});
-    OMCalendar.month(code,date.getFullYear(),date.getMonth()).forEach((d,i)=>{
-      if(!d.current)return;const col=i%7,row=Math.floor(i/7),x=startX+col*cell,y=top+20+row*rowH;
-      ctx.fillStyle=d.work?COLORS.black:d.holiday||col===0||col===6?COLORS.red:COLORS.black;
-      textBlock(ctx,String(d.date.getDate()),x+2,y,cell-2,rowH,photo?10:18);
-      if(d.date.getDate()===date.getDate()){ctx.strokeStyle=COLORS.black;ctx.strokeRect(x,y-2,cell-3,rowH-2);}
-      if(d.holiday||d.work){ctx.font=`${photo?8:9}px ${FONT}`;ctx.textBaseline="top";ctx.fillText(d.work?"w":"*",x+cell-9,y);}
+    ctx.fillStyle=photo?COLORS.black:COLORS.red;
+    block(ctx,`${date.getFullYear()} / ${String(date.getMonth()+1).padStart(2,"0")}`,left,photo?12:5,photo?124:180,27,photo?16:24);
+    ctx.fillStyle=COLORS.black;
+    // Preview has no measured battery voltage; only the native device supplies it.
+    ctx.strokeRect(370,photo?32:5,18,9);ctx.fillRect(388,photo?35:8,2,3);
+    if(photo)block(ctx,region[zh?"zh":"en"],left,32,66,14,10);
+    else block(ctx,region[zh?"zh":"en"],290,19,100,14,11);
+    block(ctx,zh?`第${C.week(date)}周`:`Week ${C.week(date)}`,photo?left:195,photo?112:18,photo?width:90,14,12);
+    if(!photo){const a=C.almanac(date);if(a)block(ctx,zh?a.lunarFull:`L${a.lunarMonth}/${a.lunarDay}`,195,1,90,12,10);}
+    const weeks=zh?["日","一","二","三","四","五","六"]:["Su","Mo","Tu","We","Th","Fr","Sa"];
+    if(photo){ctx.font=`bold 64px ${FONT}`;ctx.textBaseline="top";ctx.fillText(String(date.getDate()).padStart(2,"0"),left,50);}
+    const cells=C.month(code,date.getFullYear(),date.getMonth()),first=cells.findIndex(d=>d.current),length=cells.filter(d=>d.current).length;
+    const cell=photo?17:54,top=photo?130:34,startX=photo?left:10,rowH=photo?14:first+length>35?34:38;
+    weeks.forEach((name,col)=>{
+      if(!photo){ctx.fillStyle=col===0||col===6?COLORS.red:COLORS.black;ctx.fillRect(startX+col*cell,top,cell,23);ctx.fillStyle=COLORS.white;}
+      else ctx.fillStyle=col===0||col===6?COLORS.red:COLORS.black;
+      block(ctx,name,startX+col*cell+(photo?0:20),top+(photo?0:5),cell,14,photo?10:12);
     });
-    const info=OMCalendar.day(code,date);ctx.fillStyle=info.holiday?COLORS.red:COLORS.black;
-    textBlock(ctx,info.names?info.names[zh?1:0]:!info.known?(zh?"假期数据待更新":"Update holiday data"):(zh?"暂无节日":"No public holiday today"),left,photo?258:250,width,38,12);
+    cells.forEach((d,i)=>{
+      if(!d.current)return;const col=i%7,row=Math.floor(i/7),x=startX+col*cell,y=(photo?146:61)+row*rowH;
+      if(!photo && model===5 && d.date.getDate()===date.getDate()){ctx.fillStyle=COLORS.yellow;ctx.fillRect(x,y,52,rowH-1);}
+      ctx.fillStyle=d.work?COLORS.black:d.holiday||col===0||col===6?COLORS.red:COLORS.black;
+      block(ctx,String(d.date.getDate()),x+(photo?0:13),y,cell-2,photo?12:24,photo?10:24);
+      if(d.date.getDate()===date.getDate()){ctx.strokeStyle=COLORS.red;ctx.strokeRect(x-(photo?1:0),y-(photo?1:0),cell-(photo?0:2),rowH-1);}
+      if(!photo){
+        const a=C.almanac(d.date);if(a){const sub=a.distance===0?a.solar[zh?1:0]:zh?a.lunar:`L${a.lunarMonth}/${a.lunarDay}`;ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;block(ctx,sub,x+8,y+23,44,12,10);}
+        if(d.holiday||d.work){if(!photo && model===5 && d.date.getDate()===date.getDate()){ctx.fillStyle=COLORS.yellow;ctx.fillRect(x,y,52,rowH-1);}
+      ctx.fillStyle=d.work?COLORS.black:COLORS.red;block(ctx,d.work?"w":"*",x+44,y,10,12,10);}
+      }
+    });
+    const info=C.day(code,date),label=info.names?info.names[zh?1:0]:!info.known?(zh?"假期数据待更新":"Update holiday data"):(zh?"暂无节日":"No public holiday today");
+    ctx.fillStyle=info.holiday?COLORS.red:COLORS.black;
+    if(photo){
+      const next=C.nextHoliday(code,date);
+      block(ctx,info.names?label:zh?"下个假期":"Next holiday",left,230,width,28,12);
+      ctx.fillStyle=COLORS.red;block(ctx,next?next.names[zh?1:0]:zh?"假期数据待更新":"Update holiday data",left,258,width,28,12);
+      ctx.fillStyle=COLORS.black;if(next)block(ctx,zh?`还有${next.days}天`:`In ${next.days} ${next.days===1?"day":"days"}`,left,286,width,14,12);
+    }else{
+      block(ctx,label,left,271,220,28,12);
+      const a=C.almanac(date);if(a){ctx.fillStyle=COLORS.red;block(ctx,`${a.solar[zh?1:0]} +${a.distance}`,292,276,100,14,10);}
+    }
   }
-  function textBlock(ctx, text, x, y, width, height, size) {
+  function textBlock(ctx, text, x, y, width, height, size, lineHeight=size*1.35) {
     ctx.font = `${size}px ${FONT}`; ctx.textBaseline = "top";
     let row = "", top = y;
-    const flush = () => { if (top + size <= y + height) ctx.fillText(row, x, top); row = ""; top += size * 1.35; };
+    const flush = () => { if (top + size <= y + height) ctx.fillText(row, x, top); row = ""; top += lineHeight; };
+    let index=0;
     for (const char of text) {
+      index+=char.length;
+      if(char===" " && row && ctx.measureText(row+char+(text.slice(index).match(/^\S+/u)?.[0]||"")).width>width){flush();continue;}
       if (char === "\n") { flush(); continue; }
       if (row && ctx.measureText(row + char).width > width) flush();
       row += char;

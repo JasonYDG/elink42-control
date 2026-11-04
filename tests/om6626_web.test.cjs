@@ -134,13 +134,13 @@ test("JD79668 connects read-only, initializes the native display, then sets cale
   assert.equal(client.ready, true);
   assert.equal(client.config.model, 5);
   assert.equal(client.canPublish, true);
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24]);
+  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24]);
   await client.calendar(() => {});
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 1, 0x20, 0]);
+  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24, 1, 0x20, 0]);
   assert.equal(state.refreshes, 1);
-  assert.equal(packets[3].length, 8);
-  assert.equal(packets[3][6], 1);
-  assert.ok(Math.abs(new DataView(packets[3].buffer).getUint32(1, false) - Date.now() / 1000) < 3);
+  assert.equal(packets[4].length, 8);
+  assert.equal(packets[4][6], 1);
+  assert.ok(Math.abs(new DataView(packets[4].buffer).getUint32(1, false) - Date.now() / 1000) < 3);
 });
 
 test("failed JD79668 initialization stops before sending time and clears pending waiters", async () => {
@@ -152,7 +152,7 @@ test("failed JD79668 initialization stops before sending time and clears pending
     return write(bytes);
   };
   await assert.rejects(client.calendar(() => {}), /initialization write failed/);
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 1]);
+  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24, 1]);
   assert.equal(state.refreshes, 0);
   assert.equal(client.pending.size, 0);
   assert.equal(client.ready, false);
@@ -164,7 +164,7 @@ test("SSD1619 retains connection, initialization and time sync", async () => {
   await client.connect();
   assert.equal(client.canPublish, true);
   await client.calendar(() => {});
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 1, 0x20, 0]);
+  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24, 1, 0x20, 0]);
 });
 
 test("initial handshake disconnect reconnects the same device once without repeating the chooser or a display write", async () => {
@@ -174,7 +174,7 @@ test("initial handshake disconnect reconnects the same device once without repea
   };
   device.gatt.connect=async()=>{if(++connects===1){const e=Error("initial link lost");e.name="NetworkError";throw e;}return connect();};
   await client.connect();assert.equal(client.ready,true);assert.equal(connects,2);assert.equal(choices,1);
-  assert.deepEqual(packets.map(p=>p[0]),[0,0x24]);assert.equal(client.pending.size,0);
+  assert.deepEqual(packets.map(p=>p[0]),[0,0x24,0x24]);assert.equal(client.pending.size,0);
 });
 
 test("two handshake failures stop, and manual disconnect cancels a pending reconnect", async () => {

@@ -46,3 +46,16 @@ test("old workspaces migrate optional settings without altering stored content",
   assert.equal(raw,before);assert.equal(store.data.settings.calendarCountry,0);assert.equal(store.data.todos[0].title,"保留原文");
   assert.throws(()=>F.validate({...F.defaults(),settings:null}),/appearance/i);
 });
+
+test("restored almanac, week numbers and next holiday period handle boundaries",()=>{
+ const {C}=load();const a=C.almanac(new Date(2026,10,4));assert.equal(a.lunarMonth,9);assert.equal(a.lunarDay,26);assert.equal(a.solar[1],"立冬");assert.equal(a.distance,3);assert.equal(C.week(new Date(2026,10,4)),45);
+ assert.equal(C.almanac(new Date(2026,10,7)).distance,0);assert.equal(C.almanac(new Date(2051,0,1)),null);
+ assert.equal(C.nextHoliday("DE",new Date(2026,10,4)).days,51);assert.equal(C.nextHoliday("DE",new Date(2026,11,25)).date,"2027-01-01");assert.equal(C.nextHoliday("CN",new Date(2026,9,1)),null);
+ assert.equal(C.nextHoliday("DE",new Date(2026,11,31)).days,1);assert.equal(C.nextHoliday("CN",new Date(2027,0,1)),null);
+});
+
+test("calendar holiday labels wrap at spaces and fit both footer lines",()=>{
+ const {R}=load(),rows=[];const ctx={measureText:s=>({width:[...s].length*6}),fillText:(s,x,y)=>rows.push([s,x,y])};
+ R.textBlock(ctx,"Lunar New Year Eve Eve",266,230,124,28,12,14);
+ assert.deepEqual(rows,[["Lunar New Year Eve",266,230],["Eve",266,244]]);
+});
