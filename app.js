@@ -52,6 +52,7 @@
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
+    for(const id of ["holiday-read","holiday-write"])$(id).disabled=!ready || Number($("calendar-layout").value)!==0;
     $("photo-calendar-start").disabled = !ready || $("photo-slot").value==="" || !gallery || gallery.external!==($("photo-source").value==="1");
     $("native-clock").disabled = !ready || (client.config?.model === 5 && !$("clock-full").checked);
     $("led-off").disabled = $("led-on").disabled = !ready || client.config?.model !== 5;
@@ -183,6 +184,8 @@
     const region=C.regions[Number($("calendar-layout").value)], date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00"):C.localDate(region.code);
     const known=region.years.includes(date.getFullYear());
     $("holiday-summary").textContent=OMI18n.t("Offline holidays: ")+region.years.join(", ")+". "+OMI18n.t(known?"National holidays; local/state holidays are excluded.":"Holiday data is unavailable for this year. Update the holiday table; dates are still shown.");
+    const next=C.nextHoliday(region.code,date);
+    if(next)$("holiday-summary").textContent+=" "+OMI18n.t("下一假期：")+next.names[OMI18n.language==="zh"?1:0]+" · "+next.date+".";
     if(region.code==="MY")$("holiday-summary").textContent+=" "+OMI18n.t("Malaysia: nationwide dates only; state holidays and replacement days vary. Islamic dates may change.");
     if(region.code==="TW")$("holiday-summary").textContent+=" "+OMI18n.t("Taiwan: government-office calendar.");
     $("holiday-list").replaceChildren();

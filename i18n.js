@@ -689,7 +689,10 @@ const OMTranslations = {
   "日历显示设置需要固件版本 6 或更新版本，请升级固件并刷新网页。": "Calendar configuration requires firmware revision 6 or later. Update firmware and reload this page.",
   "读取日历显示设置": "Read calendar presentation",
   "日历显示设置读回不符": "Calendar presentation readback mismatch",
-  "国家日历需要配套 revision 6 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 6 firmware. Resync time after German daylight-saving changes."
+  "国家日历需要配套 revision 6 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 6 firmware. Resync time after German daylight-saving changes.",
+  "中国调休表（可选）": "China workday overrides (optional)",
+  "六国节假日已内置，切换国家自动使用。此处仅编辑中国调休，其他国家无需在此录入。": "All six country holiday tables are included and follow the country selection. This editor only changes China workday overrides.",
+  "下一假期：": "Next holiday: "
 };
 const OMI18n = (() => {
   const reverse = Object.fromEntries(Object.entries(OMTranslations).map(([zh,en])=>[en,zh]));

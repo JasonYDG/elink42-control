@@ -192,3 +192,10 @@ test("OTA rejects an invalid ZIP before any device command",async()=>{
   assert.match(u.get("ota-package").textContent,/校验未通过/);
   assert.equal(u.get("ota-start").disabled,true);assert.equal(u.packets.length,0);
 });
+
+test("country holiday summaries show local upcoming holidays and China overrides stay scoped",async()=>{
+ const u=ui(5,false,"en");await u.click("connect");await u.input("calendar-date","2026-11-04");await u.input("calendar-layout","1","change");
+ assert.match(u.get("holiday-summary").textContent,/Next holiday: Christmas Day/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
+ await u.input("calendar-layout","2","change");assert.match(u.get("holiday-summary").textContent,/Next holiday: Deepavali/);
+ await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
+});

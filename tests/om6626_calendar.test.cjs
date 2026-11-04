@@ -20,7 +20,7 @@ test("six country options are ordered CN DE SG TW JP MY and all calendars start 
 });
 test("national holidays, observed days, make-up workdays and unsupported years stay distinct",()=>{
   const {C}=load();
-  for(const [code,date,name] of [["CN","2026-10-01","National Day"],["DE","2026-04-03","Good Friday"],["SG","2026-11-09","Deepavali"],["TW","2027-02-04","Lunar New Year Eve Eve"],["JP","2026-09-22","Substitute holiday"],["MY","2026-09-16","Malaysia Day"]]){
+  for(const [code,date,name] of [["CN","2026-10-01","National Day"],["DE","2026-04-03","Good Friday"],["SG","2026-11-09","Deepavali"],["TW","2027-02-04","Lunar New Year Eve Eve"],["JP","2026-09-22","Citizens' Day"],["MY","2026-09-16","Malaysia Day"]]){
     const info=C.day(code,new Date(date+"T12:00:00"));assert.ok(info.holiday);assert.equal(info.names[0],name);
   }
   const work=C.day("CN",new Date(2026,9,10));assert.equal(work.work,true);assert.equal(work.holiday,false);
