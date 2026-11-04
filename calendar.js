@@ -36,7 +36,17 @@ const OMCalendar = (() => {
   }
   const ordinal=(year,month,day)=>Math.round((Date.UTC(year,month,day)-Date.UTC(year,0,1))/86400000);
   function week(date){const thursday=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()+3-(date.getDay()+6)%7));return Math.floor((ordinal(thursday.getUTCFullYear(),thursday.getUTCMonth(),thursday.getUTCDate()))/7)+1;}
-  const solarNames=[['Minor Cold','小寒'],['Major Cold','大寒'],['Spring Begins','立春'],['Rain Water','雨水'],['Awakening','惊蛰'],['Spring Equinox','春分'],['Clear Bright','清明'],['Grain Rain','谷雨'],['Summer Begins','立夏'],['Grain Buds','小满'],['Grain in Ear','芒种'],['Summer Solstice','夏至'],['Minor Heat','小暑'],['Major Heat','大暑'],['Autumn Begins','立秋'],['Heat Ends','处暑'],['White Dew','白露'],['Autumn Equinox','秋分'],['Cold Dew','寒露'],['Frost Falls','霜降'],['Winter Begins','立冬'],['Minor Snow','小雪'],['Major Snow','大雪'],['Winter Solstice','冬至']];
+  const solarNames=OMHolidays.solarNames;
+  const animals=[['Monkey','猴年'],['Rooster','鸡年'],['Dog','狗年'],['Pig','猪年'],['Rat','鼠年'],['Ox','牛年'],['Tiger','虎年'],['Rabbit','兔年'],['Dragon','龙年'],['Snake','蛇年'],['Horse','马年'],['Goat','羊年']];
+  function nextSolar(date){
+    const year=date.getFullYear(),start=date.getMonth()*2,now=Date.UTC(year,date.getMonth(),date.getDate()),r=OMAlmanacData;
+    for(let t=start;t<start+3;t++){
+      const y=year+Math.floor(t/24),term=t%24;if(y<2000||y>2050)return null;
+      const day=r.solar_term_days[term]+((r.solar_adjustments[y-2000]&(1<<term))?(term<22&&((1<<term)&0x240802)&&y<2044?1:-1):0);
+      const time=Date.UTC(y,Math.floor(term/2),day);if(time>now)return {names:solarNames[term],days:(time-now)/86400000};
+    }
+    return null;
+  }
   function almanac(date){
     const year=date.getFullYear(),month=date.getMonth()+1,day=date.getDate(),r=OMAlmanacData;
     if(year<2000||year>2050)return null;
@@ -45,12 +55,12 @@ const OMCalendar = (() => {
     let remaining=n+1-first,lm=0,leap=false;
     for(;lm<=12;lm++){const length=29+((r.lunar_month_lengths[index+1]>>(12-lm))&1);if(remaining<=length){const after=((r.lunar_leap_months[index]-1)&255)<lm;leap=after&&lm===r.lunar_leap_months[index];if(!after)lm++;break;}remaining-=length;}
     let term=(month-1)*2+(day>14?1:0);
-    const termDay=t=>r.solar_term_days[t]+((r.solar_adjustments[year-2000]&(1<<t))?(t<22 && ((1<<t)&0x240802) && year<2044?1:-1):0);
+    const termDay=t=>{const y=year+Math.floor(t/24),i=t%24;return y>2050?null:r.solar_term_days[i]+((r.solar_adjustments[y-2000]&(1<<i))?(i<22 && ((1<<i)&0x240802) && y<2044?1:-1):0);};
     let distance=termDay(term)-day;
-    if(distance<0){term++;distance=term<month*2?termDay(term)-day:new Date(year,month,0).getDate()-day+termDay(term%24);}
+    if(distance<0){term++;const next=termDay(term);distance=next===null?null:term<month*2?next-day:new Date(year,month,0).getDate()-day+next;}
     const days=['','初一','初二','初三','初四','初五','初六','初七','初八','初九','初十','十一','十二','十三','十四','十五','十六','十七','十八','十九','二十','廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
     const months=['','正月','二月','三月','四月','五月','六月','七月','八月','九月','十月','冬月','腊月'];
-    return {lunarFull:(leap?"闰":"")+months[lm]+days[remaining],lunarMonth:lm,lunarDay:remaining,leap,lunar:remaining===1?(leap?'闰':'')+months[lm]:days[remaining],solar:solarNames[term%24],distance};
+    return {lunarYear:index+1999,zodiac:animals[(index+1999)%12],lunarFull:(leap?"闰":"")+months[lm]+days[remaining],lunarMonth:lm,lunarDay:remaining,leap,lunar:remaining===1?(leap?'闰':'')+months[lm]:days[remaining],solar:solarNames[term%24],distance};
   }
   function nextHoliday(code,date){
     const r=region(code),now=Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
@@ -62,5 +72,5 @@ const OMCalendar = (() => {
     }
     return null;
   }
-  return {regions, region, day, month, zone, localDate, week, weekdays, hasAlmanac, almanac, nextHoliday, photoWidth:256};
+  return {regions, region, day, month, zone, localDate, week, weekdays, hasAlmanac, almanac, nextHoliday, nextSolar, photoWidth:256};
 })();

@@ -692,7 +692,17 @@ const OMTranslations = {
   "国家日历需要配套 revision 6 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 6 firmware. Resync time after German daylight-saving changes.",
   "中国调休表（可选）": "China workday overrides (optional)",
   "六国节假日已内置，切换国家自动使用。此处仅编辑中国调休，其他国家无需在此录入。": "All six country holiday tables are included and follow the country selection. This editor only changes China workday overrides.",
-  "下一假期：": "Next holiday: "
+  "下一假期：": "Next holiday: ",
+  "屏幕仍忙，刷新未确认；蓝牙连接已保留": "The display is still busy; refresh is unconfirmed. Bluetooth remains connected.",
+  "等待屏幕完成上次工作": "Waiting for the display to finish its previous operation",
+  "设备就绪状态回执无效": "Invalid display readiness response",
+  "屏幕就绪状态": "Display readiness",
+  "屏幕仍未就绪，连接已保留；未提交新的刷新，请稍后重试": "The display is not ready. Bluetooth remains connected; no new refresh was sent. Try again later.",
+  "当前固件缺少初始化就绪状态，请先升级固件 v8；没有发送屏幕初始化命令": "This firmware lacks initialization readiness reporting. Update to firmware v8 first; no display initialization was sent.",
+  "日历读回：国家=": "Calendar readback: country=",
+  "，模式=": ", mode=",
+  "，标志=": ", flags=",
+  "，槽位=": ", slot="
 };
 const OMI18n = (() => {
   const reverse = Object.fromEntries(Object.entries(OMTranslations).map(([zh,en])=>[en,zh]));

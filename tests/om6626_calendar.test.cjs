@@ -71,11 +71,11 @@ test("photo hero is red regular type and a selected holiday never paints over it
  const ctx={fillRect(...r){events.push(['fill',this.fillStyle,...r]);},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y){events.push(['text',s,this.fillStyle,this.font,x,y]);}};
  const canvas={getContext:()=>ctx};
  R.calendar(canvas,{code:'DE',date:new Date(2026,10,4),photo:true});
- assert.ok(events.some(e=>e[0]==='text'&&e[1]==='04'&&e[2]==='#b81928'&&e[4]===328&&e[5]===109));
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='4'&&e[2]==='#b81928'&&e[4]===328&&e[5]===104));
  events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true});
- assert.ok(events.some(e=>e[0]==='text'&&e[1]==='Next in 24 days'));
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='Next holiday in 24 days'));
  events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true,language:'zh'});
- assert.ok(events.some(e=>e[0]==='text'&&e[1]==='下个假期还有24天'));
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='24天后下个假期'));
  for(const code of ['DE','SG','JP','MY']){
   events.length=0;R.calendar(canvas,{code,date:new Date(2026,10,7)});
   assert.ok(!events.some(e=>e[0]==='text' && (/^L\d/.test(e[1]) || e[1].includes('Winter Begins'))));
@@ -88,4 +88,27 @@ test("calendar holiday labels wrap at spaces and fit both footer lines",()=>{
  const {R}=load(),rows=[];const ctx={measureText:s=>({width:[...s].length*6}),fillText:(s,x,y)=>rows.push([s,x,y])};
  R.textBlock(ctx,"Lunar New Year Eve Eve",266,230,124,28,12,14);
  assert.deepEqual(rows,[["Lunar New Year Eve",266,230],["Eve",266,244]]);
+});
+
+test('China photo follows lunar-year zodiac and strictly future solar terms',()=>{
+ const {C}=load();
+ for(const [date,year,animal] of [[new Date(2026,1,16),2025,'Snake'],[new Date(2026,1,17),2026,'Horse'],[new Date(2027,0,1),2026,'Horse']]){
+  assert.equal(C.almanac(date).lunarYear,year);assert.equal(C.almanac(date).zodiac[0],animal);
+ }
+ assert.equal(C.nextSolar(new Date(2026,10,5)).days,2);assert.equal(C.nextSolar(new Date(2026,10,5)).names[1],'立冬');
+ assert.equal(C.nextSolar(new Date(2026,10,7)).names[1],'小雪');assert.equal(C.nextSolar(new Date(2026,10,7)).days,15);
+ assert.equal(C.nextSolar(new Date(2026,11,31)).days,5);assert.equal(C.nextSolar(new Date(2050,11,31)),null);
+});
+
+test('all photo layouts share anchors and have exactly two footer rows with complete names',()=>{
+ const {R}=load();
+ for(const code of ['CN','DE','SG','TW','JP','MY'])for(const language of ['en','zh']){
+  const events=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y,w){events.push({s,x,y,w,font:this.font});}};
+  R.calendar({getContext:()=>ctx},{code,language,date:new Date(2026,4,31),photo:true});
+  assert.ok(events.some(e=>e.s==='2026/05'&&e.y===29));assert.ok(events.some(e=>e.y===116));assert.ok(events.some(e=>e.y===146));
+  const footer=events.filter(e=>e.y>=250);assert.equal(footer.length,2,code+language);assert.ok(footer.every(e=>e.x===328&&e.w===124));
+ }
+ const events=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y,w){events.push({s,x,y,w});}};
+ R.calendar({getContext:()=>ctx},{code:'TW',date:new Date(2027,1,3),photo:true});
+ assert.ok(events.some(e=>e.s==='Lunar New Year Eve Eve'&&e.w===124));assert.ok(events.some(e=>e.s==='Next holiday in 1 day'));
 });

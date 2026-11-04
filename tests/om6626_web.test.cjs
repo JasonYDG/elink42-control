@@ -1,7 +1,7 @@
 "use strict";
 const {test} = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
-const root = process.env.OM6626_WEB_ROOT || path.resolve(__dirname, "..");
+const root = process.env.OM6626_WEB_ROOT || path.resolve(__dirname,"..");
 const source = ["i18n.js", "charset.js", "protocol.js", "ble.js"].map(file => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 const sandbox = {
   TextDecoder, TextEncoder, Uint8Array, Uint8ClampedArray, DataView, setTimeout, clearTimeout, console,
@@ -28,7 +28,7 @@ function simulatedPeripheral(payload = 20, failAt = -1) {
     if (bytes[0] === 1) { notify(encode("mtu=" + payload)); notify(encode("t=123")); }
     if (bytes[0] === 0) notify(Uint8Array.of(0x42, 1, ...encode(P.MARKER)));
     if ([5, 6, 0x20, 0x24, 0x45, 0x50].includes(bytes[0]))
-      notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0));
+      notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0x80));
   }};
   return {client, packets};
 }
@@ -82,9 +82,8 @@ test("short board identity and exact configuration parsing", () => {
 test("calendar initializes the existing driver before setting time", async () => {
   const {client, packets} = simulatedPeripheral();
   await client.calendar(() => {});
-  assert.equal(packets[0][0], 1);
-  assert.equal(packets[1][0], 0x20);
-  assert.equal(packets[1][6], 1);
+  assert.deepEqual(packets.map(p=>p[0]),[0x24,0x20,0x24,1,0x24,0x20,0]);
+  assert.equal(packets[1][6],0);assert.equal(packets[5][6],1);
   assert.equal(packets.at(-1)[0], 0);
   assert.equal(client.busy, false);
 });
@@ -120,8 +119,8 @@ function connectablePeripheral(model = 5, marker = P.MARKER, status = true) {
       notify(encode("mtu=20")); notify(encode("t=123"));
     }
     // Native lifecycle tests establish that time alone cannot render without a display context.
-    if (bytes[0] === 0x20 && result.state.initialized) result.state.refreshes++;
-    if (status && [0x24, 0x20].includes(bytes[0])) notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0));
+    if (bytes[0] === 0x20 && bytes[6]!==0 && result.state.initialized) result.state.refreshes++;
+    if (status && [0x24, 0x20].includes(bytes[0])) notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0x80));
     if (!status && bytes[0] === 0x24) notify(Uint8Array.of(0x55, 0));
   };
   sandbox.navigator.bluetooth = {requestDevice: async () => device};
@@ -136,11 +135,11 @@ test("JD79668 connects read-only, initializes the native display, then sets cale
   assert.equal(client.canPublish, true);
   assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24]);
   await client.calendar(() => {});
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24, 1, 0x20, 0]);
+  assert.deepEqual(packets.map(p => p[0]), [0,0x24,0x24,0x24,0x20,0x24,1,0x24,0x20,0]);
   assert.equal(state.refreshes, 1);
-  assert.equal(packets[4].length, 8);
-  assert.equal(packets[4][6], 1);
-  assert.ok(Math.abs(new DataView(packets[4].buffer).getUint32(1, false) - Date.now() / 1000) < 3);
+  assert.equal(packets[8].length, 8);
+  assert.equal(packets[8][6], 1);
+  assert.ok(Math.abs(new DataView(packets[8].buffer).getUint32(1, false) - Date.now() / 1000) < 3);
 });
 
 test("failed JD79668 initialization stops before sending time and clears pending waiters", async () => {
@@ -152,7 +151,7 @@ test("failed JD79668 initialization stops before sending time and clears pending
     return write(bytes);
   };
   await assert.rejects(client.calendar(() => {}), /initialization write failed/);
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24, 1]);
+  assert.deepEqual(packets.map(p => p[0]), [0,0x24,0x24,0x24,0x20,0x24,1]);
   assert.equal(state.refreshes, 0);
   assert.equal(client.pending.size, 0);
   assert.equal(client.ready, false);
@@ -164,7 +163,7 @@ test("SSD1619 retains connection, initialization and time sync", async () => {
   await client.connect();
   assert.equal(client.canPublish, true);
   await client.calendar(() => {});
-  assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24, 1, 0x20, 0]);
+  assert.deepEqual(packets.map(p => p[0]), [0,0x24,0x24,0x24,0x20,0x24,1,0x24,0x20,0]);
 });
 
 test("initial handshake disconnect reconnects the same device once without repeating the chooser or a display write", async () => {
@@ -239,7 +238,7 @@ for (const payload of [20,180,244]) test(`JD79668 full 30 KB packed transfer and
   assert.deepEqual(Uint8Array.from(packets.slice(start+1).filter(p=>p[0]===4).flatMap(p=>[...p.slice(1)])),frame.packed);
   assert.ok(packets.every(p=>p.length<=Math.min(payload,180)));
   assert.deepEqual(packets.slice(-3).map(p=>p[0]),[5,6,0]);
-  assert.equal(packets[0][6],0);
+  assert.equal(packets.find(p=>p[0]===0x20)[6],0);
 });
 
 test("failed fourcolor transfer stops before refresh and sleep", async () => {
@@ -265,7 +264,7 @@ for (const payload of [20, 180, 244]) test(`full 30 KB transfer and SSD1619 sequ
   assert.deepEqual(Uint8Array.from(planes.get(0x24)), frame.black);
   assert.deepEqual(Uint8Array.from(planes.get(0x26)), frame.red);
   assert.deepEqual(packets.filter(p => p[0] === 3).map(p => p[1]), [0x11, 0x44, 0x45, 0x4E, 0x4F, 0x24, 0x4E, 0x4F, 0x26]);
-  assert.equal(packets[0][6], 0);
+  assert.equal(packets.find(p=>p[0]===0x20)[6], 0);
   assert.equal(packets.at(-3)[0], 5);
   assert.equal(packets.at(-2)[0], 6);
   assert.equal(packets.at(-1)[0], 0);
@@ -329,7 +328,7 @@ function galleryPeripheral(external = false, payload = 180) {
 test("JD clock full refresh requires explicit opt-in before any write; SSD1619 preserves partial mode",async()=>{
   const {client,packets}=simulatedPeripheral();client.config={model:5};
   await assert.rejects(client.mode(2,()=>{}),/没有局刷/);assert.equal(packets.length,0);
-  await client.mode(2,()=>{},new Date(),true);assert.equal(packets[1][6],2);
+  await client.mode(2,()=>{},new Date(),true);assert.equal(packets.find(p=>p[0]===0x20&&p[6]===2)[6],2);
 });
 for(const external of [false,true])test(`gallery ${external?"external":"internal"}: empty-slot save, CRC, read, GB2312 remark, rotation and delete`,async()=>{
   const {client,packets,slots,remarks,chunks}=galleryPeripheral(external),frame={packed:new Uint8Array(30000).map((_,i)=>i&255)};
@@ -351,7 +350,7 @@ test("storage rejects occupied or out-of-range slot before erase command, and CR
 });
 test("small-MTU gallery fails safely, weekly mapping rejects empty slots and link failure omits commit",async()=>{
   const small=galleryPeripheral(false,20);
-  await assert.rejects(small.client.gallery(),/44/);assert.deepEqual(small.packets.map(p=>p[0]),[1]);
+  await assert.rejects(small.client.gallery(),/44/);assert.deepEqual(small.packets.map(p=>p[0]),[0x24,1,0x24]);
   const empty=galleryPeripheral();await assert.rejects(empty.client.rotate(2,60,[0,1,2,3,4,5,6],false,()=>{}),/空槽/);
   assert.ok(!empty.packets.some(p=>p[0]===0x44));
   const failed=galleryPeripheral(),write=failed.client.control.writeValueWithResponse;
@@ -388,8 +387,8 @@ test('refresh waits for this command and sequence, ends immediately on idle ACK,
 });
 test('BUSY still asserted after driver returns stops the operation without sleep or retry',async()=>{
   const r=statusPeripheral(),task=r.client.operation(()=>r.client.command(Uint8Array.of(5)));
-  r.emit(5,r.packets[0][1],1);await assert.rejects(task,/BUSY.*仍有效/);
-  assert.equal(r.client.device.gatt.connected,false);assert.equal(r.client.busy,false);assert.equal(r.client.pending.size,0);
+  r.emit(5,r.packets[0][1],1);await assert.rejects(task,/屏幕仍忙/);
+  assert.equal(r.client.device.gatt.connected,true);assert.equal(r.client.busy,false);assert.equal(r.client.pending.size,0);
   assert.deepEqual(r.packets.map(p=>p[0]),[5]);
 });
 test('missing completion ACK times out as unconfirmed, disconnects, cleans waiter and never retries',async()=>{
@@ -426,6 +425,6 @@ test('publish receiving a still-busy refresh ACK never sends sleep',async()=>{
     packets.push(bytes.slice());const b=Uint8Array.of(0x51,5,bytes.at(-1),1);
     client.control.value=new DataView(b.buffer);client.notify({target:client.control});
   };
-  await assert.rejects(client.publish({packed:new Uint8Array(30000)},()=>{}),/BUSY.*仍有效/);
-  assert.ok(!packets.some(p=>p[0]===6));assert.equal(client.device.gatt.connected,false);
+  await assert.rejects(client.publish({packed:new Uint8Array(30000)},()=>{}),/屏幕仍忙/);
+  assert.ok(!packets.some(p=>p[0]===6));assert.equal(client.device.gatt.connected,true);
 });

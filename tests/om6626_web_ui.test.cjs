@@ -40,7 +40,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       if(op===0x24 && bytes.length===3 && bytes[1]===0x49 && international){emit(Uint8Array.of(0x55,calendarOption,0x49));return;}
       if(op===0)emit(Uint8Array.of(0x42,1,...text(ota?"BOARD_ELINK":"BOARD_ZKWEB")));
       if(op===1){emit(text("mtu=180"));emit(text("t=123"));}
-      if([5,6,0x20,0x24,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),0));
+      if([5,6,0x20,0x24,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),0x80));
       if(op===0x46||op===0x51){const b=new Uint8Array(36),v=new DataView(b.buffer);b[0]=op===0x46?0x53:0x73;b.set(text("EIMG"),2);
         v.setUint16(6,400,true);v.setUint16(8,300,true);b[10]=model===5?3:2;b[11]=model===5?0x30:0x20;v.setUint32(12,30000,true);v.setUint32(16,32768,true);b[20]=22;b[23]=60;b.fill(255,25,32);
         if(rotation){b[22]=rotation[1];b[23]=rotation[2];b.set(rotation.slice(3),25);}emit(b);}
@@ -115,7 +115,7 @@ for(const model of [2,5])test(`UI ${model}: native calendar has no static image 
   const u=ui(model);assert.equal(u.get("preview-panel").hidden,false);assert.equal(u.get("publish").disabled,true);assert.equal(u.packets.length,0);
   await u.click("connect");assert.equal(u.get("preview-model").value,String(model));assert.equal(u.get("native-calendar").disabled,false);
   assert.equal(u.get("native-clock").disabled,model===5);assert.equal(u.get("led-off").disabled,model!==5);
-  await u.click("native-calendar");assert.deepEqual(u.packets.map(p=>p[0]),[0,0x24,0x24,0x24,1,0x20,0x24,0x20,0]);assert.equal(u.packets[7][6],1);
+  await u.click("native-calendar");assert.deepEqual(u.packets.map(p=>p[0]),[0,0x24,0x24,0x24,0x24,0x20,0x24,1,0x24,0x24,0x24,0x20,0x24,0]);assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],1);
   assert.ok(u.rendered.every(r=>r.kind==="calendar"));assert.ok(!u.packets.some(p=>p[0]===3||p[0]===4));
   if(model===5){u.get("clock-full").checked=true;await u.get("clock-full").listeners.change();assert.equal(u.get("native-clock").disabled,false);}
   await u.click("native-clock");assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],2);

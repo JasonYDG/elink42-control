@@ -51,29 +51,34 @@ const OMRender = (() => {
       else {ctx.fillStyle="#eee";ctx.fillRect(0,0,256,300);ctx.fillStyle="#000";block(ctx,OMI18n.t("Device slot")+" "+(slot===""?"—":slot),24,130,210,30,16);}
     }
     ctx.fillStyle=photo?COLORS.black:COLORS.red;
-    block(ctx,`${date.getFullYear()} / ${String(date.getMonth()+1).padStart(2,"0")}`,left,photo?12:5,photo?124:180,27,photo?16:24);
+    const heading=`${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,"0")}`;
+    if(photo){
+      ctx.font=`500 22px "Bahnschrift Condensed", "Arial Narrow", sans-serif`;ctx.textBaseline="alphabetic";
+      ctx.fillText(heading,left,29,86);
+      if(code==="CN"){const a=C.almanac(date),offset=Math.min(86,ctx.measureText(heading).width)+4;if(a){ctx.font=`12px ${FONT}`;ctx.fillText(a.zodiac[zh?1:0],left+offset,28,width-offset);}}
+    }else block(ctx,`${date.getFullYear()} / ${String(date.getMonth()+1).padStart(2,"0")}`,left,5,180,27,24);
     ctx.fillStyle=COLORS.black;
     // Preview has no measured battery voltage; only the native device supplies it.
-    ctx.strokeRect(370,photo?32:5,18,9);ctx.fillRect(388,photo?35:8,2,3);
-    if(photo)block(ctx,region[zh?"zh":"en"],left,32,66,14,10);
+    ctx.strokeRect(370,photo?38:5,18,9);ctx.fillRect(388,photo?41:8,2,3);
+    if(photo)block(ctx,region[zh?"zh":"en"],left,38,88,14,11);
     else block(ctx,region[zh?"zh":"en"],290,19,100,14,11);
-    block(ctx,zh?`第${C.week(date)}周`:`Week ${C.week(date)}`,photo?left:195,photo?112:18,photo?width:90,14,12);
+    block(ctx,zh?`第${C.week(date)}周`:`Week ${C.week(date)}`,photo?left:195,photo?116:18,photo?width:90,14,12);
     if(!photo && C.hasAlmanac(code)){const a=C.almanac(date);if(a)block(ctx,zh?a.lunarFull:`L${a.lunarMonth}/${a.lunarDay}`,195,1,90,12,10);}
     const weeks=C.weekdays(code,language);
     if(photo){
-      ctx.fillStyle=COLORS.red;ctx.font='600 78px "Bahnschrift Condensed", "Arial Narrow", sans-serif';
-      ctx.textBaseline="alphabetic";ctx.textAlign="center";ctx.fillText(String(date.getDate()).padStart(2,"0"),328,109,78);
+      ctx.fillStyle=COLORS.red;ctx.font='500 52px "Bahnschrift", "Arial", sans-serif';
+      ctx.textBaseline="alphabetic";ctx.textAlign="center";ctx.fillText(String(date.getDate()),328,104,92);
       ctx.textAlign="left";
     }
     const cells=C.month(code,date.getFullYear(),date.getMonth()),first=cells.findIndex(d=>d.current),length=cells.filter(d=>d.current).length;
-    const cell=photo?17:54,top=photo?130:34,startX=photo?left:10,rowH=photo?14:first+length>35?34:38;
+    const cell=photo?17:54,top=photo?146:34,startX=photo?left:10,rowH=photo?13:first+length>35?34:38;
     weeks.forEach((name,col)=>{
       if(!photo){ctx.fillStyle=col===0||col===6?COLORS.red:COLORS.black;ctx.fillRect(startX+col*cell,top,cell,23);ctx.fillStyle=COLORS.white;}
       else ctx.fillStyle=col===0||col===6?COLORS.red:COLORS.black;
       block(ctx,name,startX+col*cell+(photo?0:20),top+(photo?0:5),cell,14,photo?10:12);
     });
     cells.forEach((d,i)=>{
-      if(!d.current)return;const col=i%7,row=Math.floor(i/7),x=startX+col*cell,y=(photo?146:61)+row*rowH;
+      if(!d.current)return;const col=i%7,row=Math.floor(i/7),x=startX+col*cell,y=(photo?162:61)+row*rowH;
       if(!photo && model===5 && d.date.getDate()===date.getDate()){ctx.fillStyle=COLORS.yellow;ctx.fillRect(x,y,52,rowH-1);}
       ctx.fillStyle=d.work?COLORS.black:d.holiday||col===0||col===6?COLORS.red:COLORS.black;
       block(ctx,String(d.date.getDate()),x+(photo?0:13),y,cell-2,photo?12:24,photo?10:24);
@@ -86,13 +91,15 @@ const OMRender = (() => {
     const info=C.day(code,date),label=info.names?info.names[zh?1:0]:!info.known?(zh?"假期数据待更新":"Update holiday data"):(zh?"暂无节日":"No public holiday today");
     ctx.fillStyle=info.holiday?COLORS.red:COLORS.black;
     if(photo){
-      const next=C.nextHoliday(code,date);
-      block(ctx,info.names?label:zh?"下个假期":"Next holiday",left,230,width,28,12);
-      ctx.fillStyle=COLORS.red;block(ctx,next?next.names[zh?1:0]:zh?"假期数据待更新":"Update holiday data",left,258,width,28,12);
-      ctx.fillStyle=COLORS.black;if(next)block(ctx,zh?`下个假期还有${next.days}天`:`Next in ${next.days} ${next.days===1?"day":"days"}`,left,286,width,14,12);
+      const solar=code==="CN",next=solar?C.nextSolar(date):C.nextHoliday(code,date);
+      ctx.textBaseline="top";ctx.textAlign="center";ctx.fillStyle=COLORS.black;ctx.font=`12px ${FONT}`;
+      if(next)ctx.fillText(zh?(solar?`下个节气还有${next.days}天`:`${next.days}天后下个假期`):`Next ${solar?"solar term":"holiday"} in ${next.days} ${next.days===1?"day":"days"}`,328,250,width);
+      const size=solar&&zh?24:14,name=next?next.names[zh?1:0]:zh?"假期数据待更新":"Update holiday data";
+      ctx.fillStyle=COLORS.red;ctx.font=`${size}px ${FONT}`;
+      ctx.fillText(solar&&!zh?name.toUpperCase():name,328,272+(24-size)/2,width);ctx.textAlign="left";
     }else{
       block(ctx,label,left,271,220,28,12);
-      const a=C.hasAlmanac(code)?C.almanac(date):null;if(a){ctx.fillStyle=COLORS.red;block(ctx,`${a.solar[zh?1:0]} +${a.distance}`,292,276,100,14,10);}
+      const a=C.hasAlmanac(code)?C.almanac(date):null;if(a&&a.distance!==null){ctx.fillStyle=COLORS.red;block(ctx,`${a.solar[zh?1:0]} +${a.distance}`,292,276,100,14,10);}
     }
   }
   function textBlock(ctx, text, x, y, width, height, size, lineHeight=size*1.35) {
