@@ -4,10 +4,10 @@
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-only",
   "assets": {
-    "index.html": "8b2752371f9bb7e3d7c9e57afa56b3899ba3f567b48e57c8d4fbf58f4048e4e0",
+    "index.html": "2ebb5e4bc5732ccd5ece8cd045342da6bcc4556985d7a85e06df3257ffed12ef",
     "style.css": "a1065241e15b8ad1f0fb470b8fdab7141617fe60d0139dd68ea114f46f5f1463",
-    "i18n.js": "a07e3c6647b86c7077e2384e6a4219cdf6942358cf621b5f56addf2c408c6b7c",
-    "holidays.js": "9a4a67fa2b5280d0935c21563f8b73ac04d5e76ff80a3e9f7acb28f260bc576b",
+    "i18n.js": "e62e97d5b9b308de5c11ff2f4b5f4d9feef2565948c202119b3fe4188dfc317e",
+    "holidays.js": "d2cc6bcd299f2cf2b274e3042be3190af7f2a7bd23f103488b434371d301a5aa",
     "calendar.js": "2172d71915f9fbe34718a1a4fb84893d5e0ac9d35e7000075f12d28d809968a5",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
     "protocol.js": "77b289e7b91951f9007866a2e32c602922439837eb25668667dcda1f5eebb25b",
@@ -16,7 +16,7 @@
     "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
     "ota.js": "fe060ac71d9c1a6bc4d3a80b1aedecc5368b9903d243fa04a4eeed4a157478de",
     "render.js": "84e03ac2cf343ca16a958963d98f8447d0cdf1ac000df782b675cb80d4e7ba58",
-    "app.js": "db5cf4d8738d9447c907fa52b3cd92d1ac3ade61f98390a0b388b995eb7fa25c",
+    "app.js": "67abf6be62a98c42e26406e6f9c693befe3e003adbfa0fcdad77f60bf5ca7350",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }
