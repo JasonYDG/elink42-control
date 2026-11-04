@@ -16,11 +16,11 @@ const OMRender = (() => {
   }
   function todo(canvas, title, text) {
     const ctx = start(canvas), rows = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    if (rows.length > 7) throw Error("一屏最多 7 项待办，请减少行数");
+    if (rows.length > 7) throw Error(OMI18n.t("一屏最多 7 项待办，请减少行数"));
     ctx.font = `bold 22px ${FONT}`; ctx.fillStyle = "#b81928";
-    ctx.fillText(fit(ctx, title.trim() || "今日待办", 350), 20, 30);
+    ctx.fillText(fit(ctx, title.trim() || OMI18n.t("今日待办"), 350), 20, 30);
     ctx.fillStyle = "black"; line(ctx, 20, 53, 380, 53);
-    if (!rows.length) { ctx.font = `16px ${FONT}`; ctx.fillText("在左上方输入待办，每行一项", 20, 88); }
+    if (!rows.length) { ctx.font = `16px ${FONT}`; ctx.fillText(OMI18n.t("在左上方输入待办，每行一项"), 20, 88); }
     rows.forEach((row, i) => {
       const done = /^\[x\]\s*/i.test(row), label = row.replace(/^\[(x| )\]\s*/i, "");
       const y = 79 + i * 28;
@@ -30,18 +30,41 @@ const OMRender = (() => {
       if (done) line(ctx, 44, y, 44 + ctx.measureText(fitted).width, y);
     });
     line(ctx, 20, 275, 380, 275); ctx.font = `11px ${FONT}`;
-    ctx.fillText(`${rows.filter(row => /^\[x\]/i.test(row)).length} / ${rows.length} 已完成`, 20, 288);
+    ctx.fillText(OMI18n.msg`${rows.filter(row => /^\[x\]/i.test(row)).length} / ${rows.length} 已完成`, 20, 288);
   }
   function image(canvas, bitmap, options = {}) {
     const ctx = start(canvas);
-    if (!bitmap) { ctx.font = `16px ${FONT}`; ctx.textAlign = "center"; ctx.fillText("选择图片后在此预览", 200, 150); return; }
+    if (!bitmap) { ctx.font = `16px ${FONT}`; ctx.textAlign = "center"; ctx.fillText(OMI18n.t("选择图片后在此预览"), 200, 150); return; }
     const angle = options.angle || 0, swapped = angle % 180 !== 0;
     const w = swapped ? bitmap.height : bitmap.width, h = swapped ? bitmap.width : bitmap.height;
-    const scale = (options.fit === "cover" ? Math.max : Math.min)(400 / w, 300 / h) * (options.zoom || 1);
-    ctx.save(); ctx.translate(200 + (options.x || 0), 150 + (options.y || 0)); ctx.rotate(angle * Math.PI / 180);
+    const width=options.target==="calendar"?256:400;
+    const scale = (options.fit === "cover" ? Math.max : Math.min)(width / w, 300 / h) * (options.zoom || 1);
+    ctx.save();ctx.beginPath();ctx.rect(0,0,width,300);ctx.clip();ctx.translate(width/2 + (options.x || 0), 150 + (options.y || 0)); ctx.rotate(angle * Math.PI / 180);
     ctx.drawImage(bitmap, -bitmap.width * scale / 2, -bitmap.height * scale / 2, bitmap.width * scale, bitmap.height * scale); ctx.restore();
   }
   const COLORS = {black: "#000", white: "#fff", red: "#b81928", yellow: "#ffd200"};
+  function calendar(canvas,{code,date,language="en",photo=false,bitmap=null,slot=""}){
+    const ctx=start(canvas), region=OMCalendar.region(code), zh=language==="zh", left=photo?266:14, width=photo?124:372;
+    if(photo){
+      if(bitmap)image(canvas,bitmap,{target:"calendar",fit:"cover"});
+      else {ctx.fillStyle="#eee";ctx.fillRect(0,0,256,300);ctx.fillStyle="#000";textBlock(ctx,OMI18n.t("Device slot")+" "+(slot||"—"),24,130,210,30,16);}
+    }
+    ctx.fillStyle="#000";textBlock(ctx,`${date.getFullYear()} / ${String(date.getMonth()+1).padStart(2,"0")}`,left,12,width,25,18);
+    textBlock(ctx,region[zh?"zh":"en"],left,38,width,20,12);
+    const weeks=zh?["日","一","二","三","四","五","六"]:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    if(photo){ctx.font=`bold 58px ${FONT}`;ctx.textBaseline="top";ctx.fillText(String(date.getDate()).padStart(2,"0"),left,62);textBlock(ctx,(zh?"星期":"")+weeks[date.getDay()],left,122,width,20,14);}
+    const cell=photo?17:54,top=photo?151:65,startX=photo?left:16,rowH=photo?15:26;
+    weeks.forEach((name,col)=>{ctx.fillStyle=col===0||col===6?COLORS.red:COLORS.black;textBlock(ctx,name,startX+col*cell,top,cell,16,photo?9:12);});
+    OMCalendar.month(code,date.getFullYear(),date.getMonth()).forEach((d,i)=>{
+      if(!d.current)return;const col=i%7,row=Math.floor(i/7),x=startX+col*cell,y=top+20+row*rowH;
+      ctx.fillStyle=d.work?COLORS.black:d.holiday||col===0||col===6?COLORS.red:COLORS.black;
+      textBlock(ctx,String(d.date.getDate()),x+2,y,cell-2,rowH,photo?10:18);
+      if(d.date.getDate()===date.getDate()){ctx.strokeStyle=COLORS.black;ctx.strokeRect(x,y-2,cell-3,rowH-2);}
+      if(d.holiday||d.work){ctx.font=`${photo?8:9}px ${FONT}`;ctx.textBaseline="top";ctx.fillText(d.work?"w":"*",x+cell-9,y);}
+    });
+    const info=OMCalendar.day(code,date);ctx.fillStyle=info.holiday?COLORS.red:COLORS.black;
+    textBlock(ctx,info.names?info.names[zh?1:0]:!info.known?(zh?"假期数据待更新":"Update holiday data"):(zh?"暂无节日":"No public holiday today"),left,photo?258:250,width,38,12);
+  }
   function textBlock(ctx, text, x, y, width, height, size) {
     ctx.font = `${size}px ${FONT}`; ctx.textBaseline = "top";
     let row = "", top = y;
@@ -55,29 +78,29 @@ const OMRender = (() => {
   }
   function todos(canvas, items, title, settings, single = false) {
     const ctx = start(canvas), size = settings.fontSize, now = Date.now();
-    ctx.fillStyle = COLORS.red; textBlock(ctx, title || "待办清单", 18, 15, 365, 35, 24);
+    ctx.fillStyle = COLORS.red; textBlock(ctx, title || OMI18n.t("待办清单"), 18, 15, 365, 35, 24);
     line(ctx, 18, 56, 382, 56);
     const shown = single ? items.slice(0, 1) : items;
     let y = 70;
     for (const item of shown) {
       const urgent = !item.done && item.due && Date.parse(item.due) - now <= settings.urgentHours * 3600000;
-      const detail = [item.description, item.due ? "截止 " + new Date(item.due).toLocaleString("zh-CN") : ""].filter(Boolean).join("\n");
+      const detail = [item.description, item.due ? OMI18n.t("截止 ") + new Date(item.due).toLocaleString(OMI18n.locale) : ""].filter(Boolean).join("\n");
       const height = single ? 185 : size * (detail ? 3.5 : 1.7);
-      if (y + height > 274) throw Error("待办超出一屏，请选择单项或减少内容/字号");
+      if (y + height > 274) throw Error(OMI18n.t("待办超出一屏，请选择单项或减少内容/字号"));
       ctx.fillStyle = urgent ? COLORS.red : COLORS.black;
       textBlock(ctx, `${item.done ? "☑" : "□"} ${item.title}`, 20, y, 360, single ? 60 : size * 1.4, single ? 26 : size);
       if (detail) textBlock(ctx, detail, 40, y + (single ? 65 : size * 1.5), 338, height - size * 1.5, Math.max(10, size - 3));
       y += height;
     }
-    if (!shown.length) { ctx.fillStyle = COLORS.black; textBlock(ctx, "暂无待办事项", 20, 80, 360, 60, size); }
-    ctx.fillStyle = COLORS.black; textBlock(ctx, `${items.filter(t => t.done).length} / ${items.length} 已完成`, 20, 280, 360, 20, 11);
+    if (!shown.length) { ctx.fillStyle = COLORS.black; textBlock(ctx, OMI18n.t("暂无待办事项"), 20, 80, 360, 60, size); }
+    ctx.fillStyle = COLORS.black; textBlock(ctx, OMI18n.msg`${items.filter(t => t.done).length} / ${items.length} 已完成`, 20, 280, 360, 20, 11);
   }
   function course(canvas, text, weekday, size = 16) {
     const ctx = start(canvas); ctx.fillStyle = COLORS.red;
-    textBlock(ctx, "星期" + "日一二三四五六"[weekday] + " · 课程 / 日程", 20, 16, 360, 40, 24);
+    textBlock(ctx, new Date(2026,10,1+weekday).toLocaleDateString(OMI18n.locale,{weekday:"long"}) + OMI18n.t(" · 课程 / 日程"), 20, 16, 360, 40, 24);
     line(ctx, 20, 58, 380, 58); ctx.fillStyle = COLORS.black;
     const rows = text.split("\n").filter(Boolean);
-    if (rows.length * size * 1.8 > 210 || rows.some(row => ctx.measureText(row).width > 1600)) throw Error("当天课表内容过多");
+    if (rows.length * size * 1.8 > 210 || rows.some(row => ctx.measureText(row).width > 1600)) throw Error(OMI18n.t("当天课表内容过多"));
     textBlock(ctx, rows.join("\n"), 20, 78, 360, 200, size);
   }
   function weatherIcon(ctx, text, x, y, w, h, color) {
@@ -94,16 +117,16 @@ const OMRender = (() => {
     ctx.restore();
   }
   function weather(canvas, data) {
-    if (!data) throw Error("请先获取天气");
+    if (!data) throw Error(OMI18n.t("请先获取天气"));
     OMFeatures.weather(data);
     const ctx = start(canvas); ctx.fillStyle = COLORS.red;
-    textBlock(ctx, data.city + " · 天气", 20, 14, 360, 35, 24); line(ctx, 20, 55, 380, 55);
+    textBlock(ctx, data.city + OMI18n.t(" · 天气"), 20, 14, 360, 35, 24); line(ctx, 20, 55, 380, 55);
     ctx.fillStyle = COLORS.black;
     textBlock(ctx, `${data.current?.temperature ?? "—"}°`, 20, 70, 220, 65, 48);
     textBlock(ctx, data.current?.text || "", 20, 140, 240, 38, 24);
     weatherIcon(ctx, data.current?.text || "", 265, 70, 105, 105, COLORS.red);
     data.days.slice(0, 3).forEach((day, i) => textBlock(ctx, `${day.date}\n${day.text}\n${day.low}–${day.high}°`, 20 + i * 123, 194, 117, 73, 13));
-    textBlock(ctx, "数据更新 " + new Date(data.updated).toLocaleString("zh-CN"), 20, 282, 360, 16, 10);
+    textBlock(ctx, OMI18n.t("数据更新 ") + new Date(data.updated).toLocaleString(OMI18n.locale), 20, 282, 360, 16, 10);
   }
   async function template(canvas, spec, context) {
     OMFeatures.template(spec);
@@ -111,7 +134,7 @@ const OMRender = (() => {
     try {
       for (const item of spec.elements.filter(e => e.type === "image")) {
         const blob = await (await fetch(item.src)).blob(), bitmap = await createImageBitmap(blob);
-        if (bitmap.width * bitmap.height > 16000000) { bitmap.close(); throw Error("模板图片像素过大"); }
+        if (bitmap.width * bitmap.height > 16000000) { bitmap.close(); throw Error(OMI18n.t("模板图片像素过大")); }
         images.set(item, bitmap);
       }
       const ctx = start(canvas);
@@ -127,5 +150,5 @@ const OMRender = (() => {
       }
     } finally { for (const bitmap of images.values()) bitmap.close(); }
   }
-  return {todo, todos, image, course, weather, template, textBlock};
+  return {todo, todos, image, calendar, course, weather, template, textBlock};
 })();

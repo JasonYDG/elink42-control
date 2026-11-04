@@ -1,19 +1,22 @@
 {
-  "version": "0.5.4",
+  "version": "0.6.0",
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-only",
   "assets": {
-    "index.html": "bf191daf8034e65ae978f4d1f78cd330c8a2bc358cec76979677a67138193a62",
-    "style.css": "d17be3aff431dd22d8b63ad7a9b1e86c63964767123cf060b1d31a9ec5997e97",
+    "index.html": "6dcbd3e3f273cb9203a53f35eb5db5eee869883790b3e08247917b4479864774",
+    "style.css": "a1065241e15b8ad1f0fb470b8fdab7141617fe60d0139dd68ea114f46f5f1463",
+    "i18n.js": "372dffe9c8562a9a59d176de6b6ce446529bcfc3585530b66d048a98c1898deb",
+    "holidays.js": "e51ad9888ca34ad42fd7268cb2b9857210a169c74b6fc5d25f085a3b25368162",
+    "calendar.js": "e03700536c303d51cc0d124e45f9da9c65b023ba1143947aeb36535ca8b8fcc6",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
-    "protocol.js": "ddaa507e891657e842b3459735d5eabbc7d32f238d87a09f1bf13a297cf4d570",
-    "ble.js": "38bcbdbf0e0a0ad4e61e4a7af23572d42541ad597515bf03c3404eb7656ab761",
-    "features.js": "ae6d30fa3f200da640b2e36c651ec792836f32a9fef4bf1f7008ff7f7e7edbea",
-    "archive.js": "40a0c35549d93d78123e3f151c189c607295f92e9a9967516e58db91eec0317f",
-    "ota.js": "c5ee351693d4805217d1c64f45653d8ea027eca3437eb076137eb009d81d84da",
-    "render.js": "e24d81297d5800b1d0168af8bd2594868ae934b58a005981e850b8ac65d5b959",
-    "app.js": "d0fca1db7f0170eb5a7503035db2013315b74e919c976eda5de55f7315a12556",
+    "protocol.js": "77b289e7b91951f9007866a2e32c602922439837eb25668667dcda1f5eebb25b",
+    "ble.js": "3fb9d17a642785da83f47aed7a2069a99616852f2f9c18e85ef2e6dfae4a9977",
+    "features.js": "b266b3ada0a46f284c7dac430c1c9df7b14946d72da80f52dfaf005c0b93f12a",
+    "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
+    "ota.js": "fe060ac71d9c1a6bc4d3a80b1aedecc5368b9903d243fa04a4eeed4a157478de",
+    "render.js": "d3f9badd7a20fe365801bb2fd2d45e82a8d38d73d85f5b2d37da3621de37e241",
+    "app.js": "003b642f837b62c7ef16209ba1111dea7152043b3f2335d833f3c586ea1d1a5b",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }
