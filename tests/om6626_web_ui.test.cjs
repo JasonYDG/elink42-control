@@ -2,7 +2,7 @@
 // Execute the real UI and transport against a DOM/peripheral model. Optical checks use Edge separately.
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,"..");
-function ui(model=5,ota=false){
+function ui(model=5,ota=false,language="zh",international=true){
   const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],requests=[],local=new Map();
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
@@ -25,13 +25,16 @@ function ui(model=5,ota=false){
   const tabs=[...html.matchAll(/<button\b[^>]*id="([^"]+)"[^>]*aria-controls="([^"]+)"[^>]*data-tab="([^"]+)"/g)].map(m=>{
     const b=get(m[1]);b.dataset.tab=m[3];b.setAttribute("aria-controls",m[2]);return b;
   });
-  let notify,stored=Array(22).fill(null),chunks=[],target=0,external=false;
+  let notify,stored=Array(22).fill(null),chunks=[],target=0,external=false,calendarOption=0;
   const text=s=>new TextEncoder().encode(s);
   function emit(bytes){control.value=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);notify({target:control});}
   function meta(slot,ext){const b=new Uint8Array(18),v=new DataView(b.buffer);b.set([ext?0x74:0x49,slot]);
     if(stored[slot]){b.set([1,model===5?3:2,0x90,1,0x2c,1],2);v.setUint32(8,30000,true);v.setUint16(12,stored[slot],true);}return b;}
   const control={addEventListener(k,f){notify=f;},removeEventListener(){},async startNotifications(){const c=new Uint8Array(15);c[7]=model;c[11]=1;emit(c);},
     async writeValueWithResponse(bytes){packets.push(bytes.slice());const op=bytes[0];
+      if(op===0x23)calendarOption=bytes[1];
+      if(op===0x24 && bytes.length===1){emit(Uint8Array.of(0x55,calendarOption));return;}
+      if(op===0x24 && bytes.length===3 && bytes[1]===0x49 && international){emit(Uint8Array.of(0x55,calendarOption,0x49));return;}
       if(op===0)emit(Uint8Array.of(0x42,1,...text(ota?"BOARD_ELINK":"BOARD_ZKWEB")));
       if(op===1){emit(text("mtu=180"));emit(text("t=123"));}
       if([5,6,0x20,0x24,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),0));
@@ -58,16 +61,16 @@ function ui(model=5,ota=false){
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,confirm:()=>confirm,addEventListener(k,f){windowListeners[k]=f;}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
     document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{hosting:"github-pages"}}},
-    OMRender:Object.fromEntries(["todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
-  const code=["charset.js","protocol.js","ble.js","features.js","archive.js","ota.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
-    "\nOMClient.prototype.pause=async()=>{};\n"+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
+    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
+    `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const api=vm.runInNewContext(code,sandbox);
   return {get,packets,pixels,rendered,downloads,requests,local,device,stored,windowListeners,confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
-test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip: !process.env.OM6626_OTA_PACKAGE_ROOT},async()=>{
+test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip:!process.env.OM6626_OTA_PACKAGE_ROOT},async()=>{
   const u=ui(5,true);await u.click("tab-ota");assert.equal(u.get("ota-start").disabled,true);assert.equal(u.get("preview-panel").hidden,true);
-  const fixture=process.env.OM6626_OTA_PACKAGE_ROOT;
+  const fixture=process.env.OM6626_OTA_PACKAGE_ROOT||path.resolve(__dirname,"../../build/om6626-elink-v1-fixed");
   const meta=JSON.parse(fs.readFileSync(path.join(fixture,"independent-ota-manifest.json"),"utf8"));
   const info=meta.variants["fourcolor-jd79668"];
   const bytes=fs.readFileSync(path.join(fixture,info.ota_zip||info.binary.replace(/\.bin$/,".zip")));
@@ -84,12 +87,33 @@ test("legacy device OTA UI explains wired bootstrap and keeps start disabled",as
   const u=ui();await u.click("connect");await u.click("tab-ota");
   assert.match(u.get("ota-capability").textContent,/先有线刷入/);assert.equal(u.get("ota-inspect").disabled,true);assert.equal(u.get("ota-start").disabled,true);
 });
+test("English default and Chinese switching update live status without touching content",async()=>{
+  const u=ui(5,false,"en");assert.equal(u.get("connection-state").textContent,"Disconnected");
+  assert.match(u.get("compatibility").textContent,/Bluetooth is supported/);
+  u.get("todo-item-title").value="不要翻译我的内容";await u.input("ui-language","zh","change");
+  assert.equal(u.get("connection-state").textContent,"未连接");assert.match(u.get("compatibility").textContent,/浏览器支持蓝牙/);
+  assert.equal(u.get("todo-item-title").value,"不要翻译我的内容");assert.equal(u.local.get("elink42-ui-language"),"zh");
+});
+test("legacy calendar capability rejection sends no configuration or time mutations",async()=>{
+  const u=ui(5,false,"en",false);await u.click("connect");const before=u.packets.length;await u.click("native-calendar");
+  assert.match(u.get("result").textContent,/revision 4/);assert.deepEqual(u.packets.slice(before).map(p=>p[0]),[0x24]);
+});
+test("photo calendar shares country and language and uses the selected persistent gallery slot",async()=>{
+  const u=ui(5,false,"en");await u.click("connect");await u.click("tab-image");await u.file("image-file",{type:"image/png",size:100,name:"photo.png"});
+  await u.input("image-target","calendar","change");await u.click("store-frame");await u.click("photo-gallery-read");
+  await u.input("photo-country","1","change");await u.input("photo-language","zh","change");
+  assert.equal(u.get("calendar-layout").value,"1");assert.equal(u.get("calendar-language").value,"zh");
+  const before=u.packets.length;await u.click("photo-calendar-start");const packets=u.packets.slice(before);
+  assert.ok(packets.some(p=>p[0]===0x21 && p[1]===1));assert.ok(packets.some(p=>p[0]===0x23 && p[1]===3));
+  assert.ok(packets.some(p=>p[0]===0x56 && p[1]===0 && p[2]===0));assert.equal(packets.filter(p=>p[0]===0x20).at(-1)[6],1);
+  assert.ok(!packets.some(p=>[0x40,0x41,0x42].includes(p[0]))); // Reuses gallery data without uploading again.
+});
 for(const model of [2,5])test(`UI ${model}: native calendar has no static image frame; clock capability is honest`,async()=>{
-  const u=ui(model);assert.equal(u.get("preview-panel").hidden,true);assert.equal(u.get("publish").disabled,true);assert.equal(u.packets.length,0);
+  const u=ui(model);assert.equal(u.get("preview-panel").hidden,false);assert.equal(u.get("publish").disabled,true);assert.equal(u.packets.length,0);
   await u.click("connect");assert.equal(u.get("preview-model").value,String(model));assert.equal(u.get("native-calendar").disabled,false);
   assert.equal(u.get("native-clock").disabled,model===5);assert.equal(u.get("led-off").disabled,model!==5);
-  await u.click("native-calendar");assert.deepEqual(u.packets.map(p=>p[0]),[0,0x24,1,0x20,0]);assert.equal(u.packets[3][6],1);
-  assert.equal(u.rendered.length,0);assert.ok(!u.packets.some(p=>p[0]===3||p[0]===4));
+  await u.click("native-calendar");assert.deepEqual(u.packets.map(p=>p[0]),[0,0x24,0x24,1,0x20,0x21,0x23,0x24,0x20,0]);assert.equal(u.packets[8][6],1);
+  assert.ok(u.rendered.every(r=>r.kind==="calendar"));assert.ok(!u.packets.some(p=>p[0]===3||p[0]===4));
   if(model===5){u.get("clock-full").checked=true;await u.get("clock-full").listeners.change();assert.equal(u.get("native-clock").disabled,false);}
   await u.click("native-clock");assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],2);
 });

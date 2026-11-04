@@ -11,19 +11,19 @@ const OMProtocol = (() => {
   const text = bytes => new TextDecoder().decode(bytes).replace(/\0.*$/s, "");
   function board(bytes) {
     if (!(bytes instanceof Uint8Array) || bytes[0] !== 0x42 || bytes.length < 3 || bytes.length > 18)
-      throw Error("板型回执格式不符");
+      throw Error(OMI18n.t("板型回执格式不符"));
     return {id: bytes[1], name: text(bytes.subarray(2))};
   }
   function config(bytes) {
-    if (!(bytes instanceof Uint8Array) || bytes.length !== 15) throw Error("配置回执必须是 15 字节");
+    if (!(bytes instanceof Uint8Array) || bytes.length !== 15) throw Error(OMI18n.t("配置回执必须是 15 字节"));
     return {raw: bytes.slice(), model: bytes[7], mode: bytes[11], layout: bytes[12], alternate: bytes[14]};
   }
-  function time(date = new Date(), mode = 1) {
-    const seconds = Math.floor(date.getTime() / 1000), zone = -date.getTimezoneOffset() / 60;
-    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 0xFFFFFFFF) throw Error("日期超出固件范围");
+  function time(date = new Date(), mode = 1, zone = -date.getTimezoneOffset() / 60) {
+    const seconds = Math.floor(date.getTime() / 1000);
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 0xFFFFFFFF) throw Error(OMI18n.t("日期超出固件范围"));
     // shortcut: this firmware accepts whole-hour timezones; reject fractional offsets.
-    if (!Number.isInteger(zone) || zone < -12 || zone > 14) throw Error("原固件只支持整小时时区");
-    if (![0, 1, 2, 3].includes(mode)) throw Error("显示模式必须为 0–3");
+    if (!Number.isInteger(zone) || zone < -12 || zone > 14) throw Error(OMI18n.t("原固件只支持整小时时区"));
+    if (![0, 1, 2, 3].includes(mode)) throw Error(OMI18n.t("显示模式必须为 0–3"));
     const bytes = new Uint8Array(7);
     bytes[0] = 0x20;
     new DataView(bytes.buffer).setUint32(1, seconds, false);
@@ -32,13 +32,13 @@ const OMProtocol = (() => {
     return bytes;
   }
   function led(enabled) {
-    if (typeof enabled !== "boolean") throw Error("LED 开关必须是布尔值");
+    if (typeof enabled !== "boolean") throw Error(OMI18n.t("LED 开关必须是布尔值"));
     return Uint8Array.of(0x93, enabled ? 1 : 0);
   }
   function planes(rgba, rotate = false, model = 2) {
     if (!(rgba instanceof Uint8ClampedArray) || rgba.length !== WIDTH * HEIGHT * 4)
-      throw Error("只接受 400 × 300 RGBA 像素");
-    if (![2, 5].includes(model)) throw Error("不支持的屏幕型号");
+      throw Error(OMI18n.t("只接受 400 × 300 RGBA 像素"));
+    if (![2, 5].includes(model)) throw Error(OMI18n.t("不支持的屏幕型号"));
     if (model === 5) {
       const packed = new Uint8Array(PLANE_BYTES * 2);
       for (let pixel = 0; pixel < WIDTH * HEIGHT; pixel++) {
@@ -67,13 +67,13 @@ const OMProtocol = (() => {
   }
   function rgba({black, red, packed}) {
     if (packed !== undefined) {
-      if (!(packed instanceof Uint8Array) || packed.length !== PLANE_BYTES * 2) throw Error("四色像素长度不符");
+      if (!(packed instanceof Uint8Array) || packed.length !== PLANE_BYTES * 2) throw Error(OMI18n.t("四色像素长度不符"));
       const pixels = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
       for (let i = 0; i < WIDTH * HEIGHT; i++)
         pixels.set([...FOUR_COLORS[(packed[i >> 2] >> (6 - (i & 3) * 2)) & 3], 255], i * 4);
       return pixels;
     }
-    if (black.length !== PLANE_BYTES || red.length !== PLANE_BYTES) throw Error("色层长度不符");
+    if (black.length !== PLANE_BYTES || red.length !== PLANE_BYTES) throw Error(OMI18n.t("色层长度不符"));
     const pixels = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
     for (let i = 0; i < WIDTH * HEIGHT; i++) {
       const bit = 0x80 >> (i & 7), isRed = !(red[i >> 3] & bit), isBlack = !(black[i >> 3] & bit);
@@ -82,7 +82,7 @@ const OMProtocol = (() => {
     return pixels;
   }
   function integer(value, min, max, label) {
-    if (!Number.isInteger(value) || value < min || value > max) throw Error(label + "超出范围");
+    if (!Number.isInteger(value) || value < min || value > max) throw Error(label + OMI18n.t("超出范围"));
     return value;
   }
   function crc16(bytes) {
@@ -95,7 +95,7 @@ const OMProtocol = (() => {
   }
   let remarkCodes;
   function remarkBytes(text) {
-    if (typeof text !== "string") throw Error("备注必须是文字");
+    if (typeof text !== "string") throw Error(OMI18n.t("备注必须是文字"));
     if (!remarkCodes) {
       remarkCodes = new Map();
       for (let i = 0; i < OMCharset.length; i++) if (OMCharset[i] !== "\0") remarkCodes.set(OMCharset[i], [0xA1 + Math.floor(i / 94), 0xA1 + i % 94]);
@@ -105,9 +105,9 @@ const OMProtocol = (() => {
       const code = char.codePointAt(0);
       if (code > 0 && code < 128) bytes.push(code);
       else if (remarkCodes.has(char)) bytes.push(...remarkCodes.get(char));
-      else throw Error("备注包含设备 GB2312 无法编码的字符：" + char);
+      else throw Error(OMI18n.t("备注包含设备 GB2312 无法编码的字符：") + char);
     }
-    if (bytes.length > 64) throw Error("备注最多 64 字节（GB2312 汉字 2 字节）");
+    if (bytes.length > 64) throw Error(OMI18n.t("备注最多 64 字节（GB2312 汉字 2 字节）"));
     return Uint8Array.from(bytes);
   }
   function remarkText(bytes) {
@@ -118,7 +118,7 @@ const OMProtocol = (() => {
       else {
         const next = bytes[++i], index = (byte - 0xA1) * 94 + next - 0xA1;
         if (byte < 0xA1 || byte > 0xF7 || next < 0xA1 || next > 0xFE || !OMCharset[index] || OMCharset[index] === "\0")
-          throw Error("设备备注含无法解析的 GB2312 字节，已停止以保留原内容");
+          throw Error(OMI18n.t("设备备注含无法解析的 GB2312 字节，已停止以保留原内容"));
         out += OMCharset[index];
       }
     }
@@ -126,7 +126,7 @@ const OMProtocol = (() => {
   }
   function storage(bytes, external = false) {
     if (!(bytes instanceof Uint8Array) || bytes.length < 36 || bytes[0] !== (external ? 0x73 : 0x53) ||
-        bytes.length !== 36 + bytes[1] || text(bytes.subarray(2, 6)) !== "EIMG") throw Error("图库状态格式无效或尚未初始化");
+        bytes.length !== 36 + bytes[1] || text(bytes.subarray(2, 6)) !== "EIMG") throw Error(OMI18n.t("图库状态格式无效或尚未初始化"));
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const state = {external, width: view.getUint16(6, true), height: view.getUint16(8, true),
       type: bytes[10], panel: bytes[11], imageBytes: view.getUint32(12, true), slotBytes: view.getUint32(16, true),
@@ -134,13 +134,13 @@ const OMProtocol = (() => {
       days: [...bytes.slice(25, 32)], last: view.getUint32(32, true)};
     if (state.width !== WIDTH || state.height !== HEIGHT || state.count > 45 || !state.count ||
         state.imageBytes !== 30000 || state.slotBytes !== 32768 ||
-        (!external && state.slotBytes * state.count > 0xB6000)) throw Error("设备图库容量或画面格式不符合本屏，已停止写入");
+        (!external && state.slotBytes * state.count > 0xB6000)) throw Error(OMI18n.t("设备图库容量或画面格式不符合本屏，已停止写入"));
     return state;
   }
   function metadata(bytes, slot, external = false) {
-    integer(slot, 0, 44, "槽位");
+    integer(slot, 0, 44, OMI18n.t("槽位"));
     if (!(bytes instanceof Uint8Array) || bytes.length !== 18 || bytes[0] !== (external ? 0x74 : 0x49) || bytes[1] !== slot)
-      throw Error("图片元数据格式无效");
+      throw Error(OMI18n.t("图片元数据格式无效"));
     const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     return {slot, valid: bytes[2] === 1, color: bytes[3], width: v.getUint16(4, true), height: v.getUint16(6, true),
       size: v.getUint32(8, true), crc: v.getUint16(12, true)};
@@ -151,24 +151,24 @@ const OMProtocol = (() => {
         frame.black.length === 15000 && frame.red.length === 15000) {
       const bytes = new Uint8Array(30000); bytes.set(frame.black); bytes.set(frame.red, 15000); return bytes;
     }
-    throw Error("像素格式或长度与屏型不符");
+    throw Error(OMI18n.t("像素格式或长度与屏型不符"));
   }
   function rotation(mode, interval, days, count, external = false) {
-    integer(mode, 0, 2, "轮播模式"); integer(interval, 1, 255, "间隔分钟"); integer(count, 1, 45, "槽位数量");
-    if (!Array.isArray(days) || days.length !== 7) throw Error("请提供周日至周六的七个槽位");
-    for (const slot of days) if (slot !== 255) integer(slot, 0, count - 1, "星期槽位");
+    integer(mode, 0, 2, OMI18n.t("轮播模式")); integer(interval, 1, 255, OMI18n.t("间隔分钟")); integer(count, 1, 45, OMI18n.t("槽位数量"));
+    if (!Array.isArray(days) || days.length !== 7) throw Error(OMI18n.t("请提供周日至周六的七个槽位"));
+    for (const slot of days) if (slot !== 255) integer(slot, 0, count - 1, OMI18n.t("星期槽位"));
     return Uint8Array.of(external ? 0x55 : 0x44, mode, interval, ...days);
   }
   function holidays(year, entries) {
-    integer(year, 1970, 2105, "年份");
-    if (!Array.isArray(entries) || !entries.length || entries.length > 120) throw Error("调休表需要 1–120 项");
+    integer(year, 1970, 2105, OMI18n.t("年份"));
+    if (!Array.isArray(entries) || !entries.length || entries.length > 120) throw Error(OMI18n.t("调休表需要 1–120 项"));
     const bytes = new Uint8Array(3 + entries.length * 2), view = new DataView(bytes.buffer);
     bytes[0] = 0x47; view.setUint16(1, year, true);
     const seen = new Set();
     entries.forEach((row, i) => {
-      integer(row.month, 1, 12, "月份"); integer(row.day, 1, 31, "日期");
+      integer(row.month, 1, 12, OMI18n.t("月份")); integer(row.day, 1, 31, OMI18n.t("日期"));
       if (typeof row.off !== "boolean" || new Date(year, row.month - 1, row.day).getMonth() !== row.month - 1 ||
-          seen.has(row.month * 32 + row.day)) throw Error("调休日期重复或无效");
+          seen.has(row.month * 32 + row.day)) throw Error(OMI18n.t("调休日期重复或无效"));
       seen.add(row.month * 32 + row.day);
       view.setUint16(3 + i * 2, (row.off ? 0x1000 : 0) | (row.month << 8) | row.day, true);
     });

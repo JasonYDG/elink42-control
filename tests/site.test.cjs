@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-contr
 test("Pages deploys only the control client with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-only");assert.equal(Object.keys(manifest.assets).length,11);
+  assert.equal(manifest.content,"web-control-only");assert.equal(Object.keys(manifest.assets).length,14);
   assert.deepEqual(fs.readdirSync(site).sort(),[...Object.keys(manifest.assets),"site-manifest.json"].sort());
   for(const [name,hash] of Object.entries(manifest.assets)){
     assert.ok(!name.includes("/")&&!/\.(bin|hex|zip|elf|c|h|S|ld)$/i.test(name),name);

@@ -18,6 +18,10 @@
   --shadow: 0 4px 20px #5d493b08;
   --font: "Microsoft YaHei", "PingFang SC", sans-serif;
 }
+.header-tools { display:flex; align-items:center; gap:18px; }
+.header-tools label { margin:0; font-size:12px; }
+.header-tools select { min-width:100px; }
+@media (max-width:600px) { .header-tools { gap:8px; flex-wrap:wrap; } header { align-items:flex-start; gap:12px; } }
 
 :root[data-theme=dark] {
   color-scheme: dark;

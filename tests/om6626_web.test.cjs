@@ -2,12 +2,12 @@
 const {test} = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
 const root = process.env.OM6626_WEB_ROOT || path.resolve(__dirname, "..");
-const source = ["charset.js", "protocol.js", "ble.js"].map(file => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
+const source = ["i18n.js", "charset.js", "protocol.js", "ble.js"].map(file => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 const sandbox = {
   TextDecoder, TextEncoder, Uint8Array, Uint8ClampedArray, DataView, setTimeout, clearTimeout, console,
   navigator: {},
 };
-const {P, Client} = vm.runInNewContext(source + ";({P:OMProtocol,Client:OMClient})", sandbox);
+const {P, Client} = vm.runInNewContext(source + ";OMI18n.setLanguage('zh');({P:OMProtocol,Client:OMClient})", sandbox);
 const encode = text => new TextEncoder().encode(text);
 
 function simulatedPeripheral(payload = 20, failAt = -1) {
@@ -371,7 +371,7 @@ function statusPeripheral() {
   let expire;
   const timers = {...sandbox, setTimeout(callback, ms) { if (ms === 65000) { expire = callback; return 'refresh'; } return setTimeout(callback, ms); },
     clearTimeout(timer) { if (timer !== 'refresh') clearTimeout(timer); }};
-  const StatusClient = vm.runInNewContext(source + ';OMClient', timers), client = new StatusClient(), packets = [];
+  const StatusClient = vm.runInNewContext(source + ";OMI18n.setLanguage('zh');OMClient", timers), client = new StatusClient(), packets = [];
   client.device = {gatt:{connected:true,disconnect(){this.connected=false;}}}; client.ready = client.refreshStatus = true;
   client.control = {removeEventListener(){}, async writeValueWithResponse(bytes){packets.push(bytes.slice());}};
   function emit(command, sequence, busy=0) {const b=Uint8Array.of(0x51,command,sequence,busy);client.control.value=new DataView(b.buffer);client.notify({target:client.control});}

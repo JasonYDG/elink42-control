@@ -3,7 +3,7 @@ const {test}=require("node:test"), assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm"),zlib=require("node:zlib");
 const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,"..");
 const ctx={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,console};
-const {P,F,A}=vm.runInNewContext(["charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
+const {P,F,A}=vm.runInNewContext(["i18n.js","charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";OMI18n.setLanguage('zh');({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
 const plain=value=>JSON.parse(JSON.stringify(value));
 
 test("local workspace is transactional, validated and preserves prior value on quota failure",()=>{

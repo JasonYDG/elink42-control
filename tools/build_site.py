@@ -6,12 +6,12 @@ import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'build' / 'elink42-control'
-ASSETS = ['index.html', 'style.css', 'charset.js', 'protocol.js',
+ASSETS = ['index.html', 'style.css', 'i18n.js', 'holidays.js', 'calendar.js', 'charset.js', 'protocol.js',
           'ble.js', 'features.js', 'archive.js', 'ota.js', 'render.js', 'app.js', '.nojekyll']
 
 def build():
     files = ASSETS
-    assert len(files) == len(set(files)) == 11
+    assert len(files) == len(set(files)) == 14
     OUT.mkdir(parents=True, exist_ok=True)
     assert OUT.resolve().is_relative_to((ROOT / 'build').resolve())
     for p in OUT.rglob('*'):
@@ -23,7 +23,7 @@ def build():
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, dest)
         hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
-    manifest = {'version': '0.5.4', 'repository': 'JasonYDG/elink42-control',
+    manifest = {'version': '0.6.0', 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
                 'content': 'web-control-only', 'assets': hashes}
     (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
