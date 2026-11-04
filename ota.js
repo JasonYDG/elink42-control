@@ -117,8 +117,11 @@ const OMOTA = (() => {
       const now=new Date(),country=client.calendarProtocol===2?OMCalendar.regions[client.config.layout].code:"CN";
       await client.command(OMProtocol.time(now,0,OMCalendar.zone(country,now)));
       connected();
-      await client.initialize();
-      connected();
+      // Legacy receivers must be upgradable without repeating their unsafe initialization.
+      if (client.lifecycleSupported) {
+        await client.initialize();
+        connected();
+      }
       await client.command(Uint8Array.of(6));
       connected();
     }
