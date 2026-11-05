@@ -56,24 +56,70 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     }};
   let rotation=null;
   const device={name:"GCLab_EPD_test",id:"test-device",addEventListener(){},gatt:{connected:false,async connect(){this.connected=true;return {getPrimaryService:async()=>({getCharacteristic:async()=>control})};},disconnect(){this.connected=false;}}};
-  let serial=0,clockTime=Date.now(),interval,respond,confirm=true,requestOptions;
+  let serial=0,clockTime=Date.now(),interval,respond,confirm=initial.confirm??true,requestOptions;
+  const alerts=[],confirmations=[],idleTimers=new Map(),versionQueries=[];
   const windowListeners={};
-  device.gatt.getPrimaryService=async()=>({getCharacteristic:async id=>id.startsWith("8ec90001")?{properties:{write:true,notify:true}}:{properties:{writeWithoutResponse:true}}});
+  let versionListener;
+  const version={properties:{write:true,notify:true},addEventListener(k,f){versionListener=f;},removeEventListener(){versionListener=null;},async startNotifications(){},
+    async writeValueWithResponse(bytes){versionQueries.push([...bytes]);const b=new Uint8Array(12),v=new DataView(b.buffer);
+      v.setUint32(0,0x5A4B4F54,true);v.setUint32(4,initial.versionModel??model,true);v.setUint32(8,initial.revision??9,true);
+      this.value=new DataView(b.buffer);versionListener({target:this});}};
+  device.gatt.getPrimaryService=async()=>({getCharacteristic:async id=>{
+    if(id==="00000003-0000-1000-8000-00805f9b34fb"){if(initial.versionFailure)throw Error("version unavailable");return version;}
+    return id.startsWith("8ec90001")?{properties:{write:true,notify:true}}:{properties:{writeWithoutResponse:true}};
+  }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
     fetch:()=>new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
-    Date:ClockDate,setTimeout(callback,ms){const timer=setTimeout(callback,ms);if(ms===30000)timer.unref();return timer;},clearTimeout,setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
+    Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async()=>({width:400,height:300,close(){}}),
-    localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,confirm:()=>confirm,addEventListener(k,f){windowListeners[k]=f;}},
+    localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
     document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}}},
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.otaBootRevision?'OMClient.prototype.ota=async()=>({status:"boot-verified"});':''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const api=vm.runInNewContext(code,sandbox);
-  return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
+  return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
+
+for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the matching bundled signed v11 without starting OTA`,async()=>{
+  const u=ui(model,true,"zh",true,{revision:10});await u.click("connect");
+  assert.deepEqual(u.versionQueries,[[0]]);assert.equal(u.confirmations.length,1);
+  assert.match(u.confirmations[0],/v10.*v11.*清空图库/);assert.match(u.get("firmware-state").textContent,/v10/);
+  assert.equal(u.get("tab-ota").getAttribute("aria-selected"),"true");
+  assert.match(u.get("ota-package").textContent,new RegExp(model===5?"JD79668 四色":"SSD1619 三色"));
+  assert.match(u.get("ota-package").textContent,/版本 11/);assert.match(u.get("ota-kind").textContent,/校验通过/);
+  assert.equal(u.get("ota-consent").checked,false);assert.equal(u.get("ota-start").disabled,true);
+  assert.ok(!u.packets.some(p=>[5,6,0x20].includes(p[0])));
+});
+test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
+  const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
+  assert.match(u.confirmations[0],/Current firmware v1; latest firmware v11/);
+  assert.equal(u.get("tab-calendar").getAttribute("aria-selected"),"true");assert.equal(u.get("ota-bundled").disabled,false);
+  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 11/);
+});
+for(const revision of [11,12])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
+  const u=ui(5,true,"zh",true,{revision});await u.click("connect");
+  assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
+  await u.click("ota-bundled");assert.match(u.get("result").textContent,/固件已是最新/);
+});
+for(const initial of [{versionFailure:true},{versionModel:2}])test(`unverified firmware cannot trigger a bundled upgrade: ${JSON.stringify(initial)}`,async()=>{
+  const u=ui(5,true,"zh",true,initial);await u.click("connect");
+  assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-start").disabled,true);
+  assert.match(u.get("result").textContent,/无法核对固件版本/);
+});
+test("idle timeout disconnects first, reports the reason and displays one popup; user input resets the timer",async()=>{
+  const u=ui();await u.click("connect");let timer=[...u.idleTimers.keys()][0];
+  for(const event of ["pointerdown","keydown","input","wheel"]){u.windowListeners[event]();const next=[...u.idleTimers.keys()][0];assert.notEqual(next,timer);timer=next;}
+  u.expireIdle();assert.equal(u.device.gatt.connected,false);assert.equal(u.get("connection-state").textContent,"未连接");
+  assert.equal(u.alerts.length,1);assert.match(u.alerts[0],/空闲 3 分钟.*重新连接/);
+  assert.match(u.get("result").textContent,/空闲 3 分钟/);assert.equal(u.idleTimers.size,0);
+});
+test("manual disconnect does not display an idle popup",async()=>{
+  const u=ui();await u.click("connect");await u.click("disconnect");assert.equal(u.alerts.length,0);assert.equal(u.idleTimers.size,0);
+});
 test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip:!firmwareMetadata},async()=>{
   const u=ui(5,true);await u.click("tab-ota");assert.equal(u.get("ota-start").disabled,true);assert.equal(u.get("preview-panel").hidden,true);
   const bytes=firmwareZip();

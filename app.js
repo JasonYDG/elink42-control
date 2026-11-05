@@ -16,7 +16,11 @@
     store = new F.Store({getItem: () => null, setItem() {}});
     result(OMI18n.t("工作区读取失败；原数据保留，本次修改无法持久保存，请查看日志。"), true);
   }
-  const client = new OMClient(update, log, () => uiBusy || scheduler !== null);
+  const client = new OMClient(update, log, () => uiBusy || scheduler !== null, message => {
+    gallery = null; result(message); window.alert(message);
+  });
+  for (const event of ["pointerdown", "keydown", "input", "wheel"])
+    window.addEventListener(event, () => client.armIdleDisconnect(), {passive: true});
   const external = () => $("gallery-source").value === "1";
   const model = () => Number($("preview-model").value);
   const uid = () => crypto.randomUUID();
@@ -45,6 +49,7 @@
     const otaReady = ready && client.board?.name === OMProtocol.OTA_MARKER;
     $("ota-inspect").disabled = !otaReady;
     $("ota-file").disabled = busy;
+    $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
     $("ota-start").disabled = !otaReady || !otaPackage || otaPackage.model !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
@@ -69,7 +74,8 @@
     $("connection-state").classList.toggle("online", client.ready);
     $("device-name").textContent = client.ready ? client.device.name || OMI18n.t("OM6626 屏幕") : OMI18n.t("连接一台屏幕开始");
     $("device-id").textContent = client.ready ? client.device.id : "—";
-    $("firmware-state").textContent = client.ready ? client.timingSupported ? OMI18n.t("配套固件 · 支持刷新计时恢复") : OMI18n.t("旧配套固件 · 请升级 v9") : OMI18n.t("待核对");
+    $("firmware-state").textContent = client.ready && client.firmwareRevision ? `v${client.firmwareRevision} · ` +
+      OMI18n.t(client.firmwareRevision < OMFirmware.revision ? "发现新版固件，请升级" : "固件已是最新") : OMI18n.t("待核对");
     $("screen-model").textContent = client.ready ? client.config.model === 5 ? OMI18n.t("JD79668 · 四色") : OMI18n.t("SSD1619 · 黑白红") : OMI18n.t("三色 / 四色 · 连接后识别");
     $("mtu-state").textContent = OMI18n.msg`${client.reportedPayload || 20} B ATT / ${client.payload} B 当前发送`;
     $("clock-capability").textContent = client.ready ? client.config.model === 5 ?
@@ -160,6 +166,14 @@
     gallery = null; await client.connect(device); restoreDevicePresentation();
     change(data => { if (!data.devices.some(d => d.id === client.device.id)) data.devices.push({id: client.device.id, name: client.device.name || "OM6626"}); });
     $("saved-device").value = client.device.id; await preview();
+    if (client.board.name === OMProtocol.OTA_MARKER) {
+      try { await client.operation(() => OMOTA.readRevision(client)); }
+      catch (error) { log(error.message); throw Error(OMI18n.t("无法核对固件版本，请重新连接后重试；没有发送升级命令。")); }
+      if (client.firmwareRevision < OMFirmware.revision && window.confirm(
+        OMI18n.msg`当前固件 v${client.firmwareRevision}，最新固件 v${OMFirmware.revision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
+        selectTab($("tab-ota")); await loadBundledFirmware();
+      }
+    }
   }
   bind("connect", () => connected(), OMI18n.t("设备已连接。日历页可直接启用日历。"));
   bind("reconnect", async () => {
@@ -201,12 +215,11 @@
   $("calendar-date").addEventListener("input",()=>{calendarInfo();preview();});
   bind("background-clear", () => client.clearBackground(progress));
   bind("led-off", () => client.led(false)); bind("led-on", () => client.led(true));
-  $("ota-file").addEventListener("change", event => action(async () => {
+  async function loadFirmware(file) {
     if (client.busy || uiBusy || schedulerRunning) throw Error(OMI18n.t("设备或页面正在操作，请等待后再选择 OTA 包"));
     otaPackage = null; $("ota-consent").checked = false;
     $("ota-package").textContent = OMI18n.t("尚未选择有效的签名 OTA ZIP");
     $("ota-kind").textContent = OMI18n.t("只接受本项目签名包，原版固件不能通过校验。");
-    const file = event.target.files[0];
     if (!file) { $("ota-package").textContent = OMI18n.t("尚未选择固件包"); update(); return; }
     if (!/\.zip$/i.test(file.name) || file.size > 1024 * 1024) throw Error(OMI18n.t("请选择 1 MB 内的签名 OTA ZIP"));
     uiBusy = true; update(); $("ota-package").textContent = OMI18n.t("正在校验 ZIP、签名、固件哈希及保护区…");
@@ -217,7 +230,20 @@
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
     } catch (error) { $("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
-  }, ""));
+  }
+  async function loadBundledFirmware() {
+    if (!client.ready || client.board?.name !== OMProtocol.OTA_MARKER || !client.firmwareRevision)
+      throw Error(OMI18n.t("请先连接屏幕并核对固件版本"));
+    if (client.firmwareRevision >= OMFirmware.revision) throw Error(OMI18n.t("固件已是最新"));
+    const pack = OMFirmware.packages[client.config.model];
+    const bytes = Uint8Array.from(atob(pack.data), c => c.charCodeAt(0));
+    await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer});
+    if (!otaPackage || otaPackage.revision !== OMFirmware.revision || otaPackage.model !== client.config.model) {
+      otaPackage = null; update(); throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
+    }
+  }
+  $("ota-file").addEventListener("change", event => action(() => loadFirmware(event.target.files[0]), ""));
+  bind("ota-bundled", loadBundledFirmware, "");
   $("ota-consent").addEventListener("change", update);
   bind("ota-inspect", async () => {
     await client.otaInspect(); $("ota-service").textContent = OMI18n.t("已发现 OM6626 FE59 DFU 服务、控制与数据特征；未进入升级。");

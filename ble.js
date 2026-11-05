@@ -1,9 +1,10 @@
 "use strict";
 class OMClient {
-  constructor(update = () => {}, log = () => {}, keepConnection = () => false) {
+  constructor(update = () => {}, log = () => {}, keepConnection = () => false, idleDisconnected = () => {}) {
     this.update = update;
     this.log = log;
     this.keepConnection = keepConnection;
+    this.idleDisconnected = idleDisconnected;
     this.pending = new Set();
     this.busy = false;
     this.ready = false;
@@ -14,6 +15,7 @@ class OMClient {
     this.lifecycleSupported = false;
     this.timingSupported = false;
     this.otaActive = false;
+    this.firmwareRevision = null;
     this.idleTimer = null;
   }
   get canPublish() { return [2, 5].includes(this.config?.model); }
@@ -117,7 +119,7 @@ class OMClient {
   }
   async openConnection() {
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
-    this.config = null; this.board = null; this.control = null;
+    this.config = null; this.board = null; this.control = null; this.firmwareRevision = null;
     this.device.addEventListener("gattserverdisconnected", this.disconnected, {once: true});
     const server = await this.bounded(this.device.gatt.connect(), OMI18n.t("蓝牙连接"), 15000);
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
@@ -151,12 +153,15 @@ class OMClient {
     clearTimeout(this.idleTimer);
     if (!this.ready || this.busy || this.otaActive || this.keepConnection() || !this.device?.gatt.connected) return;
     this.idleTimer = setTimeout(() => {
+      if (!this.ready || !this.device?.gatt.connected) return;
       if (this.busy || this.otaActive || this.keepConnection() || this.pending.size) {
         this.armIdleDisconnect();
         return;
       }
-      this.log(OMI18n.t("空闲 3 分钟，已断开蓝牙以省电；下次操作请重新连接。"));
+      const message = OMI18n.t("空闲 3 分钟，已断开蓝牙以省电；下次操作请重新连接。");
+      this.log(message);
       this.disconnect();
+      this.idleDisconnected(message);
     }, 180000);
     this.idleTimer?.unref?.();
   }
