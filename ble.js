@@ -11,6 +11,7 @@ class OMClient {
     this.commandSequence = 0;
     this.refreshStatus = false;
     this.lifecycleSupported = false;
+    this.timingSupported = false;
     this.otaActive = false;
   }
   get canPublish() { return [2, 5].includes(this.config?.model); }
@@ -35,6 +36,7 @@ class OMClient {
     this.ready = false;
     this.refreshStatus = false;
     this.lifecycleSupported = false;
+    this.timingSupported = false;
     this.control?.removeEventListener("characteristicvaluechanged", this.notify);
     for (const waiter of [...this.pending]) waiter.reject(Error(OMI18n.t("蓝牙已断开；已提交的刷新结果需要查看屏幕确认")));
     this.log(OMI18n.t("蓝牙已断开"));
@@ -84,6 +86,7 @@ class OMClient {
     this.reportedPayload = undefined;
     this.ready = false;
     this.refreshStatus = false;
+    this.timingSupported = false;
     this.payload = 20;
     this.update();
     try {
@@ -132,6 +135,7 @@ class OMClient {
     const status = await probe.promise;
     this.refreshStatus = status[0] === 0x51;
     this.lifecycleSupported = this.refreshStatus && !!(status[3] & 0x80);
+    this.timingSupported = this.refreshStatus && !!(status[3] & 0x20);
     if (!this.refreshStatus) this.log(OMI18n.t("当前固件没有带序号的刷新回执；请升级 refresh-state 配套固件后再操作屏幕"));
     if (this.refreshStatus) await this.readCalendar();
     if (this.connectCancelled || !this.device.gatt.connected) throw Error(OMI18n.t("连接已断开"));
@@ -151,7 +155,7 @@ class OMClient {
     this.busy = true;
     this.update();
     try { return await callback(); }
-    catch (error) { if (error.code !== "DISPLAY_NOT_READY") this.disconnect(); throw error; }
+    catch (error) { if (error.code !== "DISPLAY_NOT_READY") { if(this.device?.gatt.connected)this.log(OMI18n.t("操作未确认，停止发送并断开：")+error.message);this.disconnect(); } throw error; }
     finally { this.busy = false; this.update(); }
   }
   async pause(ms) {
@@ -175,8 +179,9 @@ class OMClient {
     progress(99, checkBusy ? OMI18n.t("设备正在处理，等待完成回执及 BUSY 状态") : OMI18n.t("等待设备命令处理回执"));
     try {
       await this.write(Uint8Array.of(...bytes, sequence));
+      this.log(OMI18n.msg`已提交命令 0x${bytes[0].toString(16)}，序号=${sequence}`);
       const reply = await done.promise;
-      if ((reply[3] & 0x7C) || (!(reply[3] & 0x80) && reply[3] > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
+      if ((reply[3] & 0x5C) || (!(reply[3] & 0x80) && reply[3] > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
       if (checkBusy && (reply[3] & 3)) {
         const error=Error(OMI18n.t("屏幕仍忙，刷新未确认；蓝牙连接已保留"));
         error.code="DISPLAY_NOT_READY";throw error;
@@ -237,13 +242,14 @@ class OMClient {
       const sequence=this.nextSequence();
       const state=await this.request(Uint8Array.of(0x24,sequence),b=>b.length===4 && b[0]===0x51 && b[1]===0x24 && b[2]===sequence,OMI18n.t("等待屏幕完成上次工作"),65000);
       const flags=state[3];
-      if ((flags & 0x7C) || (!(flags & 0x80) && flags > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
+      if ((flags & 0x5C) || (!(flags & 0x80) && flags > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
       if (flags!==previous) { this.log(OMI18n.t("屏幕就绪状态")+" 0x"+flags.toString(16));previous=flags; }
       const supported=!!(flags&0x80);
       this.lifecycleSupported=supported;
-      if (supported && !(flags & (panelReady?3:2))) return;
-      if (!supported || Date.now()>=deadline) {
-        const error=Error(OMI18n.t(supported?"屏幕仍未就绪，连接已保留；未提交新的刷新，请稍后重试":"当前固件缺少初始化就绪状态，请先升级固件 v8；没有发送屏幕初始化命令"));
+      this.timingSupported=!!(flags&0x20);
+      if (supported && this.timingSupported && !(flags & (panelReady?3:2))) return;
+      if (!supported || !this.timingSupported || Date.now()>=deadline) {
+        const error=Error(OMI18n.t(supported && this.timingSupported?"屏幕仍未就绪，连接已保留；未提交新的刷新，请稍后重试":"当前固件缺少刷新计时恢复，请先升级固件 v9；没有发送屏幕初始化命令"));
         error.code="DISPLAY_NOT_READY";throw error;
       }
       await this.pause(250);
@@ -265,6 +271,7 @@ class OMClient {
   }
   async style(layout, alternate, progress) {
     OMProtocol.integer(layout, 0, 6, OMI18n.t("日历版式")); OMProtocol.integer(alternate, 0, 1, OMI18n.t("布局版本"));
+    if (this.calendarProtocol===2) return this.internationalCalendar(layout===6?0:layout,this.config.alternate&2?"zh":"en",false,255,false,progress);
     return this.operation(async () => {
       this.requireRefreshStatus();
       // Pause native rendering while updating both style fields, then render once.
@@ -316,6 +323,7 @@ class OMClient {
       const presentation=await this.request(Uint8Array.of(0x24,0x4A,country,option,this.nextSequence()),
         b=>b.length===7 && b[0]===0x55 && b[2]===0x4A,OMI18n.t("Read calendar presentation"));
       if(presentation[1]!==option || presentation[3]!==country || (photo && (presentation[5]!==slot || presentation[6]!==Number(external))))throw Error(OMI18n.t("Calendar presentation readback mismatch"));
+      this.log(OMI18n.t("日历样式已读回，开始刷新"));
       await this.waitForDisplay(true);
       await this.command(time,progress);
       this.config.layout=country;this.config.alternate=option;this.config.mode=1;

@@ -702,7 +702,19 @@ const OMTranslations = {
   "日历读回：国家=": "Calendar readback: country=",
   "，模式=": ", mode=",
   "，标志=": ", flags=",
-  "，槽位=": ", slot="
+  "，槽位=": ", slot=",
+  "当前固件缺少刷新计时恢复，请先升级固件 v9；没有发送屏幕初始化命令": "This firmware lacks refresh timing recovery. Update to firmware v9 first; no display initialization was sent.",
+  "操作未确认，停止发送并断开：": "Operation unconfirmed; stop sending and disconnect: ",
+  "日历样式已读回，开始刷新": "Calendar presentation read back; starting refresh",
+  "已提交命令 0x": "Submitted command 0x",
+  "，序号=": ", sequence=",
+  "旧版回退缺少完整日历配置，尚未擦除固件": "Full calendar settings are required for downgrade; firmware has not been erased.",
+  "旧版日历配置转换未核对，尚未擦除固件": "Legacy calendar conversion was not verified; firmware has not been erased.",
+  "固件版本已核对，正在启用中国中文全屏日历": "Firmware version verified; enabling the standard China calendar in Chinese",
+  "固件已升级，但默认日历刷新未确认；不要重复刷机：": "Firmware updated, but the default calendar refresh is unconfirmed; do not flash again: ",
+  "配套固件 · 支持刷新计时恢复": "Compatible firmware · refresh timing recovery",
+  "旧配套固件 · 请升级 v9": "Older firmware · update to v9",
+  "国家日历需要配套 revision 9 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 9 firmware. Resync time after German daylight-saving changes."
 };
 const OMI18n = (() => {
   const reverse = Object.fromEntries(Object.entries(OMTranslations).map(([zh,en])=>[en,zh]));

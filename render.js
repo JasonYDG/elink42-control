@@ -63,7 +63,7 @@ const OMRender = (() => {
     if(photo)block(ctx,region[zh?"zh":"en"],left,38,88,14,11);
     else block(ctx,region[zh?"zh":"en"],290,19,100,14,11);
     block(ctx,zh?`第${C.week(date)}周`:`Week ${C.week(date)}`,photo?left:195,photo?116:18,photo?width:90,14,12);
-    if(!photo && C.hasAlmanac(code)){const a=C.almanac(date);if(a)block(ctx,zh?a.lunarFull:`L${a.lunarMonth}/${a.lunarDay}`,195,1,90,12,10);}
+    if(!photo && zh && C.hasAlmanac(code)){const a=C.almanac(date);if(a)block(ctx,a.lunarFull,195,1,90,12,10);}
     const weeks=C.weekdays(code,language);
     if(photo){
       ctx.fillStyle=COLORS.red;ctx.font='500 52px "Bahnschrift", "Arial", sans-serif';
@@ -84,7 +84,7 @@ const OMRender = (() => {
       block(ctx,String(d.date.getDate()),x+(photo?0:13),y,cell-2,photo?12:24,photo?10:24);
       if(d.date.getDate()===date.getDate()){ctx.strokeStyle=COLORS.red;ctx.strokeRect(x-(photo?1:0),y-(photo?1:0),cell-(photo?0:2),rowH-1);}
       if(!photo){
-        const a=C.hasAlmanac(code)?C.almanac(d.date):null;if(a){const sub=a.distance===0?(zh?a.solar[1]:a.solar[0].slice(0,3)+'.'+(a.solar[0].split(' ')[1]?.[0]||'')):zh?a.lunar:`L${a.lunarMonth}/${a.lunarDay}`;ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;block(ctx,sub,x+8,y+23,44,12,10);}
+        const a=C.hasAlmanac(code)?C.almanac(d.date):null;if(a){const sub=a.distance===0?(zh?a.solar[1]:a.solar[0].slice(0,3)+'.'+(a.solar[0].split(' ')[1]?.[0]||'')):zh?a.lunar:"";ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;block(ctx,sub,x+8,y+23,44,12,10);}
         if(d.holiday||d.work){ctx.fillStyle=d.work?COLORS.black:COLORS.red;block(ctx,d.work?"w":"*",x+44,y,10,12,10);}
       }
     });
