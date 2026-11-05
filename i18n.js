@@ -1,5 +1,6 @@
 "use strict";
 const OMTranslations = {
+  "空闲 3 分钟，已断开蓝牙以省电；下次操作请重新连接。": "Idle for 3 minutes. Bluetooth disconnected to save power. Reconnect for the next operation.",
   "（临时工作区，请导出保存）": " (temporary workspace; export to save)",
   "读取本地工作区失败：": "Cannot read local workspace: ",
   "；原数据未改写，本次使用临时工作区": "; original data is unchanged; using a temporary workspace",

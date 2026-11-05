@@ -16,7 +16,7 @@
     store = new F.Store({getItem: () => null, setItem() {}});
     result(OMI18n.t("工作区读取失败；原数据保留，本次修改无法持久保存，请查看日志。"), true);
   }
-  const client = new OMClient(update, log);
+  const client = new OMClient(update, log, () => uiBusy || scheduler !== null);
   const external = () => $("gallery-source").value === "1";
   const model = () => Number($("preview-model").value);
   const uid = () => crypto.randomUUID();
@@ -123,7 +123,7 @@
   async function action(callback, complete = OMI18n.t("操作完成；设备显示和灯光请核对实物。")) {
     try { const value = await callback(); if (complete) result(complete); return value; }
     catch (error) { result(error.message, true); log(error.message); return undefined; }
-    finally { update(); }
+    finally { client.armIdleDisconnect(); update(); }
   }
   function bind(id, callback, complete) { $(id).addEventListener("click", () => action(callback, complete)); }
   function download(name, blob) {
@@ -216,7 +216,7 @@
       $("ota-kind").textContent = OMI18n.t("项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
     } catch (error) { $("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
-    finally { uiBusy = false; update(); }
+    finally { uiBusy = false; client.armIdleDisconnect(); update(); }
   }, ""));
   $("ota-consent").addEventListener("change", update);
   bind("ota-inspect", async () => {
@@ -446,7 +446,7 @@
     try { wakeLock = await navigator.wakeLock?.request("screen"); } catch { log(OMI18n.t("浏览器未授予屏幕唤醒锁，请手动保持电脑唤醒")); }
     scheduler = setInterval(tick, 5000); $("scheduler-state").textContent = OMI18n.t("本页定时器运行中。关闭、休眠或断线会停止发送；超过 5 分钟的任务不自动补发。"); await tick();
   }, OMI18n.t("本页定时器已开启。"));
-  bind("scheduler-stop", async () => { clearInterval(scheduler); scheduler = null; await wakeLock?.release(); wakeLock = null; $("scheduler-state").textContent = OMI18n.t("本页定时器已停止。"); }, OMI18n.t("本页定时器已停止。"));
+  bind("scheduler-stop", async () => { clearInterval(scheduler); scheduler = null; client.armIdleDisconnect(); await wakeLock?.release(); wakeLock = null; $("scheduler-state").textContent = OMI18n.t("本页定时器已停止。"); }, OMI18n.t("本页定时器已停止。"));
   function applySettings() {
     for (const [id, key] of Object.entries(settingsMap)) $(id).value = String(store.data.settings[key]);
     document.documentElement.dataset.theme = store.data.settings.theme;

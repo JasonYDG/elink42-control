@@ -434,3 +434,112 @@ test('publish receiving a still-busy refresh ACK never sends sleep',async()=>{
   await assert.rejects(client.publish({packed:new Uint8Array(30000)},()=>{}),/屏幕仍忙/);
   assert.ok(!packets.some(p=>p[0]===6));assert.equal(client.device.gatt.connected,true);
 });
+
+function idlePeripheral(ota = {}, keepConnection = () => false) {
+  let elapsed = 0, serial = 0;
+  const timers = new Map(), logs = [], packets = [];
+  const clock = {
+    setTimeout(callback, delay) {
+      const id = ++serial;
+      timers.set(id, {callback, at: elapsed + delay});
+      return id;
+    },
+    clearTimeout(id) { timers.delete(id); },
+  };
+  const IdleClient = vm.runInNewContext(source + ";OMClient", {...sandbox, ...clock, OMOTA: ota});
+  const client = new IdleClient(() => {}, message => logs.push(message), keepConnection);
+  client.device = {gatt: {connected: true, disconnect() { this.connected = false; }}};
+  client.ready = true;
+  client.control = {removeEventListener() {}, async writeValueWithResponse(bytes) { packets.push([...bytes]); }};
+  function advance(ms) {
+    const end = elapsed + ms;
+    for (;;) {
+      const due = [...timers].filter(([, timer]) => timer.at <= end).sort((a, b) => a[1].at - b[1].at)[0];
+      if (!due) break;
+      elapsed = due[1].at;
+      timers.delete(due[0]);
+      due[1].callback();
+    }
+    elapsed = end;
+  }
+  return {client, advance, timers, logs, packets};
+}
+
+test("idle connection releases after three minutes without sending a screen command", async () => {
+  const peer = idlePeripheral();
+  await peer.client.operation(async () => {});
+  peer.advance(179999);
+  assert.equal(peer.client.device.gatt.connected, true);
+  peer.advance(1);
+  assert.equal(peer.client.device.gatt.connected, false);
+  assert.equal(peer.logs.length, 1);
+  assert.match(peer.logs[0], /3 minutes/);
+  assert.deepEqual(peer.packets, []);
+});
+
+test("new activity restarts idle time and busy refresh retains the link until completion", async () => {
+  const peer = idlePeripheral();
+  await peer.client.operation(async () => {});
+  peer.advance(170000);
+  await peer.client.write(Uint8Array.of(0));
+  peer.advance(170000);
+  assert.equal(peer.client.device.gatt.connected, true);
+  let finish;
+  const task = peer.client.operation(() => new Promise(resolve => { finish = resolve; }));
+  peer.advance(600000);
+  assert.equal(peer.client.device.gatt.connected, true);
+  finish();
+  await task;
+  peer.advance(179999);
+  assert.equal(peer.client.device.gatt.connected, true);
+  peer.advance(1);
+  assert.equal(peer.client.device.gatt.connected, false);
+  assert.deepEqual(peer.packets, [[0]]);
+});
+
+test("OTA transfer and boot confirmation are protected from idle disconnect", async () => {
+  let finishTransfer, finishBoot;
+  const peer = idlePeripheral({
+    transfer: () => new Promise(resolve => { finishTransfer = resolve; }),
+    confirmBoot: () => new Promise(resolve => { finishBoot = resolve; }),
+  });
+  await peer.client.operation(async () => {});
+  const task = peer.client.ota({}, true, () => {});
+  peer.advance(600000);
+  assert.equal(peer.client.device.gatt.connected, true);
+  assert.equal(peer.client.otaActive, true);
+  finishTransfer({});
+  await new Promise(setImmediate);
+  peer.advance(600000);
+  assert.equal(peer.client.device.gatt.connected, true);
+  finishBoot({});
+  await task;
+  assert.equal(peer.client.otaActive, false);
+  peer.advance(180000);
+  assert.equal(peer.client.device.gatt.connected, false);
+});
+
+test("pending reply and a remote disconnect cannot leave an active stale idle timer", async () => {
+  const peer = idlePeripheral();
+  await peer.client.operation(async () => {});
+  peer.client.pending.add({});
+  peer.advance(180000);
+  assert.equal(peer.client.device.gatt.connected, true);
+  peer.client.pending.clear();
+  peer.client.disconnected({target: peer.client.device});
+  assert.equal(peer.timers.size, 0);
+  peer.advance(180000);
+  assert.equal(peer.logs.filter(line => /3 minutes/.test(line)).length, 0);
+});
+
+test("page schedules retain the connection until the scheduler stops", async () => {
+  let scheduled = true;
+  const peer = idlePeripheral({}, () => scheduled);
+  await peer.client.operation(async () => {});
+  peer.advance(600000);
+  assert.equal(peer.client.device.gatt.connected, true);
+  scheduled = false;
+  peer.client.armIdleDisconnect();
+  peer.advance(180000);
+  assert.equal(peer.client.device.gatt.connected, false);
+});
