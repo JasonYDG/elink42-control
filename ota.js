@@ -118,11 +118,21 @@ const OMOTA = (() => {
       await client.command(OMProtocol.time(now,0,OMCalendar.zone(country,now)));
       connected();
       // Legacy receivers must be upgradable without repeating their unsafe initialization.
-      if (client.lifecycleSupported) {
+      if (client.lifecycleSupported && client.timingSupported) {
         await client.initialize();
         connected();
       }
       await client.command(Uint8Array.of(6));
+      connected();
+    }
+    if (client.timingSupported && pack.revision < 9) {
+      if (client.calendarProtocol !== 2 || client.config.raw?.length !== 15)
+        throw Error(OMI18n.t("旧版回退缺少完整日历配置，尚未擦除固件"));
+      const legacy=client.config.raw.slice();
+      legacy[11]=0;legacy[12]=pack.revision<6?0:client.config.layout;legacy[14]&=1;
+      await client.write(Uint8Array.of(0x90,...legacy));
+      if (!await client.readCalendar() || client.config.mode!==0 || client.config.layout!==legacy[12] || client.config.alternate!==0)
+        throw Error(OMI18n.t("旧版日历配置转换未核对，尚未擦除固件"));
       connected();
     }
     const notify = event => {

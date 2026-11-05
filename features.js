@@ -10,7 +10,7 @@ const OMFeatures = (() => {
   };
   const defaults = () => ({version: 1, todos: [], courses: Array.from({length: 7}, () => ""), templates: [], jobs: [],
     devices: [], settings: {fontSize: 16, urgentHours: 24, theme: "system", dither: "none", strength: 1,
-      brightness: 0, contrast: 1, gamma: 1, redThreshold: 1.35, packetBytes: 180, packetDelay: 0, calendarCountry:0, calendarLanguage:"en", imageTarget:"full"}, weather: null});
+      brightness: 0, contrast: 1, gamma: 1, redThreshold: 1.35, packetBytes: 180, packetDelay: 0, calendarCountry:0, calendarLanguage:"zh", imageTarget:"full"}, weather: null});
   function validate(data) {
     if (!data || data.version !== 1) throw Error(OMI18n.t("备份版本不支持"));
     if (!Array.isArray(data.todos) || data.todos.length > 200 || !Array.isArray(data.templates) || data.templates.length > 60 ||
@@ -32,7 +32,7 @@ const OMFeatures = (() => {
     for (const device of data.devices) { string(device.id, 200, OMI18n.t("设备编号")); string(device.name, 100, OMI18n.t("设备名称")); }
     const s = data.settings;
     if (!s || typeof s!=="object") throw Error(OMI18n.t("外观或抖动配置无效"));
-    s.calendarCountry ??= 0; s.calendarLanguage ??= "en"; s.imageTarget ??= "full";
+    s.calendarCountry ??= 0; s.calendarLanguage ??= "zh"; s.imageTarget ??= "full";
     if(!Number.isInteger(s.calendarCountry) || s.calendarCountry<0 || s.calendarCountry>5 || !["en","zh"].includes(s.calendarLanguage) || !["full","calendar"].includes(s.imageTarget)) throw Error(OMI18n.t("Invalid calendar or image settings"));
     if (!s || !["system", "light", "dark"].includes(s.theme) || !["none", "floyd", "atkinson", "bayer"].includes(s.dither)) throw Error(OMI18n.t("外观或抖动配置无效"));
     bounded(s.fontSize, 8, 32, OMI18n.t("字号")); bounded(s.urgentHours, 0, 8760, OMI18n.t("紧急时限")); bounded(s.strength, 0, 1, OMI18n.t("抖动强度"));

@@ -69,7 +69,7 @@
     $("connection-state").classList.toggle("online", client.ready);
     $("device-name").textContent = client.ready ? client.device.name || OMI18n.t("OM6626 屏幕") : OMI18n.t("连接一台屏幕开始");
     $("device-id").textContent = client.ready ? client.device.id : "—";
-    $("firmware-state").textContent = client.ready ? client.refreshStatus ? OMI18n.t("配套固件 · 支持 BUSY 完成回执") : OMI18n.t("旧配套固件 · 需升级刷新回执") : OMI18n.t("待核对");
+    $("firmware-state").textContent = client.ready ? client.timingSupported ? OMI18n.t("配套固件 · 支持刷新计时恢复") : OMI18n.t("旧配套固件 · 请升级 v9") : OMI18n.t("待核对");
     $("screen-model").textContent = client.ready ? client.config.model === 5 ? OMI18n.t("JD79668 · 四色") : OMI18n.t("SSD1619 · 黑白红") : OMI18n.t("三色 / 四色 · 连接后识别");
     $("mtu-state").textContent = OMI18n.msg`${client.reportedPayload || 20} B ATT / ${client.payload} B 当前发送`;
     $("clock-capability").textContent = client.ready ? client.config.model === 5 ?
@@ -145,8 +145,8 @@
       tabs[next].focus(); selectTab(tabs[next]);
     });
   });
-  async function connected(device) {
-    gallery = null; await client.connect(device); $("preview-model").value = String(client.config.model);
+  function restoreDevicePresentation() {
+    $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(client.config.layout<6?client.config.layout:0);
     $("calendar-language").value = client.config.alternate&2 ? "zh":"en"; syncCalendar();
     if(client.calendarProtocol===2){
@@ -155,6 +155,9 @@
       $("photo-fit").value=!(client.config.alternate&1)||client.config.alternate&4?"contain":"prepared";
       selectTab($(client.config.alternate&1?"tab-photo-calendar":"tab-calendar"));
     }
+  }
+  async function connected(device) {
+    gallery = null; await client.connect(device); restoreDevicePresentation();
     change(data => { if (!data.devices.some(d => d.id === client.device.id)) data.devices.push({id: client.device.id, name: client.device.name || "OM6626"}); });
     $("saved-device").value = client.device.id; await preview();
   }
@@ -228,7 +231,14 @@
       OMI18n.t("\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     await client.ota(otaPackage, consent, progress);
-      $("ota-service").textContent = OMI18n.t("升级完成，已重新连接并核对固件版本；请查看实屏。");
+    if (otaPackage.revision>=9) {
+      $("ota-service").textContent=OMI18n.t("固件版本已核对，正在启用中国中文全屏日历");
+      try { await client.internationalCalendar(0,"zh",false,255,false,progress); }
+      catch(error) { throw Error(OMI18n.t("固件已升级，但默认日历刷新未确认；不要重复刷机：")+error.message); }
+      $("calendar-date").value="";
+    }
+    gallery=null;restoreDevicePresentation();await preview();
+    $("ota-service").textContent = OMI18n.t("升级完成，已重新连接并核对固件版本；请查看实屏。");
   }, "");
   window.addEventListener("beforeunload", event => {
     if (!client.otaActive) return; event.preventDefault(); event.returnValue = "";

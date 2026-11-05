@@ -44,6 +44,7 @@ test("old workspaces migrate optional settings without altering stored content",
   const {F}=load();let raw=JSON.stringify(F.defaults());const parsed=JSON.parse(raw);delete parsed.settings.calendarCountry;delete parsed.settings.calendarLanguage;delete parsed.settings.imageTarget;parsed.todos=[{id:"keep",title:"保留原文",description:"",due:"",done:false}];raw=JSON.stringify(parsed);const before=raw;
   const store=new F.Store({getItem:()=>raw,setItem(){throw Error("Unexpected write during load");}});
   assert.equal(raw,before);assert.equal(store.data.settings.calendarCountry,0);assert.equal(store.data.todos[0].title,"保留原文");
+  assert.equal(store.data.settings.calendarLanguage,"zh");assert.equal(load().I.language,"en");
   assert.throws(()=>F.validate({...F.defaults(),settings:null}),/appearance/i);
 });
 
@@ -82,6 +83,15 @@ test("photo hero is red regular type and a selected holiday never paints over it
  }
  events.length=0;R.calendar(canvas,{code:'DE',date:new Date(2026,11,25)});
  assert.equal(events.filter(e=>e[0]==='fill'&&e[1]==='#ffd200').length,1);
+});
+
+test("all full calendars omit cryptic numeric lunar L labels",()=>{
+ const {R}=load(),labels=[];
+ const ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText:s=>labels.push(s)};
+ for(const code of ['CN','DE','SG','TW','JP','MY'])for(const language of ['en','zh']){
+  labels.length=0;R.calendar({getContext:()=>ctx},{code,language,date:new Date(2026,10,5)});
+  assert.ok(!labels.some(s=>/^L\d/.test(s)),`${code}/${language}`);
+ }
 });
 
 test("calendar holiday labels wrap at spaces and fit both footer lines",()=>{

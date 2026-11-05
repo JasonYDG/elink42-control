@@ -1,7 +1,7 @@
 "use strict";
 const {test} = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path"), vm = require("node:vm");
-const root = process.env.OM6626_WEB_ROOT || path.resolve(__dirname,"..");
+const root = process.env.OM6626_WEB_ROOT || path.resolve(__dirname, "..");
 const source = ["i18n.js", "charset.js", "protocol.js", "ble.js"].map(file => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 const sandbox = {
   TextDecoder, TextEncoder, Uint8Array, Uint8ClampedArray, DataView, setTimeout, clearTimeout, console,
@@ -9,6 +9,12 @@ const sandbox = {
 };
 const {P, Client} = vm.runInNewContext(source + ";OMI18n.setLanguage('zh');({P:OMProtocol,Client:OMClient})", sandbox);
 const encode = text => new TextEncoder().encode(text);
+test("legacy style API uses current country configuration without clearing the saved language",async()=>{
+ const client=new Client(),calls=[];client.calendarProtocol=2;client.config={alternate:2};
+ client.internationalCalendar=async(...args)=>calls.push(args);
+ await client.style(1,0,()=>{});await client.style(6,1,()=>{});
+ assert.deepEqual(calls.map(a=>a.slice(0,5)),[[1,'zh',false,255,false],[0,'zh',false,255,false]]);
+});
 
 function simulatedPeripheral(payload = 20, failAt = -1) {
   const client = new Client(), packets = [];
@@ -28,7 +34,7 @@ function simulatedPeripheral(payload = 20, failAt = -1) {
     if (bytes[0] === 1) { notify(encode("mtu=" + payload)); notify(encode("t=123")); }
     if (bytes[0] === 0) notify(Uint8Array.of(0x42, 1, ...encode(P.MARKER)));
     if ([5, 6, 0x20, 0x24, 0x45, 0x50].includes(bytes[0]))
-      notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0x80));
+      notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0xA0));
   }};
   return {client, packets};
 }
@@ -120,7 +126,7 @@ function connectablePeripheral(model = 5, marker = P.MARKER, status = true) {
     }
     // Native lifecycle tests establish that time alone cannot render without a display context.
     if (bytes[0] === 0x20 && bytes[6]!==0 && result.state.initialized) result.state.refreshes++;
-    if (status && [0x24, 0x20].includes(bytes[0])) notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0x80));
+    if (status && [0x24, 0x20].includes(bytes[0])) notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0xA0));
     if (!status && bytes[0] === 0x24) notify(Uint8Array.of(0x55, 0));
   };
   sandbox.navigator.bluetooth = {requestDevice: async () => device};

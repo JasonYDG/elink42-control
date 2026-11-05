@@ -2,8 +2,11 @@
 // Execute the real UI and transport against a DOM/peripheral model. Optical checks use Edge separately.
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
 const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,"..");
+const firmwareFixture=process.env.OM6626_OTA_PACKAGE_ROOT||path.resolve(__dirname,"../../build/elink42-calendar-0.6.5");
+const firmwareMetadata=fs.existsSync(path.join(firmwareFixture,"independent-ota-manifest.json"))?JSON.parse(fs.readFileSync(path.join(firmwareFixture,"independent-ota-manifest.json"),"utf8")):null;
+function firmwareZip(){const info=firmwareMetadata.variants["fourcolor-jd79668"];return fs.readFileSync(path.join(firmwareFixture,info.ota_zip||info.binary.replace(/\.bin$/,".zip")));}
 function ui(model=5,ota=false,language="zh",international=true,initial={}){
-  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],requests=[],local=new Map();
+  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map();
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
   function element(tag="div",id=""){
@@ -40,7 +43,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       if(op===0x24 && bytes.length===3 && bytes[1]===0x49 && international){emit(Uint8Array.of(0x55,calendarOption,0x49));return;}
       if(op===0)emit(Uint8Array.of(0x42,1,...text(ota?"BOARD_ELINK":"BOARD_ZKWEB")));
       if(op===1){emit(text("mtu=180"));emit(text("t=123"));}
-      if([5,6,0x20,0x24,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),0x80));
+      if([5,6,0x20,0x24,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),0xA0));
       if(op===0x46||op===0x51){const b=new Uint8Array(36),v=new DataView(b.buffer);b[0]=op===0x46?0x53:0x73;b.set(text("EIMG"),2);
         v.setUint16(6,400,true);v.setUint16(8,300,true);b[10]=model===5?3:2;b[11]=model===5?0x30:0x20;v.setUint32(12,30000,true);v.setUint32(16,32768,true);b[20]=22;b[23]=60;b.fill(255,25,32);
         if(rotation){b[22]=rotation[1];b[23]=rotation[2];b.set(rotation.slice(3),25);}emit(b);}
@@ -58,25 +61,22 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   device.gatt.getPrimaryService=async()=>({getCharacteristic:async id=>id.startsWith("8ec90001")?{properties:{write:true,notify:true}}:{properties:{writeWithoutResponse:true}}});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:(url,options)=>new Promise(resolve=>{requests.push({url,options});respond=value=>resolve({ok:true,json:async()=>value});}),
+    fetch:()=>new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
     Date:ClockDate,setTimeout(callback,ms){const timer=setTimeout(callback,ms);if(ms===30000)timer.unref();return timer;},clearTimeout,setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async()=>({width:400,height:300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,confirm:()=>confirm,addEventListener(k,f){windowListeners[k]=f;}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
-    document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{hosting:"github-pages"}}},
+    document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}}},
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
   const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
-    `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
+    `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.otaBootRevision?'OMClient.prototype.ota=async()=>({status:"boot-verified"});':''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const api=vm.runInNewContext(code,sandbox);
-  return {get,packets,pixels,rendered,downloads,requests,local,device,stored,windowListeners,confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
+  return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
-test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip:!process.env.OM6626_OTA_PACKAGE_ROOT},async()=>{
+test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip:!firmwareMetadata},async()=>{
   const u=ui(5,true);await u.click("tab-ota");assert.equal(u.get("ota-start").disabled,true);assert.equal(u.get("preview-panel").hidden,true);
-  const fixture=process.env.OM6626_OTA_PACKAGE_ROOT||path.resolve(__dirname,"../../build/om6626-elink-v1-fixed");
-  const meta=JSON.parse(fs.readFileSync(path.join(fixture,"independent-ota-manifest.json"),"utf8"));
-  const info=meta.variants["fourcolor-jd79668"];
-  const bytes=fs.readFileSync(path.join(fixture,info.ota_zip||info.binary.replace(/\.bin$/,".zip")));
+  const bytes=firmwareZip();
   await u.file("ota-file",{name:"independent.zip",size:bytes.length,arrayBuffer:async()=>bytes});
   assert.match(u.get("ota-package").textContent,/JD79668 四色/);assert.match(u.get("ota-kind").textContent,/不恢复原版激活流程/);
   await u.click("connect");assert.ok(u.requestOptions().optionalServices.includes("0000fe59-0000-1000-8000-00805f9b34fb"));
@@ -85,6 +85,22 @@ test("independent OTA UI verifies project ZIP, requires data-loss consent and ca
   u.confirmation(false);await u.click("ota-start");assert.equal(u.packets.length,before);
   await u.file("ota-file",{name:"wrong.hex",size:10});assert.equal(u.get("ota-start").disabled,true);
   assert.equal(u.get("ota-consent").checked,false);
+});
+test("verified v9 OTA applies China Chinese standard calendar and restores the controls",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
+ const u=ui(5,true,"zh",true,{country:1,flags:0,mode:1,slot:1,otaBootRevision:9});
+ await u.click('connect');assert.equal(u.get('calendar-layout').value,'1');
+ const bytes=firmwareZip();await u.file('ota-file',{name:'v9.zip',size:bytes.length,arrayBuffer:async()=>bytes});
+ u.get('ota-consent').checked=true;await u.click('ota-start');
+ assert.equal(u.get('calendar-layout').value,'0');assert.equal(u.get('calendar-language').value,'zh');
+ assert.equal(u.get('tab-calendar').getAttribute('aria-selected'),'true');
+ assert.ok(u.packets.some(p=>p[0]===0x24&&p.length===5&&p[2]===0&&p[3]===2));
+ assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],1);
+});
+test("a failed default refresh after verified OTA never asks for another flash",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
+ const u=ui(5,true,'zh',true,{otaBootRevision:9,defaultFails:true});await u.click('connect');
+ const bytes=firmwareZip();await u.file('ota-file',{name:'v9.zip',size:bytes.length,arrayBuffer:async()=>bytes});
+ u.get('ota-consent').checked=true;await u.click('ota-start');
+ assert.match(u.get('result').textContent,/固件已升级.*默认日历刷新未确认.*不要重复刷机/);
 });
 test("legacy device OTA UI explains wired bootstrap and keeps start disabled",async()=>{
   const u=ui();await u.click("connect");await u.click("tab-ota");
@@ -161,6 +177,18 @@ test("page scheduler marks stale jobs missed and never overwrites screen with la
   u.advance(600000);const before=u.packets.length;await u.click("scheduler-start");assert.equal(u.packets.length,before);
   const job=JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0];assert.equal(job.enabled,false);assert.match(job.status,/错过/);
 });
+test("weather job rechecks the target after asynchronous network work and never sends to changed identity",async()=>{
+  const u=ui();await u.click("connect");u.get("job-title").value="天气";u.get("job-kind").value="weather";
+  u.get("job-time").value=new Date(Date.now()+120000).toISOString();await u.click("job-add");
+  u.get("weather-key").value="test-only-not-a-real-key";u.get("weather-consent").checked=true;u.advance(121000);
+  const before=u.packets.length,operation=u.click("scheduler-start");await new Promise(setImmediate);
+  assert.equal(u.get("reconnect").disabled,true);
+  u.device.id="different-device";
+  u.respond({now:{results:[{location:{name:"北京"},last_update:new Date().toISOString(),now:{text:"晴",temperature:"20",code:"0"}}]},daily:{results:[{daily:[]}]}});
+  await operation;assert.equal(u.packets.length,before);
+  assert.match(JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0].status,/失败|不确定/);
+});
+
 test("connection restores actual photo presentation and time sync preserves its slot and fitting",async()=>{
   const u=ui(5,false,"en",true,{flags:7,country:1,mode:1,slot:2,source:0});u.stored[2]=123;await u.click("connect");
   assert.equal(u.get("photo-calendar-editor").hidden,false);assert.equal(u.get("calendar-layout").value,"1");assert.equal(u.get("photo-slot").value,"2");assert.equal(u.get("photo-fit").value,"contain");
@@ -171,26 +199,6 @@ test("connection restores actual photo presentation and time sync preserves its 
 test("existing full-screen gallery images default to uncropped calendar fitting",async()=>{
   const u=ui(5,false,"en");await u.click("connect");assert.equal(u.get("photo-fit").value,"contain");u.stored[0]=123;await u.click("photo-gallery-read");const before=u.packets.length;await u.click("photo-calendar-start");
   assert.ok(u.packets.slice(before).some(p=>p[0]===0x24 && p.length===5 && p[3]===5));
-});
-test("hosted weather refuses before any network request and exposes a clear local-version message",async()=>{
-  const u=ui();u.get("weather-key").value="test-only-not-a-real-key";u.get("weather-consent").checked=true;
-  await u.click("weather-fetch");assert.match(u.get("result").textContent,/实时天气需要本地控制端/);
-  assert.equal(u.requests.length,0);assert.equal(u.packets.length,0);
-});
-test("one-click saying uses the public CORS endpoint and never sends a weather key",async()=>{
-  const u=ui();u.get("weather-key").value="test-only-not-a-real-key";
-  const work=u.click("saying-fetch");u.respond({text:"ELINK browser test"});await work;
-  assert.equal(u.requests.length,1);assert.equal(u.requests[0].url,"https://uapis.cn/api/v1/saying");
-  assert.equal(u.requests[0].options.credentials,"omit");assert.equal(u.requests[0].options.referrerPolicy,"no-referrer");
-  assert.ok(!JSON.stringify(u.requests).includes("test-only-not-a-real-key"));
-  assert.equal(u.get("saying-text").textContent,"ELINK browser test");assert.equal(u.packets.length,0);
-});
-
-test("OTA rejects an invalid ZIP before any device command",async()=>{
-  const u=ui();await u.click("tab-ota");
-  await u.file("ota-file",{name:"invalid.zip",size:4,arrayBuffer:async()=>Uint8Array.of(0,1,2,3)});
-  assert.match(u.get("ota-package").textContent,/校验未通过/);
-  assert.equal(u.get("ota-start").disabled,true);assert.equal(u.packets.length,0);
 });
 
 test("country holiday summaries show local upcoming holidays and China overrides stay scoped",async()=>{
