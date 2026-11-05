@@ -1,22 +1,22 @@
 {
-  "version": "0.6.5",
+  "version": "0.6.6",
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-only",
   "assets": {
-    "index.html": "902716099556c1b236ad2663d813422bc6729a6c2f1251ae6ab998daf646e2b9",
+    "index.html": "108c074d841094a241da67af5a0d6d24c7b76bb691a155ba543719a956324b73",
     "style.css": "a1065241e15b8ad1f0fb470b8fdab7141617fe60d0139dd68ea114f46f5f1463",
-    "i18n.js": "ff8df31a5d421f76d5512a9ae4d882a45dfe7c85b9f4220a3973efbf0a9ae5ac",
+    "i18n.js": "352046ec74b14ec207ab62d19190a473c0f4e2215529f698667fc8d7a8899af0",
     "holidays.js": "a75a7d3a45c19cd709c11d96b0d301ad020a77267cd7e72b4e663cdd103c01ce",
     "calendar.js": "f1513e60b0187f567412b8632237fb9d580211007deed6cef609563f28b2885e",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
     "protocol.js": "77b289e7b91951f9007866a2e32c602922439837eb25668667dcda1f5eebb25b",
-    "ble.js": "f415c1697eec193bc3d7005f547fa2a7426475dc0aa4d81176882fd2483c5f2c",
+    "ble.js": "900c7fae5808f6037a9103ce8fe1b7848a8e4b30552470e89e47ec7a9243acd8",
     "features.js": "fd45782ffe7f011ae91223f0066cd2270a8294ccaff1762da2b61fa8aa2f8fd6",
     "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
     "ota.js": "d87ce504fafc5d25474cc1a76d1d49280437295fc8099d38fa0f2b85e910cf51",
     "render.js": "844f4c1e9b467319d58d11acc42b5b4e63ed89c3ef4d4f0744b446f05609d41d",
-    "app.js": "527a7eb25c133460e05345147826bf16b280796812ca00d106b59a82324fc4d9",
+    "app.js": "0227a49761b828eb8ba30228cef22128970a3d8f12705516e8b34562897256d9",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }

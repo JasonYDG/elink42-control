@@ -1,8 +1,9 @@
 "use strict";
 class OMClient {
-  constructor(update = () => {}, log = () => {}) {
+  constructor(update = () => {}, log = () => {}, keepConnection = () => false) {
     this.update = update;
     this.log = log;
+    this.keepConnection = keepConnection;
     this.pending = new Set();
     this.busy = false;
     this.ready = false;
@@ -13,6 +14,7 @@ class OMClient {
     this.lifecycleSupported = false;
     this.timingSupported = false;
     this.otaActive = false;
+    this.idleTimer = null;
   }
   get canPublish() { return [2, 5].includes(this.config?.model); }
   setTransfer(payload, delay) {
@@ -33,6 +35,7 @@ class OMClient {
   };
   disconnected = event => {
     if (event?.target && event.target !== this.device) return;
+    clearTimeout(this.idleTimer);
     this.ready = false;
     this.refreshStatus = false;
     this.lifecycleSupported = false;
@@ -72,6 +75,7 @@ class OMClient {
       throw Error(OMI18n.t("蓝牙包长度超出已确认的范围"));
     await this.bounded(this.control.writeValueWithResponse(bytes), OMI18n.t("蓝牙写入"));
     if (this.packetDelay) await this.pause(this.packetDelay);
+    this.armIdleDisconnect();
   }
   async request(bytes, match, label, timeout = 8000) {
     const waiter = this.wait(match, label, timeout);
@@ -109,7 +113,7 @@ class OMClient {
         }
       }
     } catch (error) { this.disconnect(); throw error; }
-    finally { this.busy = false; this.update(); }
+    finally { this.busy = false; this.armIdleDisconnect(); this.update(); }
   }
   async openConnection() {
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
@@ -143,7 +147,21 @@ class OMClient {
     this.log(OMI18n.t("已连接 ") + (this.device.name || this.device.id) + OMI18n.t(" · Web 固件 / ") +
       (this.config.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")));
   }
+  armIdleDisconnect() {
+    clearTimeout(this.idleTimer);
+    if (!this.ready || this.busy || this.otaActive || this.keepConnection() || !this.device?.gatt.connected) return;
+    this.idleTimer = setTimeout(() => {
+      if (this.busy || this.otaActive || this.keepConnection() || this.pending.size) {
+        this.armIdleDisconnect();
+        return;
+      }
+      this.log(OMI18n.t("空闲 3 分钟，已断开蓝牙以省电；下次操作请重新连接。"));
+      this.disconnect();
+    }, 180000);
+    this.idleTimer?.unref?.();
+  }
   disconnect() {
+    clearTimeout(this.idleTimer);
     this.connectCancelled = true;
     this.ready = false;
     this.device?.gatt.disconnect();
@@ -156,7 +174,7 @@ class OMClient {
     this.update();
     try { return await callback(); }
     catch (error) { if (error.code !== "DISPLAY_NOT_READY") { if(this.device?.gatt.connected)this.log(OMI18n.t("操作未确认，停止发送并断开：")+error.message);this.disconnect(); } throw error; }
-    finally { this.busy = false; this.update(); }
+    finally { this.busy = false; this.armIdleDisconnect(); this.update(); }
   }
   async pause(ms) {
     const end = Date.now() + ms;
