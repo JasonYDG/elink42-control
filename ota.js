@@ -204,34 +204,42 @@ const OMOTA = (() => {
         if (client.connectCancelled || !retry) throw error;
         continue;
       }
-      target(client);
-      const service = await client.bounded(device.gatt.getPrimaryService(SERVICE), OMI18n.t("重启后读取升级服务"));
-      const version = await client.bounded(service.getCharacteristic(VERSION), OMI18n.t("读取固件版本接口"));
-      if (!version.properties.write || !version.properties.notify) throw Error(OMI18n.t("OTA 已提交，但版本接口不符；启动结果未确认"));
-      const notify = event => {
-        if (event.target !== version) return;
-        const v = event.target.value, bytes = new Uint8Array(v.buffer,v.byteOffset,v.byteLength).slice();
-        for (const waiter of [...client.pending]) if (waiter.match(bytes)) waiter.resolve(bytes);
-      };
-      version.addEventListener("characteristicvaluechanged", notify);
-      let receipt;
-      try {
-        await client.bounded(version.startNotifications(), OMI18n.t("启用版本回执"));
-        receipt = client.wait(b => b.length === 12 && new DataView(b.buffer,b.byteOffset,b.byteLength).getUint32(0,true) === 0x5A4B4F54,
-          OMI18n.t("重启后的固件版本回执（启动未确认）"), 15000);
-        await client.bounded(version.writeValueWithResponse(Uint8Array.of(0)), OMI18n.t("只读查询固件版本"));
-        const bytes = await receipt.promise, view = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
-        if (client.device !== device || !device.gatt.connected || !client.ready || client.connectCancelled || Date.now() >= deadline)
-          throw Error(OMI18n.t("OTA 重连或版本核对已中断，启动结果未确认"));
-        target(client);
-        if (view.getUint32(4,true) !== pack.model || view.getUint32(8,true) !== pack.revision || client.config.model !== pack.model)
-          throw Error(OMI18n.t("重启后的屏型或固件版本不匹配，OTA 结果未确认"));
-        progress(100, OMI18n.msg`升级完成，已重连并确认 ELINK 固件版本 ${pack.revision}；请核对实屏`);
-        return {status:"boot-verified", revision:pack.revision, model:pack.model};
-      } catch (error) { receipt?.cancel(error); throw error; }
-      finally { version.removeEventListener("characteristicvaluechanged", notify); }
+      const revision = await readRevision(client);
+      if (Date.now() >= deadline || revision !== pack.revision || client.config.model !== pack.model)
+        throw Error(OMI18n.t("重启后的屏型或固件版本不匹配，OTA 结果未确认"));
+      progress(100, OMI18n.msg`升级完成，已重连并确认 ELINK 固件版本 ${pack.revision}；请核对实屏`);
+      return {status:"boot-verified", revision:pack.revision, model:pack.model};
     }
     throw Error(OMI18n.t("OTA 已提交，但未在两分钟内确认新版本启动；不会重新擦写，请保留供电并核对设备"));
   }
-  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot};
+  async function readRevision(client) {
+    target(client);
+    const device = client.device;
+    const service = await client.bounded(device.gatt.getPrimaryService(SERVICE), OMI18n.t("读取 OTA 服务"));
+    const version = await client.bounded(service.getCharacteristic(VERSION), OMI18n.t("读取固件版本接口"));
+    if (!version.properties.write || !version.properties.notify) throw Error(OMI18n.t("固件版本接口不符，无法核对版本"));
+    const notify = event => {
+      if (event.target !== version) return;
+      const v = event.target.value, bytes = new Uint8Array(v.buffer,v.byteOffset,v.byteLength).slice();
+      for (const waiter of [...client.pending]) if (waiter.match(bytes)) waiter.resolve(bytes);
+    };
+    version.addEventListener("characteristicvaluechanged", notify);
+    let receipt;
+    try {
+      await client.bounded(version.startNotifications(), OMI18n.t("启用版本回执"));
+      receipt = client.wait(b => b.length === 12 && new DataView(b.buffer,b.byteOffset,b.byteLength).getUint32(0,true) === 0x5A4B4F54,
+        OMI18n.t("固件版本回执"), 15000);
+      await client.bounded(version.writeValueWithResponse(Uint8Array.of(0)), OMI18n.t("只读查询固件版本"));
+      const bytes = await receipt.promise, view = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+      if (client.device !== device || !device.gatt.connected || !client.ready || client.connectCancelled)
+        throw Error(OMI18n.t("固件版本核对已中断，版本未确认"));
+      target(client);
+      if (view.getUint32(4,true) !== client.config.model || !view.getUint32(8,true))
+        throw Error(OMI18n.t("屏型或固件版本不匹配，版本未确认"));
+      client.firmwareRevision = view.getUint32(8,true);
+      return client.firmwareRevision;
+    } catch (error) { receipt?.cancel(error); throw error; }
+    finally { version.removeEventListener("characteristicvaluechanged", notify); }
+  }
+  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision};
 })();

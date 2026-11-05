@@ -1,5 +1,18 @@
 "use strict";
 const OMTranslations = {
+  "载入内置 v11 升级包": "Load bundled v11 update",
+  "固件版本接口不符，无法核对版本": "Unexpected firmware version interface; revision is unverified",
+  "固件版本回执": "Firmware version response",
+  "固件版本核对已中断，版本未确认": "Firmware revision check interrupted; revision is unverified",
+  "屏型或固件版本不匹配，版本未确认": "Panel model or firmware revision mismatch; revision is unverified",
+  "发现新版固件，请升级": "Firmware update available",
+  "固件已是最新": "Firmware is up to date",
+  "请先连接屏幕并核对固件版本": "Connect the display and verify its firmware revision first",
+  "内置固件版本或屏型不匹配，已停止": "Bundled firmware revision or panel model does not match; stopped",
+  "无法核对固件版本，请重新连接后重试；没有发送升级命令。": "Cannot verify firmware revision. Reconnect and try again. No update commands were sent.",
+  "当前固件 v": "Current firmware v",
+  "，最新固件 v": "; latest firmware v",
+  "。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？": ". The matching update is bundled with this page. Updating clears the gallery; back it up first. Open OTA update now?",
   "空闲 3 分钟，已断开蓝牙以省电；下次操作请重新连接。": "Idle for 3 minutes. Bluetooth disconnected to save power. Reconnect for the next operation.",
   "（临时工作区，请导出保存）": " (temporary workspace; export to save)",
   "读取本地工作区失败：": "Cannot read local workspace: ",
