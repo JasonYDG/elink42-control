@@ -212,8 +212,9 @@ class OMClient {
       if (reply[3] & 4) {
         if (reply.length !== 6 || reply[3] !== 0xA4) throw Error(OMI18n.t("设备就绪状态回执无效"));
         const mv = reply[4] | (reply[5] << 8);
-        const error = Error(OMI18n.t("供电不足，未开始刷新；实测电压 ") + mv + OMI18n.t(" mV。请更换电池或改用稳定供电。"));
+        const error = Error(OMI18n.t("供电不足，未开始刷新；实测电压 ") + (Math.round(mv/10)/100).toFixed(2) + OMI18n.t(" V。请更换电池或改用稳定供电。"));
         error.code = "DISPLAY_NOT_READY";
+        error.millivolts = mv;
         throw error;
       }
       if ((reply[3] & 0x5C) || (!(reply[3] & 0x80) && reply[3] > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
@@ -252,6 +253,7 @@ class OMClient {
     return this.operation(async () => {
       this.otaActive = true; this.update();
       try {
+        if(pack.bundle) return await OMOTA.upgradeBundle(this,pack,consent,progress);
         const verified = await OMOTA.transfer(this, pack, consent, progress);
         return await OMOTA.confirmBoot(this, verified, progress);
       }

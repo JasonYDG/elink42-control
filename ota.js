@@ -6,6 +6,10 @@ const OMOTA = (() => {
   const VERSION = "00000003-0000-1000-8000-00805f9b34fb";
   const SIZE = 238532, FOUNDATION = {"2": "92388266519726d537fe51e5e40a607badf4460d16ea63fe8250ea3fde59a037", "5": "685a36d764bddd7dd8e735f7833b6553a513b21eb46ddd1e23c778756527a986"};
   const REPAIRED_FOUNDATION={"2":"caff106e401ac13b75e22acf0556ee8fb15f7a99132e71990698308e8a86ca48","5":"046dc44e400252e93bc1bd5f33ce7e0a847dc9990b11f2c2b1d001c955b928dc"};
+  const TRANSITION_IMAGES={
+    2:["bb8f90fe8980d3ba9d2e9cca65d463e9b6dce7722474a0d7da219fb93c83b4ac","f721222b51c7584937e716066b6dc9f02eabc9d476f761e94160e7a07b312c28"],
+    5:["689d7946abfa01eb069c983b28d4cfda3b9af76558e4ecae19b5c58888e872da","5d0a3f0dc488bbe32deb876a55a09d716a1b0d10540f7f2b94cf45ba408c2835"]
+  };
   // Only reviewed C/OTA application functions vary; activation-removal hooks stay pinned.
   const APP = [[3600,13424],[21962,22122],[23616,23720],[23928,24196],[24684,25008],[26992,27046],[27048,27380],[54456,54756],[75280,75708],[77136,77248],[77556,80068],[116076,116796],[120388,120992],[121176,121564],[121808,121872],[124092,124104],[124324,124780],[138024,138188],[138512,139176],[139728,139892],[140216,140856],[143488,143530],[182340,182572],[182580,182832],[182868,183448],[183800,183936]];
   const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -65,8 +69,7 @@ const OMOTA = (() => {
       throw Error(OMI18n.t("固件中的独立 OTA 信任、屏型或标识不符"));
     return {dat, bin, size: bin.length, version: String(revision), revision, model, sha256: hex(digest), independent: true,repaired:foundation===REPAIRED_FOUNDATION[model]};
   }
-  async function parse(buffer) {
-    const files = await OMArchive.unzip(buffer);
+  async function single(files) {
     if (files.size !== 3 || !["manifest.json", "firmware.dat", "firmware.bin"].every(n => files.has(n)))
       throw Error(OMI18n.t("OTA ZIP 只接受 manifest.json、firmware.dat、firmware.bin 三个文件"));
     const manifest = JSON.parse(new TextDecoder("utf-8", {fatal: true}).decode(files.get("manifest.json")));
@@ -74,6 +77,29 @@ const OMOTA = (() => {
     if (!app || app.bin_file !== "firmware.bin" || app.dat_file !== "firmware.dat" ||
         Object.keys(manifest.manifest).some(k => k !== "application")) throw Error(OMI18n.t("OTA manifest 不是单一应用镜像"));
     return validate(files.get("firmware.dat"), files.get("firmware.bin"));
+  }
+  async function parse(buffer) {
+    const source=new Uint8Array(buffer).slice(),files=await OMArchive.unzip(source);
+    const manifest=files.has("manifest.json")?JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(files.get("manifest.json"))):null;
+    if(manifest?.format!=="elink42-ota-bundle") return single(files);
+    if(manifest.version!==1 || manifest.target_revision!==17 || files.size!==8 || !files.has("LICENSES.txt") || Object.keys(manifest.models||{}).sort().join()!=="2,5")
+      throw Error(OMI18n.t("整合 OTA 包结构无效"));
+    const models={};
+    for(const model of [2,5]) {
+      const rows=manifest.models[model];if(!Array.isArray(rows)||rows.length!==3) throw Error(OMI18n.t("整合 OTA 阶段不完整"));
+      const stages=[];
+      for(let i=0;i<3;i++) {
+        const row=rows[i],revision=15+i,name=`model${model}-v${revision}.zip`;
+        if(row?.file!==name || row.revision!==revision || !files.has(name)) throw Error(OMI18n.t("整合 OTA 阶段不完整"));
+        const pack=await single(await OMArchive.unzip(files.get(name)));
+        if(pack.model!==model || pack.revision!==revision || pack.sha256!==row.sha256 ||
+           (i<2 && pack.sha256!==TRANSITION_IMAGES[model][i]) || (i===2 && !pack.repaired))
+          throw Error(OMI18n.t("整合 OTA 屏型、版本或过渡配对不符"));
+        stages.push(pack);
+      }
+      models[model]=stages;
+    }
+    return {bundle:true,models,revision:17,version:"15 → 16 → 17",size:source.length,sha256:hex(await sha(source)),source};
   }
   function target(client) {
     if (!client.ready || !client.device?.gatt.connected || ![2, 5].includes(client.config?.model) ||
@@ -226,6 +252,28 @@ const OMOTA = (() => {
     }
     throw Error(OMI18n.t("OTA 已提交，但未在两分钟内确认新版本启动；不会重新擦写，请保留供电并核对设备"));
   }
+  async function upgradeBundle(client,input,consent,progress=()=>{}) {
+    target(client);const device=client.device,model=client.config.model;
+    if(consent?.deviceId!==device.id || consent.eraseImages!==true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
+    const bundle=await parse(input.source);
+    if(!bundle.bundle) throw Error(OMI18n.t("整合 OTA 包结构无效"));
+    const current=await readRevision(client);
+    if(current>=bundle.revision) {
+      const error=Error(OMI18n.t("设备已达到整合包版本，无需升级"));error.code="OTA_PRECHECK";throw error;
+    }
+    const stages=bundle.models[model].filter(pack=>pack.revision>current);let result;
+    for(let i=0;i<stages.length;i++) {
+      if(client.device!==device || client.config.model!==model) throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
+      const pack=stages[i],label=OMI18n.msg`阶段 ${i+1}/${stages.length} · v${pack.revision}`;
+      client.log(label);
+      const stageProgress=(value,text)=>progress(Math.floor((i*100+value)/stages.length),label+" · "+text);
+      try {
+        const verified=await transfer(client,pack,consent,stageProgress);
+        result=await confirmBoot(client,verified,stageProgress);
+      } catch(error) { client.log(label+" · "+OMI18n.t("阶段未确认，已停止；不会自动重发"));throw error; }
+    }
+    return result;
+  }
   async function readRevision(client) {
     target(client);
     const device = client.device;
@@ -255,5 +303,5 @@ const OMOTA = (() => {
     } catch (error) { receipt?.cancel(error); throw error; }
     finally { version.removeEventListener("characteristicvaluechanged", notify); }
   }
-  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision};
+  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision,upgradeBundle};
 })();

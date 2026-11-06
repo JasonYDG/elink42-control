@@ -91,17 +91,18 @@ const OMRender = (() => {
       }
     });
     const info=C.day(code,date),label=info.names?info.names[zh?1:0]:!info.known?(zh?"假期数据待更新":"Update holiday data"):(zh?"暂无节日":"No public holiday today");
+    const almanac=C.hasAlmanac(code)?C.almanac(date):null,solarToday=almanac?.distance===0;
     ctx.fillStyle=info.holiday?COLORS.red:COLORS.black;
     if(photo){
-      const solar=code==="CN",next=solar?C.nextSolar(date):C.nextHoliday(code,date);
+      const solar=code==="CN" || solarToday,next=solarToday?{names:almanac.solar,days:0}:solar?C.nextSolar(date):C.nextHoliday(code,date);
       ctx.textBaseline="top";ctx.textAlign="center";ctx.fillStyle=COLORS.black;ctx.font=`12px ${FONT}`;
-      if(next)ctx.fillText(zh?(solar?`下个节气还有${next.days}天`:`${next.days}天后下个假期`):`Next ${solar?"solar term":"holiday"} in ${next.days} ${next.days===1?"day":"days"}`,328,250,width);
+      if(next)ctx.fillText(solarToday?(zh?"今天是":"Today is"):zh?(solar?`下个节气还有${next.days}天`:`${next.days}天后下个假期`):`Next ${solar?"solar term":"holiday"} in ${next.days} ${next.days===1?"day":"days"}`,328,250,width);
       const size=solar&&zh?24:14,name=next?next.names[zh?1:0]:zh?"假期数据待更新":"Update holiday data";
       ctx.fillStyle=COLORS.red;ctx.font=`${size}px ${FONT}`;
       ctx.fillText(solar&&!zh?name.toUpperCase():name,328,272+(24-size)/2,width);ctx.textAlign="left";
     }else{
       block(ctx,label,left,271,220,28,12);
-      const a=C.hasAlmanac(code)?C.almanac(date):null;if(a&&a.distance!==null){ctx.fillStyle=COLORS.red;block(ctx,`${a.solar[zh?1:0]} +${a.distance}`,292,276,100,14,10);}
+      if(almanac&&almanac.distance!==null){ctx.fillStyle=COLORS.red;block(ctx,solarToday?(zh?`今天是${almanac.solar[1]}`:`Today: ${almanac.solar[0]}`):`${almanac.solar[zh?1:0]} +${almanac.distance}`,292,276,100,14,10);}
     }
   }
   function textBlock(ctx, text, x, y, width, height, size, lineHeight=size*1.35) {
