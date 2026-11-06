@@ -104,16 +104,22 @@ const OMOTA = (() => {
     }
     return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   }
+  function checkRevision(current, pack) {
+    let message;
+    if(pack.repaired && current<15) message="请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令";
+    else if(current===15 && pack.revision!==16) message="v15 过渡固件只接受配套的 v16 修复包";
+    else if(current>=16 && !pack.repaired) message="当前修复版不接受旧驱动基线的回退包；没有发送升级命令";
+    if(message) { const error=Error(OMI18n.t(message));error.code="OTA_PRECHECK";throw error; }
+  }
   async function transfer(client, input, consent, progress = () => {}) {
     target(client); const device = client.device;
     if (consent?.deviceId !== device.id || consent.eraseImages !== true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
     const pack = await validate(input.dat, input.bin);
     if (pack.model !== client.config.model) throw Error(OMI18n.t("OTA 包与当前设备屏型不匹配；没有发送升级命令"));
+    if(client.firmwareRevision) checkRevision(client.firmwareRevision,pack);
     if(pack.revision>=15 || pack.repaired || client.firmwareRevision>=15) {
       const current=await readRevision(client);
-      if(pack.repaired && current<15) throw Error(OMI18n.t("请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令"));
-      if(current===15 && pack.revision!==16) throw Error(OMI18n.t("v15 过渡固件只接受配套的 v16 修复包"));
-      if(current>=16 && !pack.repaired) throw Error(OMI18n.t("当前修复版不接受旧驱动基线的回退包；没有发送升级命令"));
+      checkRevision(current,pack);
     }
     if (client.device !== device) throw Error(OMI18n.t("校验期间目标设备发生变化，未发送 OTA 命令"));
     target(client);

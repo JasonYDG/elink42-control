@@ -5,6 +5,8 @@ const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,"..");
 const firmwareFixture=process.env.OM6626_OTA_PACKAGE_ROOT||path.resolve(__dirname,"../../build/elink42-calendar-0.6.5");
 const firmwareMetadata=fs.existsSync(path.join(firmwareFixture,"independent-ota-manifest.json"))?JSON.parse(fs.readFileSync(path.join(firmwareFixture,"independent-ota-manifest.json"),"utf8")):null;
 function firmwareZip(){const info=firmwareMetadata.variants["fourcolor-jd79668"];return fs.readFileSync(path.join(firmwareFixture,info.ota_zip||info.binary.replace(/\.bin$/,".zip")));}
+const transitionFixture=process.env.OM6626_TRANSITION_BUILD;
+const repairFixture=process.env.OM6626_REPAIR_ROOT;
 function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map();
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
@@ -78,7 +80,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}}},
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
   const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
-    `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.otaBootRevision?'OMClient.prototype.ota=async()=>({status:"boot-verified"});':''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
+    `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const api=vm.runInNewContext(code,sandbox);
   return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
@@ -96,14 +98,29 @@ for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the m
 });
 test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
   const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
-  assert.match(u.confirmations[0],/Current firmware v1; latest firmware v11/);
+  assert.match(u.confirmations[0],/Current firmware v1; bundled update v11/);
   assert.equal(u.get("tab-calendar").getAttribute("aria-selected"),"true");assert.equal(u.get("ota-bundled").disabled,false);
   await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 11/);
 });
 for(const revision of [11,12])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
-  await u.click("ota-bundled");assert.match(u.get("result").textContent,/固件已是最新/);
+  await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
+});
+test("v14 reports the bundled baseline and transition route without claiming latest firmware",async()=>{
+ const u=ui(5,true,"zh",true,{revision:14});await u.click("connect");
+ assert.match(u.get("firmware-state").textContent,/v14.*内置 v11/);
+ assert.doesNotMatch(u.get("firmware-state").textContent,/最新/);
+ assert.match(u.get("ota-capability").textContent,/v15.*v16/);
+});
+test("v14 cannot start a real signed v16 package even after consenting",{skip:!repairFixture},async()=>{
+ const m=JSON.parse(fs.readFileSync(path.join(repairFixture,'independent-ota-manifest.json'),'utf8'));
+ const row=m.variants['fourcolor-jd79668'],bytes=fs.readFileSync(path.join(repairFixture,row.binary.replace(/\.bin$/,'.zip')));
+ const u=ui(5,true,'zh',true,{revision:14});await u.click('connect');
+ await u.file('ota-file',{name:'v16.zip',size:bytes.length,arrayBuffer:async()=>bytes});
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();
+ assert.equal(u.get('ota-start').disabled,true);assert.match(u.get('ota-capability').textContent,/v15.*v16/);
+ assert.deepEqual(u.versionQueries,[[0]]);
 });
 for(const initial of [{versionFailure:true},{versionModel:2}])test(`unverified firmware cannot trigger a bundled upgrade: ${JSON.stringify(initial)}`,async()=>{
   const u=ui(5,true,"zh",true,initial);await u.click("connect");
@@ -162,6 +179,18 @@ test("a failed default refresh after verified OTA never asks for another flash",
  const bytes=firmwareZip();await u.file('ota-file',{name:'v9.zip',size:bytes.length,arrayBuffer:async()=>bytes});
  u.get('ota-consent').checked=true;await u.click('ota-start');
  assert.match(u.get('result').textContent,/固件已升级.*默认日历刷新未确认.*不要重复刷机/);
+});
+
+test("verified signed v15 stays on OTA and never initializes or enables a calendar",{skip:!transitionFixture},async()=>{
+ const m=JSON.parse(fs.readFileSync(path.join(transitionFixture,'independent-ota-manifest.json'),'utf8'));
+ assert.equal(m.revision,15);const row=m.variants['fourcolor-jd79668'];
+ const bytes=fs.readFileSync(path.join(transitionFixture,row.binary.replace(/\.bin$/,'.zip')));
+ const u=ui(5,true,'zh',true,{revision:14,otaBootRevision:15});await u.click('connect');await u.click('tab-ota');
+ await u.file('ota-file',{name:'v15.zip',size:bytes.length,arrayBuffer:async()=>bytes});
+ const before=u.packets.length;u.get('ota-consent').checked=true;await u.click('ota-start');
+ assert.match(u.get('ota-service').textContent,/v15.*v16/);assert.equal(u.get('tab-ota').getAttribute('aria-selected'),'true');
+ assert.equal(u.packets.length,before);assert.equal(u.get('ota-consent').checked,false);assert.equal(u.get('ota-start').disabled,true);
+ assert.match(u.get('firmware-state').textContent,/v15/);
 });
 test("legacy device OTA UI explains wired bootstrap and keeps start disabled",async()=>{
   const u=ui();await u.click("connect");await u.click("tab-ota");

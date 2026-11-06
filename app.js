@@ -51,9 +51,14 @@
     $("ota-file").disabled = busy;
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
-    $("ota-start").disabled = !otaReady || !otaPackage || otaPackage.model !== client.config?.model || !!scheduler || !$("ota-consent").checked;
+    const needsTransition=otaPackage?.repaired && client.firmwareRevision && client.firmwareRevision<15;
+    $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || otaPackage.model !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
+    if(otaReady && client.firmwareRevision && client.firmwareRevision<15)
+      $("ota-capability").textContent=OMI18n.t("安装 v16 修复版前，请先安装对应屏型 v15 过渡包并确认版本；不要直接安装 v16。");
+    if(otaReady && client.firmwareRevision===15)
+      $("ota-capability").textContent=OMI18n.t("当前为 v15 过渡版，请继续安装配套 v16；暂不启用日历或时间同步。");
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
@@ -74,8 +79,8 @@
     $("connection-state").classList.toggle("online", client.ready);
     $("device-name").textContent = client.ready ? client.device.name || OMI18n.t("OM6626 屏幕") : OMI18n.t("连接一台屏幕开始");
     $("device-id").textContent = client.ready ? client.device.id : "—";
-    $("firmware-state").textContent = client.ready && client.firmwareRevision ? `v${client.firmwareRevision} · ` +
-      OMI18n.t(client.firmwareRevision < OMFirmware.revision ? "发现新版固件，请升级" : "固件已是最新") : OMI18n.t("待核对");
+    $("firmware-state").textContent = client.ready && client.firmwareRevision ? `v${client.firmwareRevision}` +
+      OMI18n.t(" · 网页内置 v") + OMFirmware.revision + (client.firmwareRevision < OMFirmware.revision ? OMI18n.t(" · 发现内置更新") : "") : OMI18n.t("待核对");
     $("screen-model").textContent = client.ready ? client.config.model === 5 ? OMI18n.t("JD79668 · 四色") : OMI18n.t("SSD1619 · 黑白红") : OMI18n.t("三色 / 四色 · 连接后识别");
     $("mtu-state").textContent = OMI18n.msg`${client.reportedPayload || 20} B ATT / ${client.payload} B 当前发送`;
     $("clock-capability").textContent = client.ready ? client.config.model === 5 ?
@@ -173,7 +178,7 @@
       try { await client.operation(() => OMOTA.readRevision(client)); }
       catch (error) { log(error.message); throw Error(OMI18n.t("无法核对固件版本，请重新连接后重试；没有发送升级命令。")); }
       if (client.firmwareRevision < OMFirmware.revision && window.confirm(
-        OMI18n.msg`当前固件 v${client.firmwareRevision}，最新固件 v${OMFirmware.revision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
+        OMI18n.msg`当前固件 v${client.firmwareRevision}，网页内置升级包 v${OMFirmware.revision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
         selectTab($("tab-ota")); await loadBundledFirmware();
       }
     }
@@ -237,7 +242,7 @@
   async function loadBundledFirmware() {
     if (!client.ready || client.board?.name !== OMProtocol.OTA_MARKER || !client.firmwareRevision)
       throw Error(OMI18n.t("请先连接屏幕并核对固件版本"));
-    if (client.firmwareRevision >= OMFirmware.revision) throw Error(OMI18n.t("固件已是最新"));
+    if (client.firmwareRevision >= OMFirmware.revision) throw Error(OMI18n.t("没有更高版本的内置升级包"));
     const pack = OMFirmware.packages[client.config.model];
     const bytes = Uint8Array.from(atob(pack.data), c => c.charCodeAt(0));
     await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer});
@@ -260,6 +265,11 @@
       OMI18n.t("\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     await client.ota(otaPackage, consent, progress);
+    if(otaPackage.revision===15) {
+      const message=OMI18n.t("v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
+      gallery=null;otaPackage=null;$("ota-consent").checked=false;
+      $("ota-service").textContent=message;result(message);selectTab($("tab-ota"));update();return;
+    }
     if (otaPackage.revision>=9) {
       $("ota-service").textContent=OMI18n.t("固件版本已核对，正在启用中国中文全屏日历");
       try { await client.internationalCalendar(0,"zh",false,255,false,progress); }

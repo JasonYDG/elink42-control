@@ -1,4 +1,6 @@
-# ELINK42 Web 0.6.9
+# ELINK42 Web 0.6.10
+
+本次修正 v14 的“最新”提示：当前版本与内置 v11 分开显示。v14 选择 v16 时，开始按钮禁用，接口也会在任何蓝牙访问前拦截；须先安装同屏型 v15。v15 完成后停留在 OTA 页，不自动启用日历或时间同步。蓝牙异常日志保留操作阶段、原异常类型和消息，不自动重发。
 
 [打开 HTTPS 控制台](https://jasonydg.github.io/elink42-control/)
 
@@ -27,6 +29,6 @@ node --test tests/*.cjs
 python -m http.server 18777 --directory build
 ```
 
-预览地址为 `http://127.0.0.1:18777/elink42-control/`。`main` 保存源码，`gh-pages` 部署允许清单中的 15 个资源及资源校验清单；HTML 使用 Web 0.6.9 和实际发布文件的哈希刷新缓存。
+预览地址为 `http://127.0.0.1:18777/elink42-control/`。`main` 保存源码，`gh-pages` 部署允许清单中的 15 个资源及资源校验清单；HTML 使用 Web 0.6.10 和实际发布文件的哈希刷新缓存。
 
 OTA 正向 UI 测试通过 `OM6626_OTA_PACKAGE_ROOT` 指向私有签名包夹具；未提供时跳过这些用例，非法包检查始终执行，夹具不进入公开构建。本轮未连接或刷写设备，实机 OTA 和长期重连仍须验证。
