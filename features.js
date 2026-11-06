@@ -34,6 +34,8 @@ const OMFeatures = (() => {
     if (!s || typeof s!=="object") throw Error(OMI18n.t("外观或抖动配置无效"));
     s.calendarCountry ??= 0; s.calendarLanguage ??= "zh"; s.imageTarget ??= "full";
     if(!Number.isInteger(s.calendarCountry) || s.calendarCountry<0 || s.calendarCountry>5 || !["en","zh"].includes(s.calendarLanguage) || !["full","calendar"].includes(s.imageTarget)) throw Error(OMI18n.t("Invalid calendar or image settings"));
+    if(![0,2,3].includes(s.calendarCountry)) s.calendarCountry=0;
+    s.calendarLanguage="zh";
     if (!s || !["system", "light", "dark"].includes(s.theme) || !["none", "floyd", "atkinson", "bayer"].includes(s.dither)) throw Error(OMI18n.t("外观或抖动配置无效"));
     bounded(s.fontSize, 8, 32, OMI18n.t("字号")); bounded(s.urgentHours, 0, 8760, OMI18n.t("紧急时限")); bounded(s.strength, 0, 1, OMI18n.t("抖动强度"));
     bounded(s.brightness, -128, 128, OMI18n.t("亮度")); bounded(s.contrast, .1, 3, OMI18n.t("对比度")); bounded(s.gamma, .1, 4, "Gamma");

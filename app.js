@@ -16,7 +16,7 @@
     store = new F.Store({getItem: () => null, setItem() {}});
     result(OMI18n.t("工作区读取失败；原数据保留，本次修改无法持久保存，请查看日志。"), true);
   }
-  const client = new OMClient(update, log, () => uiBusy || scheduler !== null, message => {
+  const client = new OMClient(update, log, () => tab === "ota" || uiBusy || scheduler !== null, message => {
     gallery = null; result(message); window.alert(message);
   });
   for (const event of ["pointerdown", "keydown", "input", "wheel"])
@@ -99,7 +99,7 @@
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings), chosenModel = model();
       if(calendarTab){
-        const region=C.regions[Number($("calendar-layout").value)];
+        const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
         OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
         $("preview").getContext("2d").drawImage(canvas,0,0);
@@ -141,6 +141,7 @@
   function selectTab(button) {
     tab = button.dataset.tab;
     for (const b of tabs) { const on = b === button; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; $(b.getAttribute("aria-controls")).hidden = !on; }
+    client.armIdleDisconnect();
     preview();
   }
   tabs.forEach((b, i) => {
@@ -153,8 +154,8 @@
   });
   function restoreDevicePresentation() {
     $("preview-model").value = String(client.config.model);
-    $("calendar-layout").value = String(client.config.layout<6?client.config.layout:0);
-    $("calendar-language").value = client.config.alternate&2 ? "zh":"en"; syncCalendar();
+    $("calendar-layout").value = String(C.byId(client.config.layout)?client.config.layout:0);
+    $("calendar-language").value = "zh"; syncCalendar();
     if(client.calendarProtocol===2){
       $("photo-source").value=String(client.config.photoSource);
       options("photo-slot",client.config.photoSlot===255?[]:[[client.config.photoSlot,OMI18n.t("Device slot")+" "+client.config.photoSlot]]);
@@ -163,7 +164,9 @@
     }
   }
   async function connected(device) {
+    const stayOnOTA = tab === "ota";
     gallery = null; await client.connect(device); restoreDevicePresentation();
+    if (stayOnOTA) selectTab($("tab-ota"));
     change(data => { if (!data.devices.some(d => d.id === client.device.id)) data.devices.push({id: client.device.id, name: client.device.name || "OM6626"}); });
     $("saved-device").value = client.device.id; await preview();
     if (client.board.name === OMProtocol.OTA_MARKER) {
@@ -188,7 +191,7 @@
   bind("native-calendar", () => startCalendar());
   bind("native-clock", () => client.mode(2, progress, new Date(), $("clock-full").checked));
   $("clock-full").addEventListener("change", update);
-  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,client.config.alternate&2?"zh":"en",!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
+  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,"zh",!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
   bind("calendar-style", () => startCalendar());
   bind("photo-calendar-start",()=>startCalendar(true));
   function syncCalendar(fromPhoto=false,persist=true){
@@ -198,16 +201,16 @@
     calendarInfo();preview();
   }
   function calendarInfo(){
-    const region=C.regions[Number($("calendar-layout").value)], date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00"):C.localDate(region.code);
+    const region=C.byId(Number($("calendar-layout").value))||C.regions[0], date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00"):C.localDate(region.code);
     const known=region.years.includes(date.getFullYear());
     $("holiday-summary").textContent=OMI18n.t("Offline holidays: ")+region.years.join(", ")+". "+OMI18n.t(known?"National holidays; local/state holidays are excluded.":"Holiday data is unavailable for this year. Update the holiday table; dates are still shown.");
     const next=C.nextHoliday(region.code,date);
-    if(next)$("holiday-summary").textContent+=" "+OMI18n.t("下一假期：")+next.names[OMI18n.language==="zh"?1:0]+" · "+next.date+".";
+    if(next)$("holiday-summary").textContent+=" "+OMI18n.t("下一假期：")+OMI18n.label(next.names[OMI18n.language==="en"?0:1])+" · "+next.date+".";
     if(region.code==="MY")$("holiday-summary").textContent+=" "+OMI18n.t("Malaysia: nationwide dates only; state holidays and replacement days vary. Islamic dates may change.");
     if(region.code==="TW")$("holiday-summary").textContent+=" "+OMI18n.t("Taiwan: government-office calendar.");
     $("holiday-list").replaceChildren();
     for(const [dateKey,key,work] of region.days.filter(d=>d[0].startsWith(`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}`)))
-      row("holiday-list",dateKey.slice(5)+" · "+OMHolidays.names[key][OMI18n.language==="zh"?1:0]+(work?" · "+OMI18n.t("班"):""));
+      row("holiday-list",dateKey.slice(5)+" · "+OMI18n.label(OMHolidays.names[key][OMI18n.language==="en"?0:1])+(work?" · "+OMI18n.t("班"):""));
     const link=document.createElement("a");link.href=OMHolidays.sources[region.code];link.target="_blank";link.rel="noopener noreferrer";link.textContent=OMI18n.t("Official holiday source");$("holiday-summary").append(" ",link);
   }
   for(const id of ["calendar-layout","calendar-language"])$(id).addEventListener("change",()=>action(()=>syncCalendar(),""));

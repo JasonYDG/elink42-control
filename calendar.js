@@ -6,6 +6,7 @@ const OMCalendar = (() => {
     if (!found) throw Error("Unknown calendar country");
     return found;
   }
+  const byId = id => regions.find(r => r.id === id);
   const weekdays=(code,language)=>OMHolidays.weekdays[region(code).weekdays || language];
   const hasAlmanac=code=>region(code).almanac;
   function day(code, date) {
@@ -72,5 +73,5 @@ const OMCalendar = (() => {
     }
     return null;
   }
-  return {regions, region, day, month, zone, localDate, week, weekdays, hasAlmanac, almanac, nextHoliday, nextSolar, photoWidth:256};
+  return {regions, region, byId, day, month, zone, localDate, week, weekdays, hasAlmanac, almanac, nextHoliday, nextSolar, photoWidth:256};
 })();
