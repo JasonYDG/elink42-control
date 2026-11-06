@@ -69,7 +69,8 @@ class OMClient {
           expired = true; this.disconnect(); reject(Error(label + OMI18n.t("超时，已断开以停止旧命令")));
         }, ms)),
       ]);
-    } finally { clearTimeout(timer); }
+    } catch (error) { this.log(label+" · "+error.name+": "+error.message);throw error; }
+    finally { clearTimeout(timer); }
   }
   async write(bytes) {
     if (!this.device?.gatt.connected || !this.control) throw Error(OMI18n.t("请先连接屏幕"));
@@ -178,7 +179,7 @@ class OMClient {
     this.busy = true;
     this.update();
     try { return await callback(); }
-    catch (error) { if (error.code !== "DISPLAY_NOT_READY") { if(this.device?.gatt.connected)this.log(OMI18n.t("操作未确认，停止发送并断开：")+error.message);this.disconnect(); } throw error; }
+    catch (error) { if (error.code !== "DISPLAY_NOT_READY" && error.code !== "OTA_PRECHECK") { if(this.device?.gatt.connected)this.log(OMI18n.t("操作未确认，停止发送并断开：")+error.message);this.disconnect(); } throw error; }
     finally { this.busy = false; this.armIdleDisconnect(); this.update(); }
   }
   async pause(ms) {

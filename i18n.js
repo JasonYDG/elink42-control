@@ -1,5 +1,11 @@
 "use strict";
 const OMTranslations = {
+  " · 网页内置 v": " · bundled v",
+  " · 发现内置更新": " · bundled update available",
+  "没有更高版本的内置升级包": "No newer bundled update is available",
+  "安装 v16 修复版前，请先安装对应屏型 v15 过渡包并确认版本；不要直接安装 v16。": "Before installing v16, install the matching v15 transition and verify its revision. Do not install v16 directly.",
+  "当前为 v15 过渡版，请继续安装配套 v16；暂不启用日历或时间同步。": "The device is on the v15 transition. Continue with the matching v16; leave calendar and time synchronization off.",
+  "v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。": "The v15 transition is verified. Select the matching v16 next. Calendar and time synchronization have not been enabled.",
   "SPI 传输失败，已停止刷新，蓝牙连接已保留": "SPI transfer failed. Refresh stopped; the Bluetooth connection is retained.",
   "刷新计时器未运行，已停止刷新，蓝牙连接已保留": "The refresh timer is not running. Refresh stopped; the Bluetooth connection is retained.",
   "屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留": "The display BUSY wait timed out. Refresh is unconfirmed; the Bluetooth connection is retained.",
@@ -18,7 +24,7 @@ const OMTranslations = {
   "内置固件版本或屏型不匹配，已停止": "Bundled firmware revision or panel model does not match; stopped",
   "无法核对固件版本，请重新连接后重试；没有发送升级命令。": "Cannot verify firmware revision. Reconnect and try again. No update commands were sent.",
   "当前固件 v": "Current firmware v",
-  "，最新固件 v": "; latest firmware v",
+  "，网页内置升级包 v": "; bundled update v",
   "。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？": ". The matching update is bundled with this page. Updating clears the gallery; back it up first. Open OTA update now?",
   "空闲 3 分钟，已断开蓝牙以省电；下次操作请重新连接。": "Idle for 3 minutes. Bluetooth disconnected to save power. Reconnect for the next operation.",
   "（临时工作区，请导出保存）": " (temporary workspace; export to save)",
