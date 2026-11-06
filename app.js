@@ -51,14 +51,17 @@
     $("ota-file").disabled = busy;
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
-    const needsTransition=otaPackage?.repaired && client.firmwareRevision && client.firmwareRevision<15;
-    $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || otaPackage.model !== client.config?.model || !!scheduler || !$("ota-consent").checked;
+    const needsTransition=!otaPackage?.bundle && otaPackage?.repaired && client.firmwareRevision && client.firmwareRevision<15;
+    const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
+    $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (otaPackage.bundle && client.firmwareRevision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
     if(otaReady && client.firmwareRevision && client.firmwareRevision<15)
       $("ota-capability").textContent=OMI18n.t("安装 v16 修复版前，请先安装对应屏型 v15 过渡包并确认版本；不要直接安装 v16。");
     if(otaReady && client.firmwareRevision===15)
       $("ota-capability").textContent=OMI18n.t("当前为 v15 过渡版，请继续安装配套 v16；暂不启用日历或时间同步。");
+    if(otaReady && otaPackage?.bundle)
+      $("ota-capability").textContent=OMI18n.t("整合包按当前版本跳过已完成阶段；阶段间自动重连并核对版本，不启用中间日历。");
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
@@ -229,12 +232,12 @@
     $("ota-package").textContent = OMI18n.t("尚未选择有效的签名 OTA ZIP");
     $("ota-kind").textContent = OMI18n.t("只接受本项目签名包，原版固件不能通过校验。");
     if (!file) { $("ota-package").textContent = OMI18n.t("尚未选择固件包"); update(); return; }
-    if (!/\.zip$/i.test(file.name) || file.size > 1024 * 1024) throw Error(OMI18n.t("请选择 1 MB 内的签名 OTA ZIP"));
+    if (!/\.zip$/i.test(file.name) || file.size > 2 * 1024 * 1024) throw Error(OMI18n.t("请选择 2 MB 内的签名 OTA ZIP"));
     uiBusy = true; update(); $("ota-package").textContent = OMI18n.t("正在校验 ZIP、签名、固件哈希及保护区…");
     try {
       otaPackage = await OMOTA.parse(await file.arrayBuffer());
-      $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
-      $("ota-kind").textContent = OMI18n.t("项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
+      $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
+      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包内所有阶段的项目签名、屏型和配对校验通过；确认一次后按需升级到 v17。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
     } catch (error) { $("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
@@ -246,7 +249,7 @@
     const pack = OMFirmware.packages[client.config.model];
     const bytes = Uint8Array.from(atob(pack.data), c => c.charCodeAt(0));
     await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer});
-    if (!otaPackage || otaPackage.revision !== OMFirmware.revision || otaPackage.model !== client.config.model) {
+    if (!otaPackage?.bundle || otaPackage.revision !== OMFirmware.revision || !otaPackage.models[client.config.model] || otaPackage.sha256!==pack.sha256) {
       otaPackage = null; update(); throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
     }
   }
@@ -262,7 +265,7 @@
     const consent = {deviceId: client.device.id, eraseImages: $("ota-consent").checked};
     if (!consent.eraseImages) throw Error(OMI18n.t("请完成图库清空确认"));
     const text = OMI18n.msg`目标：${client.device.name || client.device.id}\n固件 SHA-256：${otaPackage.sha256}\n升级会清空设备全部图片，期间不能断电或退出。` +
-      OMI18n.t("\n此包为独立固件，保留独立模式。确认开始 OTA？");
+      OMI18n.t(otaPackage.bundle?"\n整合包会按需执行 v15、v16、v17；每阶段重新核对启动版本，失败即停止。确认一次开始全部所需阶段？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     await client.ota(otaPackage, consent, progress);
     if(otaPackage.revision===15) {

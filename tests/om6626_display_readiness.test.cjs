@@ -44,7 +44,7 @@ test('a confirmed BUSY result preserves Bluetooth and never retries the refresh'
 test('low supply response reports measured voltage without retry or disconnect',async()=>{
  const r=device([0xA0]);
  r.client.control.writeValueWithResponse=async b=>{r.sent.push([...b]);const raw=Uint8Array.of(0x51,b[0],b.at(-1),0xA4,0x53,0x0B);r.client.control.value=new DataView(raw.buffer);r.client.notify({target:r.client.control});};
- await assert.rejects(r.client.operation(()=>r.client.command(Uint8Array.of(5))),/2899 mV/);
+ await assert.rejects(r.client.operation(()=>r.client.command(Uint8Array.of(5))),e=>e.code==='DISPLAY_NOT_READY'&&e.millivolts===2899&&/2\.90 V/.test(e.message));
  assert.equal(r.client.device.gatt.connected,true);assert.equal(r.sent.length,1);assert.equal(r.client.pending.size,0);
 });
 

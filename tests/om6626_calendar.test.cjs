@@ -81,7 +81,9 @@ test("photo hero is red regular type and a selected holiday never paints over it
  R.calendar(canvas,{code:'CN',date:new Date(2026,10,4),photo:true});
  assert.ok(events.some(e=>e[0]==='text'&&e[1]==='4'&&e[2]==='#b81928'&&e[4]===328&&e[5]===104));
  events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true});
- assert.ok(events.some(e=>e[0]==='text'&&e[1]==='24天后下个假期'));
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='今天是'));
+ assert.ok(events.some(e=>e[0]==='text'&&e[1]==='立春'));
+ assert.ok(!events.some(e=>e[0]==='text'&&e[1]==='24天后下个假期'));
  events.length=0;R.calendar(canvas,{code:'SG',date:new Date(2026,10,7)});
  assert.ok(!events.some(e=>e[0]==='text' && (/^L\d/.test(e[1]) || e[1].includes('立冬'))));
  events.length=0;R.calendar(canvas,{code:'SG',date:new Date(2026,11,25)});
@@ -111,6 +113,19 @@ test('China photo follows lunar-year zodiac and strictly future solar terms',()=
  assert.equal(C.nextSolar(new Date(2026,10,5)).days,2);assert.equal(C.nextSolar(new Date(2026,10,5)).names[1],'立冬');
  assert.equal(C.nextSolar(new Date(2026,10,7)).names[1],'小雪');assert.equal(C.nextSolar(new Date(2026,10,7)).days,15);
  assert.equal(C.nextSolar(new Date(2026,11,31)).days,5);assert.equal(C.nextSolar(new Date(2050,11,31)),null);
+});
+
+test('solar term today overrides future countdown in both layouts and resumes tomorrow',()=>{
+ const {R}=load(),labels=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText:(s,x,y)=>labels.push([s,x,y])};
+ for(const code of ['CN','TW'])for(const photo of [false,true]){
+  labels.length=0;R.calendar({getContext:()=>ctx},{code,photo,date:new Date(2026,10,7)});
+  const footer=labels.filter(row=>row[2]>=250).map(row=>row[0]).join('');
+  assert.match(footer,/今天是.*立冬/);assert.doesNotMatch(footer,/小雪|\+0|下个节气/);
+ }
+ for(const [date,label] of [[new Date(2026,10,6),'下个节气还有1天'],[new Date(2026,10,8),'下个节气还有14天'],[new Date(2026,11,31),'下个节气还有5天']]){
+  labels.length=0;R.calendar({getContext:()=>ctx},{code:'CN',photo:true,date});
+  assert.ok(labels.some(row=>row[0]===label));assert.ok(!labels.some(row=>row[0]==='今天是'));
+ }
 });
 
 test('all photo layouts share anchors and have exactly two footer rows with complete names',()=>{

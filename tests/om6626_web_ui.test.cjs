@@ -86,32 +86,40 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
-for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the matching bundled signed v11 without starting OTA`,async()=>{
+for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed combined v17 without starting OTA`,async()=>{
   const u=ui(model,true,"zh",true,{revision:10});await u.click("connect");
   assert.deepEqual(u.versionQueries,[[0]]);assert.equal(u.confirmations.length,1);
-  assert.match(u.confirmations[0],/v10.*v11.*清空图库/);assert.match(u.get("firmware-state").textContent,/v10/);
+  assert.match(u.confirmations[0],/v10.*v17.*清空图库/);assert.match(u.get("firmware-state").textContent,/v10/);
   assert.equal(u.get("tab-ota").getAttribute("aria-selected"),"true");
   assert.match(u.get("ota-package").textContent,new RegExp(model===5?"JD79668 四色":"SSD1619 三色"));
-  assert.match(u.get("ota-package").textContent,/版本 11/);assert.match(u.get("ota-kind").textContent,/校验通过/);
+  assert.match(u.get("ota-package").textContent,/版本 15.*16.*17/);assert.match(u.get("ota-kind").textContent,/校验通过/);
   assert.equal(u.get("ota-consent").checked,false);assert.equal(u.get("ota-start").disabled,true);
   assert.ok(!u.packets.some(p=>[5,6,0x20].includes(p[0])));
 });
 test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
   const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
-  assert.match(u.confirmations[0],/Current firmware v1; bundled update v11/);
+  assert.match(u.confirmations[0],/Current firmware v1; bundled update v17/);
   assert.equal(u.get("tab-calendar").getAttribute("aria-selected"),"true");assert.equal(u.get("ota-bundled").disabled,false);
-  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 11/);
+  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 15.*16.*17/);
 });
-for(const revision of [11,12])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
+
+test("the built-in combined update needs one start confirmation and finishes on v17",async()=>{
+ const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:17});await u.click('connect');await u.click('ota-bundled');
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
+ const before=u.confirmations.length;u.confirmation(true);await u.click('ota-start');
+ assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/v15.*v16.*v17.*确认一次/s);
+ assert.match(u.get('firmware-state').textContent,/v17/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
+});
+for(const revision of [17,18])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 test("v14 reports the bundled baseline and transition route without claiming latest firmware",async()=>{
  const u=ui(5,true,"zh",true,{revision:14});await u.click("connect");
- assert.match(u.get("firmware-state").textContent,/v14.*内置 v11/);
+ assert.match(u.get("firmware-state").textContent,/v14.*内置 v17/);
  assert.doesNotMatch(u.get("firmware-state").textContent,/最新/);
- assert.match(u.get("ota-capability").textContent,/v15.*v16/);
+ assert.match(u.get("ota-capability").textContent,/整合包/);
 });
 test("v14 cannot start a real signed v16 package even after consenting",{skip:!repairFixture},async()=>{
  const m=JSON.parse(fs.readFileSync(path.join(repairFixture,'independent-ota-manifest.json'),'utf8'));

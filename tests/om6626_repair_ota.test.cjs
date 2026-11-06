@@ -42,3 +42,10 @@ test("native Bluetooth errors keep their identity and record the failed operatio
  await assert.rejects(c.bounded(Promise.reject(failure),"只读查询固件版本"),e=>e===failure);
  assert.match(logs[0],/只读查询固件版本.*UnknownError.*灾难性故障/);
 });
+
+test("low supply voltage is displayed in volts with exactly two decimal places",async()=>{
+ const c=new Client();c.ready=true;c.refreshStatus=true;c.device={gatt:{connected:true}};
+ c.write=async b=>{const reply=Uint8Array.of(0x51,b[0],b.at(-1),0xA4,0xF0,0x0A);for(const w of [...c.pending])if(w.match(reply))w.resolve(reply);};
+ await assert.rejects(c.operation(()=>c.command(Uint8Array.of(5))),e=>e.code==='DISPLAY_NOT_READY'&&/2\.80 V/.test(e.message));
+ assert.equal(c.device.gatt.connected,true);
+});
