@@ -204,6 +204,10 @@ class OMClient {
       await this.write(Uint8Array.of(...bytes, sequence));
       this.log(OMI18n.msg`已提交命令 0x${bytes[0].toString(16)}，序号=${sequence}`);
       const reply = await done.promise;
+      if(reply[3]===0xA8 && reply.length===6 && reply[5]===0 && reply[4]>=1 && reply[4]<=3) {
+        const message=["","SPI 传输失败，已停止刷新，蓝牙连接已保留","刷新计时器未运行，已停止刷新，蓝牙连接已保留","屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留"][reply[4]];
+        const error=Error(OMI18n.t(message));error.code="DISPLAY_NOT_READY";throw error;
+      }
       if (reply[3] & 4) {
         if (reply.length !== 6 || reply[3] !== 0xA4) throw Error(OMI18n.t("设备就绪状态回执无效"));
         const mv = reply[4] | (reply[5] << 8);

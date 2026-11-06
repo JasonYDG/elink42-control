@@ -1,5 +1,11 @@
 "use strict";
 const OMTranslations = {
+  "SPI 传输失败，已停止刷新，蓝牙连接已保留": "SPI transfer failed. Refresh stopped; the Bluetooth connection is retained.",
+  "刷新计时器未运行，已停止刷新，蓝牙连接已保留": "The refresh timer is not running. Refresh stopped; the Bluetooth connection is retained.",
+  "屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留": "The display BUSY wait timed out. Refresh is unconfirmed; the Bluetooth connection is retained.",
+  "请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令": "Install the v15 transition package and verify its revision before installing the v16 repair. No update commands were sent.",
+  "v15 过渡固件只接受配套的 v16 修复包": "The v15 transition firmware only accepts its matching v16 repair package.",
+  "当前修复版不接受旧驱动基线的回退包；没有发送升级命令": "This repaired firmware cannot install a package using the old driver foundation. No update commands were sent.",
   "停留在 OTA 页面时暂停三分钟空闲断连；离开后重新计时。升级传输、校验和等待重启期间始终保持连接。": "The 3-minute idle disconnect is paused on the OTA tab and restarts when you leave. Transfer, verification and reboot confirmation always retain the connection.",
   "载入内置 v11 升级包": "Load bundled v11 update",
   "固件版本接口不符，无法核对版本": "Unexpected firmware version interface; revision is unverified",

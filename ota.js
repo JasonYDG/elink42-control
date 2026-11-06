@@ -5,6 +5,7 @@ const OMOTA = (() => {
   // The retained native table uses a 16-bit 0x0003 UUID for its version characteristic.
   const VERSION = "00000003-0000-1000-8000-00805f9b34fb";
   const SIZE = 238532, FOUNDATION = {"2": "92388266519726d537fe51e5e40a607badf4460d16ea63fe8250ea3fde59a037", "5": "685a36d764bddd7dd8e735f7833b6553a513b21eb46ddd1e23c778756527a986"};
+  const REPAIRED_FOUNDATION={"2":"caff106e401ac13b75e22acf0556ee8fb15f7a99132e71990698308e8a86ca48","5":"046dc44e400252e93bc1bd5f33ce7e0a847dc9990b11f2c2b1d001c955b928dc"};
   // Only reviewed C/OTA application functions vary; activation-removal hooks stay pinned.
   const APP = [[3600,13424],[21962,22122],[23616,23720],[23928,24196],[24684,25008],[26992,27046],[27048,27380],[54456,54756],[75280,75708],[77136,77248],[77556,80068],[116076,116796],[120388,120992],[121176,121564],[121808,121872],[124092,124104],[124324,124780],[138024,138188],[138512,139176],[139728,139892],[140216,140856],[143488,143530],[182340,182572],[182580,182832],[182868,183448],[183800,183936]];
   const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
@@ -57,11 +58,12 @@ const OMOTA = (() => {
     if (hex(digest.slice().reverse()) !== hex(dat.slice(24, 56))) throw Error(OMI18n.t("firmware.bin 的 SHA-256 与签名包不符"));
     if (!await signature(dat)) throw Error(OMI18n.t("OTA 项目签名无效；不接受作者或其他项目的签名"));
     const protectedBytes = bin.slice(); for (const [start, end] of APP) protectedBytes.fill(0, start, end);
-    if (hex((await sha(protectedBytes)).reverse()) !== FOUNDATION[model]) throw Error(OMI18n.t("OTA 包改变了已保护的启动、驱动、波形、激活移除或身份区域，已停止"));
+    const foundation=hex((await sha(protectedBytes)).reverse());
+    if (foundation!==FOUNDATION[model] && !(revision>=16 && foundation===REPAIRED_FOUNDATION[model])) throw Error(OMI18n.t("OTA 包改变了已保护的启动、驱动、波形、激活移除或身份区域，已停止"));
     if (new TextDecoder().decode(bin.slice(208405, 208416)) !== OMProtocol.OTA_MARKER || bin[51172] !== model ||
-        new DataView(bin.buffer).getUint32(79984,true) !== revision || hex(bin.slice(79988,80036)) !== KEY || hex(bin.slice(80036,80068)) !== FOUNDATION[model])
+        new DataView(bin.buffer).getUint32(79984,true) !== revision || hex(bin.slice(79988,80036)) !== KEY || hex(bin.slice(80036,80068)) !== foundation)
       throw Error(OMI18n.t("固件中的独立 OTA 信任、屏型或标识不符"));
-    return {dat, bin, size: bin.length, version: String(revision), revision, model, sha256: hex(digest), independent: true};
+    return {dat, bin, size: bin.length, version: String(revision), revision, model, sha256: hex(digest), independent: true,repaired:foundation===REPAIRED_FOUNDATION[model]};
   }
   async function parse(buffer) {
     const files = await OMArchive.unzip(buffer);
@@ -107,6 +109,12 @@ const OMOTA = (() => {
     if (consent?.deviceId !== device.id || consent.eraseImages !== true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
     const pack = await validate(input.dat, input.bin);
     if (pack.model !== client.config.model) throw Error(OMI18n.t("OTA 包与当前设备屏型不匹配；没有发送升级命令"));
+    if(pack.revision>=15 || pack.repaired || client.firmwareRevision>=15) {
+      const current=await readRevision(client);
+      if(pack.repaired && current<15) throw Error(OMI18n.t("请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令"));
+      if(current===15 && pack.revision!==16) throw Error(OMI18n.t("v15 过渡固件只接受配套的 v16 修复包"));
+      if(current>=16 && !pack.repaired) throw Error(OMI18n.t("当前修复版不接受旧驱动基线的回退包；没有发送升级命令"));
+    }
     if (client.device !== device) throw Error(OMI18n.t("校验期间目标设备发生变化，未发送 OTA 命令"));
     target(client);
     const {control, data} = await inspect(client);
