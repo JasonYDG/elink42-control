@@ -120,6 +120,21 @@ test("idle timeout disconnects first, reports the reason and displays one popup;
 test("manual disconnect does not display an idle popup",async()=>{
   const u=ui();await u.click("connect");await u.click("disconnect");assert.equal(u.alerts.length,0);assert.equal(u.idleTimers.size,0);
 });
+
+test("OTA tab cancels idle timers, rejects an already queued timeout and restarts a full interval on exit",async()=>{
+  const u=ui();await u.click("connect");const stale=[...u.idleTimers.values()][0];assert.ok(stale);
+  await u.click("tab-ota");assert.equal(u.idleTimers.size,0);
+  for(const event of ["pointerdown","keydown","input","wheel"])u.windowListeners[event]();
+  stale();assert.equal(u.device.gatt.connected,true);assert.equal(u.idleTimers.size,0);assert.equal(u.alerts.length,0);
+  await u.click("tab-settings");assert.equal(u.idleTimers.size,1);
+  u.expireIdle();assert.equal(u.device.gatt.connected,false);assert.equal(u.alerts.length,1);
+});
+
+test("connecting from OTA keeps that tab active and does not arm idle disconnect",async()=>{
+  const u=ui();await u.click("tab-ota");await u.click("connect");
+  assert.equal(u.get("tab-ota").getAttribute("aria-selected"),"true");assert.equal(u.idleTimers.size,0);
+  await u.click("tab-calendar");assert.equal(u.idleTimers.size,1);
+});
 test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip:!firmwareMetadata},async()=>{
   const u=ui(5,true);await u.click("tab-ota");assert.equal(u.get("ota-start").disabled,true);assert.equal(u.get("preview-panel").hidden,true);
   const bytes=firmwareZip();
@@ -133,8 +148,8 @@ test("independent OTA UI verifies project ZIP, requires data-loss consent and ca
   assert.equal(u.get("ota-consent").checked,false);
 });
 test("verified v9 OTA applies China Chinese standard calendar and restores the controls",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
- const u=ui(5,true,"zh",true,{country:1,flags:0,mode:1,slot:1,otaBootRevision:9});
- await u.click('connect');assert.equal(u.get('calendar-layout').value,'1');
+ const u=ui(5,true,"zh",true,{country:3,flags:2,mode:1,slot:1,otaBootRevision:9});
+ await u.click('connect');assert.equal(u.get('calendar-layout').value,'3');
  const bytes=firmwareZip();await u.file('ota-file',{name:'v9.zip',size:bytes.length,arrayBuffer:async()=>bytes});
  u.get('ota-consent').checked=true;await u.click('ota-start');
  assert.equal(u.get('calendar-layout').value,'0');assert.equal(u.get('calendar-language').value,'zh');
@@ -159,6 +174,18 @@ test("English default and Chinese switching update live status without touching 
   assert.equal(u.get("connection-state").textContent,"未连接");assert.match(u.get("compatibility").textContent,/浏览器支持蓝牙/);
   assert.equal(u.get("todo-item-title").value,"不要翻译我的内容");assert.equal(u.local.get("elink42-ui-language"),"zh");
 });
+
+test("Traditional Chinese changes only the interface and keeps v14 calendar bytes in Chinese",async()=>{
+  const u=ui(5,false,"en",true,{country:3,flags:2});await u.click("connect");
+  u.get("todo-item-title").value="用户自己的简体标题";
+  await u.input("ui-language","zh-Hant","change");
+  assert.equal(u.get("connection-state").textContent,"已連接");assert.match(u.get("compatibility").textContent,/瀏覽器支持藍牙/);
+  assert.equal(u.local.get("elink42-ui-language"),"zh-Hant");assert.equal(u.get("todo-item-title").value,"用户自己的简体标题");
+  assert.equal(u.get("calendar-language").value,"zh");assert.equal(u.get("calendar-layout").value,"3");
+  const before=u.packets.length;await u.click("native-calendar");
+  assert.ok(u.packets.slice(before).some(p=>p[0]===0x24&&p.length===5&&p[2]===3&&p[3]===2));
+  await u.input("ui-language","en","change");assert.equal(u.get("connection-state").textContent,"Connected");
+});
 test("legacy calendar capability rejection sends no configuration or time mutations",async()=>{
   const u=ui(5,false,"en",false);await u.click("connect");const before=u.packets.length;await u.click("native-calendar");
   assert.match(u.get("result").textContent,/revision 6/);assert.deepEqual(u.packets.slice(before).map(p=>p[0]),[0x24]);
@@ -166,10 +193,10 @@ test("legacy calendar capability rejection sends no configuration or time mutati
 test("photo calendar shares country and language and uses the selected persistent gallery slot",async()=>{
   const u=ui(5,false,"en");await u.click("connect");await u.click("tab-image");await u.file("image-file",{type:"image/png",size:100,name:"photo.png"});
   await u.input("image-target","calendar","change");await u.click("store-frame");await u.click("photo-gallery-read");
-  await u.input("photo-country","1","change");await u.input("photo-language","zh","change");
-  assert.equal(u.get("calendar-layout").value,"1");assert.equal(u.get("calendar-language").value,"zh");
+  await u.input("photo-country","3","change");await u.input("photo-language","zh","change");
+  assert.equal(u.get("calendar-layout").value,"3");assert.equal(u.get("calendar-language").value,"zh");
   const before=u.packets.length;await u.click("photo-calendar-start");const packets=u.packets.slice(before);
-  assert.ok(packets.some(p=>p[0]===0x24 && p[1]===0x4A && p[2]===1 && p[3]===3));assert.ok(!packets.some(p=>p[0]===0x23));
+  assert.ok(packets.some(p=>p[0]===0x24 && p[1]===0x4A && p[2]===3 && p[3]===3));assert.ok(!packets.some(p=>p[0]===0x23));
   assert.ok(packets.some(p=>p[0]===0x56 && p[1]===0 && p[2]===0));assert.equal(packets.filter(p=>p[0]===0x20).at(-1)[6],1);
   assert.ok(!packets.some(p=>[0x40,0x41,0x42].includes(p[0]))); // Reuses gallery data without uploading again.
 });
@@ -236,20 +263,20 @@ test("weather job rechecks the target after asynchronous network work and never 
 });
 
 test("connection restores actual photo presentation and time sync preserves its slot and fitting",async()=>{
-  const u=ui(5,false,"en",true,{flags:7,country:1,mode:1,slot:2,source:0});u.stored[2]=123;await u.click("connect");
-  assert.equal(u.get("photo-calendar-editor").hidden,false);assert.equal(u.get("calendar-layout").value,"1");assert.equal(u.get("photo-slot").value,"2");assert.equal(u.get("photo-fit").value,"contain");
+  const u=ui(5,false,"en",true,{flags:7,country:3,mode:1,slot:2,source:0});u.stored[2]=123;await u.click("connect");
+  assert.equal(u.get("photo-calendar-editor").hidden,false);assert.equal(u.get("calendar-layout").value,"3");assert.equal(u.get("photo-slot").value,"2");assert.equal(u.get("photo-fit").value,"contain");
   u.get("custom-time").value="2026-11-04T12:00";const before=u.packets.length;await u.click("set-time");
-  const packets=u.packets.slice(before);assert.ok(packets.some(p=>p[0]===0x56 && p[1]===2));assert.ok(packets.some(p=>p[0]===0x24 && p.length===5 && p[2]===1 && p[3]===7));
+  const packets=u.packets.slice(before);assert.ok(packets.some(p=>p[0]===0x56 && p[1]===2));assert.ok(packets.some(p=>p[0]===0x24 && p.length===5 && p[2]===3 && p[3]===7));
   assert.ok(!packets.some(p=>[0x40,0x41,0x42].includes(p[0])));assert.equal(u.device.gatt.connected,true);
 });
 test("existing full-screen gallery images default to uncropped calendar fitting",async()=>{
   const u=ui(5,false,"en");await u.click("connect");assert.equal(u.get("photo-fit").value,"contain");u.stored[0]=123;await u.click("photo-gallery-read");const before=u.packets.length;await u.click("photo-calendar-start");
-  assert.ok(u.packets.slice(before).some(p=>p[0]===0x24 && p.length===5 && p[3]===5));
+  assert.ok(u.packets.slice(before).some(p=>p[0]===0x24 && p.length===5 && p[3]===7));
 });
 
 test("country holiday summaries show local upcoming holidays and China overrides stay scoped",async()=>{
- const u=ui(5,false,"en");await u.click("connect");await u.input("calendar-date","2026-11-04");await u.input("calendar-layout","1","change");
- assert.match(u.get("holiday-summary").textContent,/Next holiday: Christmas Day/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
+ const u=ui(5,false,"en");await u.click("connect");await u.input("calendar-date","2026-11-04");await u.input("calendar-layout","3","change");
+ assert.match(u.get("holiday-summary").textContent,/Taiwan: government-office calendar/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
  await u.input("calendar-layout","2","change");assert.match(u.get("holiday-summary").textContent,/Next holiday: Deepavali/);
  await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
 });

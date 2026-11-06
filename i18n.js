@@ -1,5 +1,6 @@
 "use strict";
 const OMTranslations = {
+  "停留在 OTA 页面时暂停三分钟空闲断连；离开后重新计时。升级传输、校验和等待重启期间始终保持连接。": "The 3-minute idle disconnect is paused on the OTA tab and restarts when you leave. Transfer, verification and reboot confirmation always retain the connection.",
   "载入内置 v11 升级包": "Load bundled v11 update",
   "固件版本接口不符，无法核对版本": "Unexpected firmware version interface; revision is unverified",
   "固件版本回执": "Firmware version response",
@@ -703,13 +704,15 @@ const OMTranslations = {
   "日历显示设置需要固件版本 6 或更新版本，请升级固件并刷新网页。": "Calendar configuration requires firmware revision 6 or later. Update firmware and reload this page.",
   "读取日历显示设置": "Read calendar presentation",
   "日历显示设置读回不符": "Calendar presentation readback mismatch",
-  "国家日历需要配套 revision 6 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 6 firmware. Resync time after German daylight-saving changes.",
   "中国调休表（可选）": "China workday overrides (optional)",
-  "六国节假日已内置，切换国家自动使用。此处仅编辑中国调休，其他国家无需在此录入。": "All six country holiday tables are included and follow the country selection. This editor only changes China workday overrides.",
+  "中国、新加坡、台湾节假日已内置；此处仅编辑中国调休。": "China, Singapore and Taiwan holiday tables are included. This editor only changes China workday overrides.",
+  "中国、新加坡、台湾日历使用中文；台湾沿用简体字库。": "China, Singapore and Taiwan calendars use Chinese; Taiwan retains the Simplified Chinese font.",
   "下一假期：": "Next holiday: ",
   "屏幕仍忙，刷新未确认；蓝牙连接已保留": "The display is still busy; refresh is unconfirmed. Bluetooth remains connected.",
   "等待屏幕完成上次工作": "Waiting for the display to finish its previous operation",
   "设备就绪状态回执无效": "Invalid display readiness response",
+  "供电不足，未开始刷新；实测电压 ": "Supply voltage too low; refresh not started. Measured voltage: ",
+  " mV。请更换电池或改用稳定供电。": " mV. Replace the batteries or use a stable power supply.",
   "屏幕就绪状态": "Display readiness",
   "屏幕仍未就绪，连接已保留；未提交新的刷新，请稍后重试": "The display is not ready. Bluetooth remains connected; no new refresh was sent. Try again later.",
   "当前固件缺少初始化就绪状态，请先升级固件 v8；没有发送屏幕初始化命令": "This firmware lacks initialization readiness reporting. Update to firmware v8 first; no display initialization was sent.",
@@ -727,28 +730,35 @@ const OMTranslations = {
   "固件版本已核对，正在启用中国中文全屏日历": "Firmware version verified; enabling the standard China calendar in Chinese",
   "固件已升级，但默认日历刷新未确认；不要重复刷机：": "Firmware updated, but the default calendar refresh is unconfirmed; do not flash again: ",
   "配套固件 · 支持刷新计时恢复": "Compatible firmware · refresh timing recovery",
-  "旧配套固件 · 请升级 v9": "Older firmware · update to v9",
-  "国家日历需要配套 revision 9 固件。德国夏令时切换后请重新校时。": "Country calendars need revision 9 firmware. Resync time after German daylight-saving changes."
+  "旧配套固件 · 请升级 v9": "Older firmware · update to v9"
 };
 const OMI18n = (() => {
-  const reverse = Object.fromEntries(Object.entries(OMTranslations).map(([zh,en])=>[en,zh]));
+  const characters = Object.fromEntries("万萬与與专專两兩个個临臨为為亚亞产產仅僅从從价價会會传傳体體侧側储儲儿兒关關内內册冊写寫况況准準减減击擊划劃删刪别別办辦务務动動劳勞区區协協单單卫衛历歷压壓双雙发發变變台臺号號启啟响響唤喚围圍国國图圖坏壞处處备備复復学學实實宪憲宽寬对對导導将將尔爾层層属屬师師带帶庆慶库庫应應开開强強当當录錄径徑态態惊驚户戶执執护護报報择擇损損换換据據数數斋齋断斷无無旧舊时時显顯暂暫机機权權条條来來构構标標样樣检檢横橫气氣汉漢没沒浅淺测測浏瀏温溫湾灣满滿灯燈点點状狀独獨现現电電画畫盖蓋码碼确確离離种種称稱稣穌稳穩笺箋签簽简簡类類紧緊红紅约約级級纪紀纵縱线線细細终終绑綁结結给給络絡绝絕统統继繼绪緒续續编編缩縮网網联聯脑腦脚腳节節获獲蓝藍蛰蟄补補装裝观觀览覽计計认認议議记記许許设設证證识識诊診试試话話诞誕询詢详詳语語说說请請读讀课課调調败敗资資转轉轮輪载載较較辑輯输輸边邊迁遷过過运運这這进進连連适適选選释釋钟鐘钥鑰销銷锁鎖错錯镜鏡长長闭閉闲閒间間阈閾队隊际際随隨难難静靜页頁项項顺順须須预預频頻题題颜顏马馬驱驅验驗黄黃".match(/../gu).map(pair=>[...pair]));
+  const traditional = text => text.replace(/[\u3400-\u9fff]/gu, char=>characters[char] ?? char);
+  // Translate built-in labels only; user content and device payloads keep their original text.
+  const labels = Object.fromEntries(Object.keys(OMTranslations).map(zh=>[zh,traditional(zh)]));
+  const reverse = Object.fromEntries([...Object.entries(OMTranslations).map(([zh,en])=>[en,zh]), ...Object.entries(labels).map(([zh,hant])=>[hant,zh])]);
   let language="en";
-  try { if (globalThis.localStorage?.getItem("elink42-ui-language")==="zh") language="zh"; } catch {}
-  const t = text => language==="en" ? (OMTranslations[text] ?? text) : (reverse[text] ?? text);
+  try { const saved=globalThis.localStorage?.getItem("elink42-ui-language"); if (["zh","zh-Hant"].includes(saved)) language=saved; } catch {}
+  const t = text => {
+    const source=reverse[text] ?? text;
+    return language==="en" ? (OMTranslations[source] ?? text) : language==="zh-Hant" ? (labels[source] ?? text) : source;
+  };
   const api = {
     get language(){return language;},
-    get locale(){return language==="zh" ? "zh-CN" : "en-GB";},
+    get locale(){return language==="zh-Hant" ? "zh-TW" : language==="zh" ? "zh-CN" : "en-GB";},
     t,
+    label(text){return language==="zh-Hant" ? traditional(text) : text;},
     msg(parts,...values){return parts.map((part,i)=>t(part)+(i<values.length?values[i]:"")).join("");},
     setLanguage(value){
-      if(!["en","zh"].includes(value))throw Error("Unsupported interface language");
+      if(!["en","zh","zh-Hant"].includes(value))throw Error("Unsupported interface language");
       language=value;
       try { globalThis.localStorage?.setItem("elink42-ui-language",value); } catch {}
       api.apply();api.onChange?.();
     },
     apply(){
       if(typeof document==="undefined")return;
-      document.documentElement.lang=language==="zh"?"zh-CN":"en";
+      document.documentElement.lang=language==="zh-Hant"?"zh-Hant":language==="zh"?"zh-CN":"en";
       for(const node of document.querySelectorAll("[data-i18n]")) if(node.dataset.i18n)node.textContent=t(node.dataset.i18n);
       for(const attr of ["placeholder","aria-label"])
         for(const node of document.querySelectorAll(`[data-i18n-${attr}]`)) {

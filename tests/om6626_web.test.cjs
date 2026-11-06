@@ -519,6 +519,21 @@ test("OTA transfer and boot confirmation are protected from idle disconnect", as
   assert.equal(peer.client.device.gatt.connected, false);
 });
 
+test("failed OTA clears its locks and timer; a new connection receives a full idle interval", async () => {
+  let fail;
+  const peer=idlePeripheral({transfer:()=>new Promise((_,reject)=>{fail=reject;})});
+  await peer.client.operation(async()=>{});
+  const task=peer.client.ota({},true,()=>{});const rejected=assert.rejects(task,/validation failed/);
+  peer.advance(600000);assert.equal(peer.client.device.gatt.connected,true);assert.equal(peer.client.otaActive,true);
+  fail(Error("validation failed"));await rejected;
+  assert.equal(peer.client.otaActive,false);assert.equal(peer.client.busy,false);
+  assert.equal(peer.client.device.gatt.connected,false);assert.equal(peer.timers.size,0);
+  peer.client.device.gatt.connected=true;peer.client.ready=true;
+  await peer.client.operation(async()=>{});
+  peer.advance(179999);assert.equal(peer.client.device.gatt.connected,true);
+  peer.advance(1);assert.equal(peer.client.device.gatt.connected,false);
+});
+
 test("pending reply and a remote disconnect cannot leave an active stale idle timer", async () => {
   const peer = idlePeripheral();
   await peer.client.operation(async () => {});

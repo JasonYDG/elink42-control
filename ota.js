@@ -114,7 +114,7 @@ const OMOTA = (() => {
     connected();
     // Keep the panel quiescent across an MCU-only OTA reboot; older OTA clients lack queue ACKs.
     if (client.refreshStatus) {
-      const now=new Date(),country=client.calendarProtocol===2?OMCalendar.regions[client.config.layout].code:"CN";
+      const now=new Date(),region=client.calendarProtocol===2?OMCalendar.byId(client.config.layout):null,country=region?.code||"CN";
       await client.command(OMProtocol.time(now,0,OMCalendar.zone(country,now)));
       connected();
       // Legacy receivers must be upgradable without repeating their unsafe initialization.

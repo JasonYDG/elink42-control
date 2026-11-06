@@ -13,25 +13,35 @@ test("English is the persisted default; switching preserves user text and interp
   I.setLanguage("zh");assert.equal(I.t("Connect display"),"连接屏幕");assert.equal(saved.get("elink42-ui-language"),"zh");
   assert.equal(load("zh").I.language,"zh");assert.equal(I.t(userText),userText);
 });
-test("six country options are ordered CN DE SG TW JP MY and all calendars start on Sunday",()=>{
-  const {C}=load();assert.deepEqual(Array.from(C.regions,r=>r.code),["CN","DE","SG","TW","JP","MY"]);
+
+test("Traditional interface labels persist and round-trip without converting user content",()=>{
+  const {I,saved}=load();I.setLanguage("zh-Hant");
+  assert.equal(I.locale,"zh-TW");assert.equal(I.t("Connect display"),"連接屏幕");assert.equal(I.label("国庆节"),"國慶節");
+  assert.equal(saved.get("elink42-ui-language"),"zh-Hant");assert.equal(load("zh-Hant").I.language,"zh-Hant");
+  const title="用户自己的简体标题";assert.equal(I.t(title),title);assert.equal(I.msg(["目标：",""],title),"目標："+title);
+  I.setLanguage("en");assert.equal(I.t("連接屏幕"),"Connect display");
+  I.setLanguage("zh");assert.equal(I.t("連接屏幕"),"连接屏幕");
+  assert.throws(()=>I.setLanguage("invalid"),/Unsupported/);
+});
+test("CN SG TW keep protocol ids 0 2 3 and all calendars start on Sunday",()=>{
+  const {C}=load();assert.deepEqual(Array.from(C.regions,r=>[r.code,r.id]),[["CN",0],["SG",2],["TW",3]]);
+  assert.equal(C.byId(2).code,"SG");assert.equal(C.byId(1),undefined);
   for(const r of C.regions){const cells=C.month(r.code,2026,4);assert.equal(cells[0].date.getDay(),0);assert.equal(cells.filter(c=>c.current).length,31);assert.equal(cells[35].date.getDate(),31);}
-  assert.throws(()=>C.month("XX",2026,0),/country/);assert.throws(()=>C.month("CN",2026,12),/month/);
+  assert.throws(()=>C.month("XX",2026,0),/country/);assert.throws(()=>C.month("DE",2026,0),/country/);assert.throws(()=>C.month("CN",2026,12),/month/);
 });
 test("national holidays, observed days, make-up workdays and unsupported years stay distinct",()=>{
   const {C}=load();
-  for(const [code,date,name] of [["CN","2026-10-01","National Day"],["DE","2026-04-03","Good Friday"],["SG","2026-11-09","Deepavali"],["TW","2027-02-04","Lunar New Year Eve Eve"],["JP","2026-09-22","Citizens' Day"],["MY","2026-09-16","Malaysia Day"]]){
+  for(const [code,date,name] of [["CN","2026-10-01","National Day"],["SG","2026-11-09","Deepavali"],["TW","2027-02-04","Lunar New Year Eve Eve"]]){
     const info=C.day(code,new Date(date+"T12:00:00"));assert.ok(info.holiday);assert.equal(info.names[0],name);
   }
   const work=C.day("CN",new Date(2026,9,10));assert.equal(work.work,true);assert.equal(work.holiday,false);
-  assert.equal(C.day("CN",new Date(2027,0,1)).known,false);assert.equal(C.day("DE",new Date(2028,0,1)).known,false);
-  assert.equal(C.day("DE",new Date(2026,10,1)).holiday,undefined); // All Saints is regional, not nationwide.
+  assert.equal(C.day("CN",new Date(2027,0,1)).known,false);assert.equal(C.day("SG",new Date(2028,0,1)).known,false);
+  assert.equal(C.day("TW",new Date(2026,10,1)).holiday,undefined);
 });
-test("country time sync respects Japan midnight and German daylight-saving offsets",()=>{
-  const {C,P}=load();assert.equal(C.zone("DE",new Date("2026-07-01T00:00:00Z")),2);assert.equal(C.zone("DE",new Date("2026-11-04T00:00:00Z")),1);
-  assert.equal(C.zone("JP"),9);assert.equal(C.zone("SG"),8);
-  const d=C.localDate("JP",new Date("2026-11-04T16:00:00Z"));assert.equal(d.getDate(),5);
-  assert.equal(P.time(new Date("2026-11-04T00:00:00Z"),1,C.zone("DE",new Date("2026-11-04T00:00:00Z")))[5],1);
+test("country time sync uses the retained Asian timezones",()=>{
+  const {C,P}=load();assert.equal(C.zone("CN"),8);assert.equal(C.zone("SG"),8);assert.equal(C.zone("TW"),8);
+  const d=C.localDate("TW",new Date("2026-11-04T16:00:00Z"));assert.equal(d.getDate(),5);
+  assert.equal(P.time(new Date("2026-11-04T00:00:00Z"),1,C.zone("SG"))[5],8);
 });
 test("full-screen and photo-calendar crop use their actual target aspect ratios",()=>{
   const {R}=load(),calls=[];
@@ -45,50 +55,43 @@ test("old workspaces migrate optional settings without altering stored content",
   const store=new F.Store({getItem:()=>raw,setItem(){throw Error("Unexpected write during load");}});
   assert.equal(raw,before);assert.equal(store.data.settings.calendarCountry,0);assert.equal(store.data.todos[0].title,"保留原文");
   assert.equal(store.data.settings.calendarLanguage,"zh");assert.equal(load().I.language,"en");
+  const migrated=F.validate({...F.defaults(),settings:{...F.defaults().settings,calendarCountry:1,calendarLanguage:"en"}});
+  assert.equal(migrated.settings.calendarCountry,0);assert.equal(migrated.settings.calendarLanguage,"zh");
   assert.throws(()=>F.validate({...F.defaults(),settings:null}),/appearance/i);
 });
 
 test("restored almanac, week numbers and next holiday period handle boundaries",()=>{
  const {C}=load();const a=C.almanac(new Date(2026,10,4));assert.equal(a.lunarMonth,9);assert.equal(a.lunarDay,26);assert.equal(a.solar[1],"立冬");assert.equal(a.distance,3);assert.equal(C.week(new Date(2026,10,4)),45);
  assert.equal(C.almanac(new Date(2026,10,7)).distance,0);assert.equal(C.almanac(new Date(2051,0,1)),null);
- assert.equal(C.nextHoliday("DE",new Date(2026,10,4)).days,51);assert.equal(C.nextHoliday("DE",new Date(2026,11,25)).date,"2027-01-01");assert.equal(C.nextHoliday("CN",new Date(2026,9,1)),null);
- assert.equal(C.nextHoliday("DE",new Date(2026,11,31)).days,1);assert.equal(C.nextHoliday("CN",new Date(2027,0,1)),null);
+ assert.equal(C.nextHoliday("SG",new Date(2026,10,4)).days,4);assert.equal(C.nextHoliday("SG",new Date(2026,11,25)).date,"2027-01-01");assert.equal(C.nextHoliday("CN",new Date(2026,9,1)),null);
+ assert.equal(C.nextHoliday("SG",new Date(2026,11,31)).days,1);assert.equal(C.nextHoliday("CN",new Date(2027,0,1)),null);
  assert.equal(C.week(new Date(2027,0,1)),53);assert.equal(C.week(new Date(2023,0,1)),52);assert.equal(C.week(new Date(2024,11,30)),1);
 });
 
-test("country profiles keep local weekdays and confine Chinese almanac to CN and TW",()=>{
+test("Chinese weekdays and the almanac policy cover CN SG TW",()=>{
  const {C}=load();
- for(const language of ['en','zh']){
-  assert.deepEqual(Array.from(C.weekdays('JP',language)),['日','月','火','水','木','金','土']);
-  assert.deepEqual(Array.from(C.weekdays('DE',language)),['So','Mo','Di','Mi','Do','Fr','Sa']);
-  assert.deepEqual(Array.from(C.weekdays('MY',language)),['Ah','Is','Se','Ra','Kh','Ju','Sa']);
-  assert.equal(C.weekdays('SG',language)[1],language==='en'?'Mo':'一');
- }
- for(const code of ['CN','TW','DE','SG','JP','MY'])assert.equal(C.hasAlmanac(code),['CN','TW'].includes(code));
+ for(const code of ['CN','SG','TW'])assert.deepEqual(Array.from(C.weekdays(code,'zh')),['日','一','二','三','四','五','六']);
+ for(const code of ['CN','SG','TW'])assert.equal(C.hasAlmanac(code),['CN','TW'].includes(code));
 });
 
 test("photo hero is red regular type and a selected holiday never paints over its date",()=>{
  const {R}=load(),events=[];
  const ctx={fillRect(...r){events.push(['fill',this.fillStyle,...r]);},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y){events.push(['text',s,this.fillStyle,this.font,x,y]);}};
  const canvas={getContext:()=>ctx};
- R.calendar(canvas,{code:'DE',date:new Date(2026,10,4),photo:true});
+ R.calendar(canvas,{code:'CN',date:new Date(2026,10,4),photo:true});
  assert.ok(events.some(e=>e[0]==='text'&&e[1]==='4'&&e[2]==='#b81928'&&e[4]===328&&e[5]===104));
  events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true});
- assert.ok(events.some(e=>e[0]==='text'&&e[1]==='Next holiday in 24 days'));
- events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true,language:'zh'});
  assert.ok(events.some(e=>e[0]==='text'&&e[1]==='24天后下个假期'));
- for(const code of ['DE','SG','JP','MY']){
-  events.length=0;R.calendar(canvas,{code,date:new Date(2026,10,7)});
-  assert.ok(!events.some(e=>e[0]==='text' && (/^L\d/.test(e[1]) || e[1].includes('Winter Begins'))));
- }
- events.length=0;R.calendar(canvas,{code:'DE',date:new Date(2026,11,25)});
+ events.length=0;R.calendar(canvas,{code:'SG',date:new Date(2026,10,7)});
+ assert.ok(!events.some(e=>e[0]==='text' && (/^L\d/.test(e[1]) || e[1].includes('立冬'))));
+ events.length=0;R.calendar(canvas,{code:'SG',date:new Date(2026,11,25)});
  assert.equal(events.filter(e=>e[0]==='fill'&&e[1]==='#ffd200').length,1);
 });
 
 test("all full calendars omit cryptic numeric lunar L labels",()=>{
  const {R}=load(),labels=[];
  const ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText:s=>labels.push(s)};
- for(const code of ['CN','DE','SG','TW','JP','MY'])for(const language of ['en','zh']){
+ for(const code of ['CN','SG','TW'])for(const language of ['zh']){
   labels.length=0;R.calendar({getContext:()=>ctx},{code,language,date:new Date(2026,10,5)});
   assert.ok(!labels.some(s=>/^L\d/.test(s)),`${code}/${language}`);
  }
@@ -112,7 +115,7 @@ test('China photo follows lunar-year zodiac and strictly future solar terms',()=
 
 test('all photo layouts share anchors and have exactly two footer rows with complete names',()=>{
  const {R}=load();
- for(const code of ['CN','DE','SG','TW','JP','MY'])for(const language of ['en','zh']){
+ for(const code of ['CN','SG','TW'])for(const language of ['zh']){
   const events=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y,w){events.push({s,x,y,w,font:this.font});}};
   R.calendar({getContext:()=>ctx},{code,language,date:new Date(2026,4,31),photo:true});
   assert.ok(events.some(e=>e.s==='2026/05'&&e.y===29));assert.ok(events.some(e=>e.y===116));assert.ok(events.some(e=>e.y===146));
@@ -120,5 +123,16 @@ test('all photo layouts share anchors and have exactly two footer rows with comp
  }
  const events=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y,w){events.push({s,x,y,w});}};
  R.calendar({getContext:()=>ctx},{code:'TW',date:new Date(2027,1,3),photo:true});
- assert.ok(events.some(e=>e.s==='Lunar New Year Eve Eve'&&e.w===124));assert.ok(events.some(e=>e.s==='Next holiday in 1 day'));
+ assert.ok(events.some(e=>e.s==='小年夜'&&e.w===124));assert.ok(events.some(e=>e.s==='1天后下个假期'));
+});
+
+test('full-calendar solar and lunar labels use the same measured cell center',()=>{
+ const {R}=load(),events=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y){events.push({s,x,y});}};
+ R.calendar({getContext:()=>ctx},{code:'CN',language:'zh',date:new Date(2026,4,31)});
+ for(let day=10;day<=19;day++){
+  const cell=5+day-1,row=Math.floor(cell/7),col=cell%7,cx=10+col*54+27,y=61+row*34;
+  const solar=events.find(e=>e.s===String(day)&&e.y===y),lunar=events.find(e=>e.y===y+23&&e.x>cx-27&&e.x<cx+27);
+  assert.ok(solar&&lunar,`missing day ${day}`);assert.equal(solar.x+ctx.measureText(solar.s).width/2,cx);
+  assert.equal(lunar.x+ctx.measureText(lunar.s).width/2,cx);
+ }
 });

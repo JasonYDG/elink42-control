@@ -43,9 +43,10 @@ const OMRender = (() => {
     ctx.drawImage(bitmap, -bitmap.width * scale / 2, -bitmap.height * scale / 2, bitmap.width * scale, bitmap.height * scale); ctx.restore();
   }
   const COLORS = {black: "#000", white: "#fff", red: "#b81928", yellow: "#ffd200"};
-  function calendar(canvas,{code,date,language="en",photo=false,bitmap=null,slot="",model=5}){
+  function calendar(canvas,{code,date,language="zh",photo=false,bitmap=null,slot="",model=5}){
     const block=(...args)=>textBlock(...args,14);
     const ctx=start(canvas), C=OMCalendar, region=C.region(code), zh=language==="zh", left=photo?266:12, width=photo?124:376;
+    const center=(text,cx,y,w,h,size)=>{ctx.font=`${size}px ${FONT}`;block(ctx,text,cx-ctx.measureText(text).width/2,y,w,h,size);};
     if(photo){
       if(bitmap)image(canvas,bitmap,{target:"calendar",fit:"contain"});
       else {ctx.fillStyle="#eee";ctx.fillRect(0,0,256,300);ctx.fillStyle="#000";block(ctx,OMI18n.t("Device slot")+" "+(slot===""?"—":slot),24,130,210,30,16);}
@@ -81,10 +82,11 @@ const OMRender = (() => {
       if(!d.current)return;const col=i%7,row=Math.floor(i/7),x=startX+col*cell,y=(photo?162:61)+row*rowH;
       if(!photo && model===5 && d.date.getDate()===date.getDate()){ctx.fillStyle=COLORS.yellow;ctx.fillRect(x,y,52,rowH-1);}
       ctx.fillStyle=d.work?COLORS.black:d.holiday||col===0||col===6?COLORS.red:COLORS.black;
-      block(ctx,String(d.date.getDate()),x+(photo?0:13),y,cell-2,photo?12:24,photo?10:24);
+      const dayLabel=String(d.date.getDate());
+      if(photo)block(ctx,dayLabel,x,y,cell-2,12,10);else center(dayLabel,x+27,y,cell-2,24,24);
       if(d.date.getDate()===date.getDate()){ctx.strokeStyle=COLORS.red;ctx.strokeRect(x-(photo?1:0),y-(photo?1:0),cell-(photo?0:2),rowH-1);}
       if(!photo){
-        const a=C.hasAlmanac(code)?C.almanac(d.date):null;if(a){const sub=a.distance===0?(zh?a.solar[1]:a.solar[0].slice(0,3)+'.'+(a.solar[0].split(' ')[1]?.[0]||'')):zh?a.lunar:"";ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;block(ctx,sub,x+8,y+23,44,12,10);}
+        const a=C.hasAlmanac(code)?C.almanac(d.date):null;if(a){const sub=a.distance===0?(zh?a.solar[1]:a.solar[0].slice(0,3)+'.'+(a.solar[0].split(' ')[1]?.[0]||'')):zh?a.lunar:"";ctx.fillStyle=a.distance===0?COLORS.red:COLORS.black;center(sub,x+27,y+23,54,12,10);}
         if(d.holiday||d.work){ctx.fillStyle=d.work?COLORS.black:COLORS.red;block(ctx,d.work?"w":"*",x+44,y,10,12,10);}
       }
     });

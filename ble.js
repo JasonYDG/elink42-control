@@ -197,13 +197,20 @@ class OMClient {
     // BUSY is only meaningful for refreshes; a sleeping panel may hold the pin active.
     const checkBusy = bytes[0] !== 6 && !(bytes[0] === 0x20 && bytes[6] === 0);
     const sequence = this.nextSequence();
-    const done = this.wait(b => b.length === 4 && b[0] === 0x51 && b[1] === bytes[0] && b[2] === sequence,
+    const done = this.wait(b => (b.length === 4 || b.length === 6) && b[0] === 0x51 && b[1] === bytes[0] && b[2] === sequence,
       OMI18n.t("设备处理回执（结果未确认，不会自动重发）"), 65000);
     progress(99, checkBusy ? OMI18n.t("设备正在处理，等待完成回执及 BUSY 状态") : OMI18n.t("等待设备命令处理回执"));
     try {
       await this.write(Uint8Array.of(...bytes, sequence));
       this.log(OMI18n.msg`已提交命令 0x${bytes[0].toString(16)}，序号=${sequence}`);
       const reply = await done.promise;
+      if (reply[3] & 4) {
+        if (reply.length !== 6 || reply[3] !== 0xA4) throw Error(OMI18n.t("设备就绪状态回执无效"));
+        const mv = reply[4] | (reply[5] << 8);
+        const error = Error(OMI18n.t("供电不足，未开始刷新；实测电压 ") + mv + OMI18n.t(" mV。请更换电池或改用稳定供电。"));
+        error.code = "DISPLAY_NOT_READY";
+        throw error;
+      }
       if ((reply[3] & 0x5C) || (!(reply[3] & 0x80) && reply[3] > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
       if (checkBusy && (reply[3] & 3)) {
         const error=Error(OMI18n.t("屏幕仍忙，刷新未确认；蓝牙连接已保留"));
@@ -294,7 +301,7 @@ class OMClient {
   }
   async style(layout, alternate, progress) {
     OMProtocol.integer(layout, 0, 6, OMI18n.t("日历版式")); OMProtocol.integer(alternate, 0, 1, OMI18n.t("布局版本"));
-    if (this.calendarProtocol===2) return this.internationalCalendar(layout===6?0:layout,this.config.alternate&2?"zh":"en",false,255,false,progress);
+    if (this.calendarProtocol===2) return this.internationalCalendar(layout===6?0:layout,"zh",false,255,false,progress);
     return this.operation(async () => {
       this.requireRefreshStatus();
       // Pause native rendering while updating both style fields, then render once.
@@ -328,7 +335,9 @@ class OMClient {
     OMProtocol.integer(country,0,5,OMI18n.t("Country"));
     if (!["en","zh"].includes(language) || typeof photo!=="boolean" || typeof external!=="boolean") throw Error(OMI18n.t("Invalid calendar settings"));
     if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
-    const code=OMCalendar.regions[country].code, option=(photo?1:0) | (language==="zh"?2:0) | (photo && fit==="contain"?4:0);
+    const region=OMCalendar.byId(country);
+    if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
+    const code=region.code, option=(photo?1:0) | 2 | (photo && fit==="contain"?4:0);
     const time=OMProtocol.time(date,1,OMCalendar.zone(code,date));
     return this.operation(async()=>{
       this.requireRefreshStatus();
