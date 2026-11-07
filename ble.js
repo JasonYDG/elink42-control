@@ -205,8 +205,8 @@ class OMClient {
       await this.write(Uint8Array.of(...bytes, sequence));
       this.log(OMI18n.msg`已提交命令 0x${bytes[0].toString(16)}，序号=${sequence}`);
       const reply = await done.promise;
-      if(reply[3]===0xA8 && reply.length===6 && reply[5]===0 && reply[4]>=1 && reply[4]<=3) {
-        const message=["","SPI 传输失败，已停止刷新，蓝牙连接已保留","刷新计时器未运行，已停止刷新，蓝牙连接已保留","屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留"][reply[4]];
+      if(reply[3]===0xA8 && reply.length===6 && reply[5]===0 && reply[4]>=1 && reply[4]<=5) {
+        const message=["","SPI 传输失败，已停止刷新，蓝牙连接已保留","刷新计时器未运行，已停止刷新，蓝牙连接已保留","屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留","电压采样超时，已停止刷新，蓝牙连接已保留","屏幕初始化失败，已停止刷新，蓝牙连接已保留"][reply[4]];
         const error=Error(OMI18n.t(message));error.code="DISPLAY_NOT_READY";throw error;
       }
       if (reply[3] & 4) {
@@ -294,10 +294,13 @@ class OMClient {
   }
   async initialize() {
     await this.waitForDisplay();
+    if(this.board?.name===OMProtocol.OTA_MARKER && this.firmwareRevision===null) await OMOTA.readRevision(this);
     const initialized = this.wait(b => OMProtocol.text(b).startsWith("t="), OMI18n.t("初始化屏幕"));
     const mtu = this.wait(b => /^mtu=\d+$/.test(OMProtocol.text(b)), OMI18n.t("读取传输大小"));
     try {
-      await this.write(Uint8Array.of(1));
+      if(this.firmwareRevision===18) { const error=Error(OMI18n.t("v18 过渡接收器只用于继续升级，请留在 OTA 页面"));error.code="DISPLAY_NOT_READY";throw error; }
+      if(this.firmwareRevision>=19) await this.command(Uint8Array.of(0x25));
+      else await this.write(Uint8Array.of(1));
       const size = Number(OMProtocol.text(await mtu.promise).slice(4));
       if (!Number.isInteger(size) || size < 20 || size > 512) throw Error(OMI18n.t("设备返回的传输大小无效"));
       this.payload = Math.min(size, this.transferPayload || 180);

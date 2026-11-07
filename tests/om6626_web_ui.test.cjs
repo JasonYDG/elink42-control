@@ -86,40 +86,40 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
-for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed combined v17 without starting OTA`,async()=>{
-  const u=ui(model,true,"zh",true,{revision:10});await u.click("connect");
+for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed v19 bundle without starting OTA`,async()=>{
+  const u=ui(model,true,"zh",true,{revision:11});await u.click("connect");
   assert.deepEqual(u.versionQueries,[[0]]);assert.equal(u.confirmations.length,1);
-  assert.match(u.confirmations[0],/v10.*v17.*清空图库/);assert.match(u.get("firmware-state").textContent,/v10/);
+  assert.match(u.confirmations[0],/v11.*v19.*清空图库/);assert.match(u.get("firmware-state").textContent,/v11/);
   assert.equal(u.get("tab-ota").getAttribute("aria-selected"),"true");
   assert.match(u.get("ota-package").textContent,new RegExp(model===5?"JD79668 四色":"SSD1619 三色"));
-  assert.match(u.get("ota-package").textContent,/版本 15.*16.*17/);assert.match(u.get("ota-kind").textContent,/校验通过/);
+  assert.match(u.get("ota-package").textContent,/版本 18.*19/);assert.match(u.get("ota-kind").textContent,/校验通过/);
   assert.equal(u.get("ota-consent").checked,false);assert.equal(u.get("ota-start").disabled,true);
   assert.ok(!u.packets.some(p=>[5,6,0x20].includes(p[0])));
 });
 test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
   const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
-  assert.match(u.confirmations[0],/Current firmware v1; bundled update v17/);
+  assert.match(u.confirmations[0],/Current firmware v1; bundled update v19/);
   assert.equal(u.get("tab-calendar").getAttribute("aria-selected"),"true");assert.equal(u.get("ota-bundled").disabled,false);
-  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 15.*16.*17/);
+  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 18.*19/);
 });
 
-test("the built-in combined update needs one start confirmation and finishes on v17",async()=>{
- const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:17});await u.click('connect');await u.click('ota-bundled');
+test("the built-in bundle needs one start confirmation and finishes on v19",async()=>{
+ const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:19});await u.click('connect');await u.click('ota-bundled');
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
  const before=u.confirmations.length;u.confirmation(true);await u.click('ota-start');
- assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/v15.*v16.*v17.*确认一次/s);
- assert.match(u.get('firmware-state').textContent,/v17/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
+ assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/最多两次刷写.*v18.*v19.*确认开始/s);
+ assert.match(u.get('firmware-state').textContent,/v19/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
 });
-for(const revision of [17,18])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
+for(const revision of [19,20])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 test("v14 reports the bundled baseline and transition route without claiming latest firmware",async()=>{
  const u=ui(5,true,"zh",true,{revision:14});await u.click("connect");
- assert.match(u.get("firmware-state").textContent,/v14.*内置 v17/);
+ assert.match(u.get("firmware-state").textContent,/v14.*内置 v19/);
  assert.doesNotMatch(u.get("firmware-state").textContent,/最新/);
- assert.match(u.get("ota-capability").textContent,/整合包/);
+ assert.match(u.get("ota-capability").textContent,/最多两次刷写/);
 });
 test("v14 cannot start a real signed v16 package even after consenting",{skip:!repairFixture},async()=>{
  const m=JSON.parse(fs.readFileSync(path.join(repairFixture,'independent-ota-manifest.json'),'utf8'));
@@ -161,7 +161,7 @@ test("connecting from OTA keeps that tab active and does not arm idle disconnect
   await u.click("tab-calendar");assert.equal(u.idleTimers.size,1);
 });
 test("independent OTA UI verifies project ZIP, requires data-loss consent and cancels before commands",{skip:!firmwareMetadata},async()=>{
-  const u=ui(5,true);await u.click("tab-ota");assert.equal(u.get("ota-start").disabled,true);assert.equal(u.get("preview-panel").hidden,true);
+  const u=ui(5,true,'zh',true,{revision:11,confirm:false});await u.click("tab-ota");assert.equal(u.get("ota-start").disabled,true);assert.equal(u.get("preview-panel").hidden,true);
   const bytes=firmwareZip();
   await u.file("ota-file",{name:"independent.zip",size:bytes.length,arrayBuffer:async()=>bytes});
   assert.match(u.get("ota-package").textContent,/JD79668 四色/);assert.match(u.get("ota-kind").textContent,/不恢复原版激活流程/);
@@ -172,21 +172,31 @@ test("independent OTA UI verifies project ZIP, requires data-loss consent and ca
   await u.file("ota-file",{name:"wrong.hex",size:10});assert.equal(u.get("ota-start").disabled,true);
   assert.equal(u.get("ota-consent").checked,false);
 });
-test("verified v9 OTA applies China Chinese standard calendar and restores the controls",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
+test("v18 keeps display actions disabled and offers the one remaining update",async()=>{
+ const u=ui(5,true,'zh',true,{revision:18});await u.click('connect');
+ for(const id of ['native-calendar','set-time','photo-calendar-start','publish','store-frame','scheduler-start'])assert.equal(u.get(id).disabled,true);
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
+ assert.match(u.get('ota-capability').textContent,/v18 只需一次/);assert.equal(u.idleTimers.size,0);
+});
+test("v15 cannot start the new bundle and explains the two-write limit",async()=>{
+ const u=ui(5,true,'zh',true,{revision:15});await u.click('connect');
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,true);
+ assert.match(u.get('ota-capability').textContent,/不能在两次刷写内/);
+});
+test("verified OTA leaves the device idle and never enables a calendar",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
  const u=ui(5,true,"zh",true,{country:3,flags:2,mode:1,slot:1,otaBootRevision:9});
  await u.click('connect');assert.equal(u.get('calendar-layout').value,'3');
  const bytes=firmwareZip();await u.file('ota-file',{name:'v9.zip',size:bytes.length,arrayBuffer:async()=>bytes});
- u.get('ota-consent').checked=true;await u.click('ota-start');
- assert.equal(u.get('calendar-layout').value,'0');assert.equal(u.get('calendar-language').value,'zh');
- assert.equal(u.get('tab-calendar').getAttribute('aria-selected'),'true');
- assert.ok(u.packets.some(p=>p[0]===0x24&&p.length===5&&p[2]===0&&p[3]===2));
- assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],1);
+ const before=u.packets.length;u.get('ota-consent').checked=true;await u.click('ota-start');
+ assert.equal(u.packets.length,before);
+ assert.match(u.get('ota-service').textContent,/日历需手动启用/);
 });
-test("a failed default refresh after verified OTA never asks for another flash",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
+test("verified OTA does not call the former default-calendar path",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
  const u=ui(5,true,'zh',true,{otaBootRevision:9,defaultFails:true});await u.click('connect');
  const bytes=firmwareZip();await u.file('ota-file',{name:'v9.zip',size:bytes.length,arrayBuffer:async()=>bytes});
  u.get('ota-consent').checked=true;await u.click('ota-start');
- assert.match(u.get('result').textContent,/固件已升级.*默认日历刷新未确认.*不要重复刷机/);
+ assert.match(u.get('ota-service').textContent,/升级完成.*日历需手动启用/);
+ assert.doesNotMatch(u.get('result').textContent,/refresh unconfirmed/);
 });
 
 test("verified signed v15 stays on OTA and never initializes or enables a calendar",{skip:!transitionFixture},async()=>{

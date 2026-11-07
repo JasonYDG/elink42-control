@@ -31,13 +31,33 @@ function simulatedPeripheral(payload = 20, failAt = -1) {
   client.control = {async writeValueWithResponse(bytes) {
     packets.push(bytes.slice());
     if (packets.length === failAt) throw Error("simulated link failure");
-    if (bytes[0] === 1) { notify(encode("mtu=" + payload)); notify(encode("t=123")); }
+    if ([1,0x25].includes(bytes[0])) { notify(encode("mtu=" + payload)); notify(encode("t=123")); }
     if (bytes[0] === 0) notify(Uint8Array.of(0x42, 1, ...encode(P.MARKER)));
-    if ([5, 6, 0x20, 0x24, 0x45, 0x50].includes(bytes[0]))
+    if ([5, 6, 0x20, 0x24, 0x25, 0x45, 0x50].includes(bytes[0]))
       notify(Uint8Array.of(0x51, bytes[0], bytes.at(-1), 0xA0));
   }};
   return {client, packets};
 }
+
+test("v19 initializes through the acknowledged queue and never sends legacy command 1",async()=>{
+ const {client,packets}=simulatedPeripheral();client.firmwareRevision=19;client.lifecycleSupported=true;client.timingSupported=true;
+ await client.initialize();
+ assert.equal(packets.filter(p=>p[0]===0x25).length,1);
+ assert.equal(packets.filter(p=>p[0]===1).length,0);
+ assert.equal(client.reportedPayload,20);
+});
+
+test("ADC timeout and initialization failure preserve the connection and stop the operation",async()=>{
+ for(const reason of [4,5]){
+  const {client}=simulatedPeripheral();
+  client.control.writeValueWithResponse=async bytes=>{
+   const value=Uint8Array.of(0x51,bytes[0],bytes.at(-1),0xA8,reason,0);
+   client.control.value=new DataView(value.buffer);client.notify({target:client.control});
+  };
+  await assert.rejects(client.operation(()=>client.command(Uint8Array.of(0x20,0,0,0,0,8,1))),error=>error.code==="DISPLAY_NOT_READY");
+  assert.equal(client.device.gatt.connected,true);
+ }
+});
 
 test("big-endian timestamp, signed timezone, calendar mode and bounds", () => {
   const packet = P.time({getTime: () => 1760000000000, getTimezoneOffset: () => -480}, 1);
