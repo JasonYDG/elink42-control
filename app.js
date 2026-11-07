@@ -51,17 +51,19 @@
     $("ota-file").disabled = busy;
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
-    const needsTransition=!otaPackage?.bundle && otaPackage?.repaired && client.firmwareRevision && client.firmwareRevision<15;
+    const revision=client.firmwareRevision;
+    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===2 ? ![11,12,13,14,16,17,18].includes(revision) :
+      !otaPackage.bundle && ((otaPackage.lifecycle && revision<18) || (otaPackage.repaired && revision<15)));
     const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
     $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (otaPackage.bundle && client.firmwareRevision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
-    if(otaReady && client.firmwareRevision && client.firmwareRevision<15)
-      $("ota-capability").textContent=OMI18n.t("安装 v16 修复版前，请先安装对应屏型 v15 过渡包并确认版本；不要直接安装 v16。");
-    if(otaReady && client.firmwareRevision===15)
-      $("ota-capability").textContent=OMI18n.t("当前为 v15 过渡版，请继续安装配套 v16；暂不启用日历或时间同步。");
     if(otaReady && otaPackage?.bundle)
-      $("ota-capability").textContent=OMI18n.t("整合包按当前版本跳过已完成阶段；阶段间自动重连并核对版本，不启用中间日历。");
+      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：v11–v14 或 v16–v17 经静默 v18 直接到 v19；v18 只需一次。最终重启显示设备信息，日历需手动启用。");
+    if(otaReady && needsTransition && !otaPackage.bundle)
+      $("ota-capability").textContent=OMI18n.t(otaPackage.lifecycle?"本修复包需要 v18 接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
+    if(otaReady && revision===15)
+      $("ota-capability").textContent=OMI18n.t("v15 锁定旧 v16，不能在两次刷写内安装本包；已停止，请保留日志联系维护者。");
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
@@ -92,6 +94,9 @@
       OMI18n.t("SSD1619 原驱动有局刷；JD79668 原驱动没有局刷接口。");
     $("nfc-write").disabled = !ready || !("NDEFReader" in window);
     $("nfc-read").disabled = !("NDEFReader" in window);
+    if(revision===18) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
+      "photo-calendar-start","native-clock","course-send-week","publish","store-frame","slot-display","slot-delete",
+      "slot-background","slot-remark-save","rotation-save","scheduler-start"] ) $(id).disabled=true;
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -236,10 +241,11 @@
     uiBusy = true; update(); $("ota-package").textContent = OMI18n.t("正在校验 ZIP、签名、固件哈希及保护区…");
     try {
       otaPackage = await OMOTA.parse(await file.arrayBuffer());
+      if(otaPackage.bundle && otaPackage.bundleVersion!==2) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v19 两阶段升级包"));
       $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
-      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包内所有阶段的项目签名、屏型和配对校验通过；确认一次后按需升级到 v17。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
+      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v19。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
-    } catch (error) { $("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
+    } catch (error) { otaPackage=null;$("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
   }
   async function loadBundledFirmware() {
@@ -265,22 +271,16 @@
     const consent = {deviceId: client.device.id, eraseImages: $("ota-consent").checked};
     if (!consent.eraseImages) throw Error(OMI18n.t("请完成图库清空确认"));
     const text = OMI18n.msg`目标：${client.device.name || client.device.id}\n固件 SHA-256：${otaPackage.sha256}\n升级会清空设备全部图片，期间不能断电或退出。` +
-      OMI18n.t(otaPackage.bundle?"\n整合包会按需执行 v15、v16、v17；每阶段重新核对启动版本，失败即停止。确认一次开始全部所需阶段？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
+      OMI18n.t(otaPackage.bundle?"\n最多两次刷写：静默 v18 → v19。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     await client.ota(otaPackage, consent, progress);
-    if(otaPackage.revision===15) {
-      const message=OMI18n.t("v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
+    if(otaPackage.revision===15 || otaPackage.revision===18) {
+      const message=OMI18n.t(otaPackage.revision===18?"v18 静默接收器已确认；请载入内置整合包继续到 v19，仅剩一次刷写。":"v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
       gallery=null;otaPackage=null;$("ota-consent").checked=false;
       $("ota-service").textContent=message;result(message);selectTab($("tab-ota"));update();return;
     }
-    if (otaPackage.revision>=9) {
-      $("ota-service").textContent=OMI18n.t("固件版本已核对，正在启用中国中文全屏日历");
-      try { await client.internationalCalendar(0,"zh",false,255,false,progress); }
-      catch(error) { throw Error(OMI18n.t("固件已升级，但默认日历刷新未确认；不要重复刷机：")+error.message); }
-      $("calendar-date").value="";
-    }
     gallery=null;restoreDevicePresentation();await preview();
-    $("ota-service").textContent = OMI18n.t("升级完成，已重新连接并核对固件版本；请查看实屏。");
+    $("ota-service").textContent = OMI18n.t("升级完成，已重新连接并核对固件版本；日历需手动启用，请查看实屏。");
   }, "");
   window.addEventListener("beforeunload", event => {
     if (!client.otaActive) return; event.preventDefault(); event.returnValue = "";

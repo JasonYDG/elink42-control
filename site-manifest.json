@@ -1,24 +1,24 @@
 {
-  "version": "0.6.11",
+  "version": "0.6.12",
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-with-bundled-signed-ota",
-  "firmware_revision": 17,
+  "firmware_revision": 19,
   "assets": {
-    "index.html": "44d7a022bc3bd8cf549046e4d91c29efd61c77443070dad16bf8b778a3df508b",
+    "index.html": "23c4a3f794a8751cf1d894cec43781fc3944a705daac2f5090aa318aef357b9a",
     "style.css": "a1065241e15b8ad1f0fb470b8fdab7141617fe60d0139dd68ea114f46f5f1463",
-    "i18n.js": "15da4afe29665549d4545b3b528fd6ce54e4e7de1535e40e815eb14e08ef18e3",
+    "i18n.js": "99d0af4eb328d64399e6aedd2aede5f0bf5d63ba540b8af7a47c455a2145bda6",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
     "calendar.js": "9f6dfff5a27332d6f3c6a6930a72f94549704bdc24321870e1c599e5960caf20",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
     "protocol.js": "77b289e7b91951f9007866a2e32c602922439837eb25668667dcda1f5eebb25b",
-    "ble.js": "c992de0273dfc603b7dbe95ea5eb5ce84aaaf9d12bdcffbddeb0520886663380",
+    "ble.js": "43b5dc3ef7770bc1618331c77f7852aeeb948c1eb0c12705a4e90049384290f0",
     "features.js": "aab736f8921d5c812f0b9b4c7801502e03ce6d7e966772fead6a8e2c0c5071d3",
     "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
-    "ota.js": "6f701e22ab28a44cb02228b285dbbf63d2a34b39e52670adac1d0c3c2e02cca6",
-    "firmware.js": "471d8ebc31aa3ca7dd94ca199e93bad5748e89e988dec8794b97d9bd75075b46",
+    "ota.js": "71939c141a0a035b4223ebc99e6b9a36e7c889c9fb46284e1834b8372804fa0a",
+    "firmware.js": "49da07e9ca8074c10a85f4c263f0d50790cea8da3b1adfbf6ba8f91fd69863cc",
     "render.js": "5312c744f6b2dc60a87dec01fbcf1ba4c5361348bd3c34a029e31513569dc538",
-    "app.js": "9f9b011081b2b50406a64eebdca0ebc030f2b63595ebca6dbff980a1d0fe20bc",
+    "app.js": "90ba5da3f02e50e4a65c4c3d843c1e8ec9de88bbdd1cdb4bf857e3acb94c5e4b",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }
