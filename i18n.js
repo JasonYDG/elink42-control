@@ -761,7 +761,7 @@ const OMTranslations = {
 Object.assign(OMTranslations, {
   "旧整合包已停用，请载入内置 v19 两阶段升级包":"The old bundle is retired. Load the built-in v19 two-stage update.",
   "载入内置 v19 两阶段升级包":"Load bundled v19 two-stage update",
-  "一个文件，最多两次刷写：v11–v14 或 v16–v17 经静默 v18 直接到 v19；v18 只需一次。最终重启显示设备信息，日历需手动启用。":"One file, at most two writes: v11–v14 or v16–v17 go through the quiet v18 receiver to v19; v18 needs one write. Reboot shows device information; enable the calendar manually.",
+  "一个文件，最多两次刷写：v5、v11–v14 或 v16–v17 经静默 v18 直接到 v19；v18 只需一次。最终重启显示设备信息，日历需手动启用。":"One file, at most two writes: v5, v11–v14 or v16–v17 go through the quiet v18 receiver to v19; v18 needs one write. Reboot shows device information; enable the calendar manually.",
   "v15 锁定旧 v16，不能在两次刷写内安装本包；已停止，请保留日志联系维护者。":"v15 is pinned to the old v16 and cannot install this package within two writes. Stopped; save the log and contact the maintainer.",
   "整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v19。":"Bundle signatures, panel models and pairings verified. Confirm once for at most two writes to v19.",
   "\n最多两次刷写：静默 v18 → v19。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\nAt most two writes: quiet v18 → v19. Device time is temporarily reset. The transition retains the existing image; final reboot shows device name, MAC and revision. Each reboot is verified; any failure stops the update. Start?",

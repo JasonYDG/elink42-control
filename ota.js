@@ -168,6 +168,11 @@ const OMOTA = (() => {
     else if(current>=16 && !pack.repaired) message="当前修复版不接受旧驱动基线的回退包；没有发送升级命令";
     if(message) { const error=Error(OMI18n.t(message));error.code="OTA_PRECHECK";throw error; }
   }
+  function bundleRoute(revision) {
+    if(revision===5 || (revision>=11 && revision<=14)) return "legacy";
+    if(revision===16 || revision===17) return "repaired";
+    return revision===18 ? "target" : null;
+  }
   async function transfer(client, input, consent, progress = () => {}) {
     target(client); const device = client.device;
     if (consent?.deviceId !== device.id || consent.eraseImages !== true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
@@ -190,7 +195,8 @@ const OMOTA = (() => {
       // Never enter the legacy display driver while installing the receiver or its pinned target.
       await client.command(OMProtocol.time(new Date(0),0,0));
       connected();
-      await client.waitForDisplay();
+      // v5 has sequenced pause ACKs but no lifecycle/timing flags; this path never enters its panel driver.
+      if(client.firmwareRevision!==5) await client.waitForDisplay();
       connected();
     } else if (client.refreshStatus) {
       const now=new Date(),region=client.calendarProtocol===2?OMCalendar.byId(client.config.layout):null,country=region?.code||"CN";
@@ -301,11 +307,9 @@ const OMOTA = (() => {
     if(current>=bundle.revision) {
       const error=Error(OMI18n.t("设备已达到整合包版本，无需升级"));error.code="OTA_PRECHECK";throw error;
     }
-    let stages;
-    if(current>=11 && current<=14) stages=bundle.models[model].legacy;
-    else if(current===16 || current===17) stages=bundle.models[model].repaired;
-    else if(current===18) stages=[bundle.models[model].legacy[1]];
-    else { const error=Error(OMI18n.t("当前版本不兼容本两阶段包，未发送升级命令"));error.code="OTA_PRECHECK";throw error; }
+    const route=bundleRoute(current);
+    if(!route) { const error=Error(OMI18n.t("当前版本不兼容本两阶段包，未发送升级命令"));error.code="OTA_PRECHECK";throw error; }
+    const stages=route==="target" ? [bundle.models[model].legacy[1]] : bundle.models[model][route];
     if(stages.length>2) { const error=Error(OMI18n.t("旧整合包需要超过两次刷写，已停止；请使用新版两阶段包"));error.code="OTA_PRECHECK";throw error; }
     const quietReceiver=async()=>{
       if(!await client.readCalendar() || client.config.mode!==0) {
@@ -356,5 +360,5 @@ const OMOTA = (() => {
     } catch (error) { receipt?.cancel(error); throw error; }
     finally { version.removeEventListener("characteristicvaluechanged", notify); }
   }
-  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision,upgradeBundle};
+  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision,upgradeBundle,bundleRoute};
 })();

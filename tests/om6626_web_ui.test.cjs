@@ -96,6 +96,15 @@ for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the s
   assert.equal(u.get("ota-consent").checked,false);assert.equal(u.get("ota-start").disabled,true);
   assert.ok(!u.packets.some(p=>[5,6,0x20].includes(p[0])));
 });
+for(const model of [2,5])test(`UI ${model}: v5 enables upgrade after loading the built-in bundle and consenting`,async()=>{
+ const u=ui(model,true,'zh',true,{revision:5});await u.click('connect');
+ assert.match(u.get('firmware-state').textContent,/v5.*v19/);
+ assert.match(u.get('ota-package').textContent,/版本 18.*19/);
+ assert.equal(u.get('ota-start').disabled,true);
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();
+ assert.equal(u.get('ota-start').disabled,false);assert.equal(u.idleTimers.size,0);
+ assert.ok(!u.packets.some(p=>[1,5,6,0x20].includes(p[0])));
+});
 test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
   const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
   assert.match(u.confirmations[0],/Current firmware v1; bundled update v19/);

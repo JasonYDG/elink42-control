@@ -52,14 +52,14 @@
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
     const revision=client.firmwareRevision;
-    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===2 ? ![11,12,13,14,16,17,18].includes(revision) :
+    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===2 ? !OMOTA.bundleRoute(revision) :
       !otaPackage.bundle && ((otaPackage.lifecycle && revision<18) || (otaPackage.repaired && revision<15)));
     const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
     $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (otaPackage.bundle && client.firmwareRevision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
     if(otaReady && otaPackage?.bundle)
-      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：v11–v14 或 v16–v17 经静默 v18 直接到 v19；v18 只需一次。最终重启显示设备信息，日历需手动启用。");
+      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：v5、v11–v14 或 v16–v17 经静默 v18 直接到 v19；v18 只需一次。最终重启显示设备信息，日历需手动启用。");
     if(otaReady && needsTransition && !otaPackage.bundle)
       $("ota-capability").textContent=OMI18n.t(otaPackage.lifecycle?"本修复包需要 v18 接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
     if(otaReady && revision===15)

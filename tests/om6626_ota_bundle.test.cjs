@@ -40,9 +40,9 @@ function peripheral(model,current,options={}){
  const appControl={removeEventListener(){},async writeValueWithResponse(b){
   appCommands.push([...b]);assert.equal(client.otaActive,true);assert.equal(client.busy,true);
   let reply;
-  if(b[0]===0x20){assert.deepEqual([...b.slice(1,7)],[0,0,0,0,0,0]);reply=Uint8Array.of(0x51,0x20,b.at(-1),0xA1);}
+  if(b[0]===0x20){assert.deepEqual([...b.slice(1,7)],[0,0,0,0,0,0]);reply=options.pauseFailure?Uint8Array.of(0x51,0x20,b.at(-1),0xA8,2,0):Uint8Array.of(0x51,0x20,b.at(-1),current===5?1:0xA1);}
   else if(b[0]===0x24 && b[1]===0x4A)reply=Uint8Array.of(0x55,2,0x4A,0,options.badQuiet?1:0,255,0);
-  else {assert.equal(b[0],0x24);reply=Uint8Array.of(0x51,0x24,b.at(-1),0xA1);}
+  else {assert.equal(b[0],0x24);reply=Uint8Array.of(0x51,0x24,b.at(-1),current===5?1:0xA1);}
   this.value=new DataView(reply.buffer);client.notify({target:this});
  }};
  Object.assign(client,{ready:true,device,control:appControl,refreshStatus:!options.noStatus,config:{model},board:{id:1,name:P.OTA_MARKER},firmwareRevision:current});
@@ -60,7 +60,7 @@ test('bundle rejects extra entries, incomplete stages and swapped signed panel i
   const files=await A.unzip(bytes);mutate(files);await assert.rejects(OTA.parse(storedZip(files)),/整合 OTA/);
  }
 });
-for(const model of [2,5])for(const current of [11,14,16,17])test(`model ${model}: v${current} installs matching v18/v19 exactly twice with one operation lock`,async()=>{
+for(const model of [2,5])for(const current of [5,11,14,16,17])test(`model ${model}: v${current} installs matching v18/v19 exactly twice with one operation lock`,async()=>{
  const b=await parsed,r=peripheral(model,current),progress=[];const out=await r.client.ota(b,consent,(p,s)=>progress.push([p,s]));
  assert.equal(out.status,'boot-verified');assert.equal(out.revision,19);assert.deepEqual(r.installed,[18,19]);
  for(const [i,p] of b.models[model][current<15?'legacy':'repaired'].entries()){assert.deepEqual(r.received[i].command,p.dat);assert.deepEqual(r.received[i].image,p.bin);}
@@ -94,4 +94,8 @@ test('missing pause acknowledgments fails before DFU writes',async()=>{
 });
 test('direct v19 cannot bypass the matching v18 receiver',async()=>{
  const r=peripheral(5,14);await assert.rejects(r.client.ota((await parsed).models[5].legacy[1],consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
+});
+test('v5 pause failure stops before any DFU control or data write',async()=>{
+ const r=peripheral(5,5,{pauseFailure:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');
+ assert.equal(r.commands.length,0);assert.equal(r.received.length,0);assert.equal(r.device.gatt.connected,true);
 });
