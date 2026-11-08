@@ -7,7 +7,7 @@ const OMOTA = (() => {
   const SIZE = 238532, FOUNDATION = {"2": "92388266519726d537fe51e5e40a607badf4460d16ea63fe8250ea3fde59a037", "5": "685a36d764bddd7dd8e735f7833b6553a513b21eb46ddd1e23c778756527a986"};
   const REPAIRED_FOUNDATION={"2":"caff106e401ac13b75e22acf0556ee8fb15f7a99132e71990698308e8a86ca48","5":"046dc44e400252e93bc1bd5f33ce7e0a847dc9990b11f2c2b1d001c955b928dc"};
   const LIFECYCLE_FOUNDATION={"2":"a8b16a7d501fd4ff24f7894593c7583694dce9fc84cd846583c4393e69576047","5":"4d7239366ef403cbf7c2b862d2f6685dc2218dcc55761903638a3e51fc99c592"};
-  const TWO_STAGE_IMAGES = {"2":{"legacy":"1903d762c0ee2a7d36f054a40bafd3a97466c9affc9246e28d3c478e199e5ac9","repaired":"42fc4430e6fc5f85a20c8090721fed330789845b73376d49f2beba1d17371ec8","resume18":"9b46018c8c9d83f907b75f6c921544850736381a7e84930840f491a4f1d276b4","target":"7d500913fd9d8281beff5cd17fce94f90195d8f8f470eedf1abe7087d8c8d5c4"},"5":{"legacy":"40ef78d93eca9eb457eb3b4db68d30ee90884b7d7772979d6ab4922dc2539a47","repaired":"41e2360685214f5a986b78513b4000afa751a6951f35a347e5d7e5deab98e3c9","resume18":"e1b281aa1255c5639d3264283dc708e86d5f3dcfef7a8fa108da86d5f78adf6b","target":"4a25911d03406d79e526b590e413fc3ff21a5377870540cf0bcb20e79f09e2a3"}};
+  const TWO_STAGE_IMAGES = {"2":{"legacy":"b10b2901676389ffdecb692f5be552cb014f6873c8b91416bb5052543dc1a857","repaired":"b699a59d63d9f22748b65847c28ef9f74af4e5dd1d4ca7bf816fbf2717723ecc","resume18":"9b46018c8c9d83f907b75f6c921544850736381a7e84930840f491a4f1d276b4","resume20":"7d500913fd9d8281beff5cd17fce94f90195d8f8f470eedf1abe7087d8c8d5c4","target":"6125f75fb87196534ad9932f867ae3d2a5759449d414b4e2d2b0ff8529ab1c58"},"5":{"legacy":"a7fd9876be62522085c05444808abbe603e93005b2bad3bf434a9fc1c998686f","repaired":"c1f2b5b5e404f0697f192085813958c087d4fd99923a1c64003f2549b74903b0","resume18":"e1b281aa1255c5639d3264283dc708e86d5f3dcfef7a8fa108da86d5f78adf6b","resume20":"4a25911d03406d79e526b590e413fc3ff21a5377870540cf0bcb20e79f09e2a3","target":"fc5bc31cdbb5506bc72698fbfa6192f7db72b3a44a764eddd67958e527fbd150"}};
   const TRANSITION_IMAGES={
     2:["bb8f90fe8980d3ba9d2e9cca65d463e9b6dce7722474a0d7da219fb93c83b4ac","f721222b51c7584937e716066b6dc9f02eabc9d476f761e94160e7a07b312c28"],
     5:["689d7946abfa01eb069c983b28d4cfda3b9af76558e4ecae19b5c58888e872da","5d0a3f0dc488bbe32deb876a55a09d716a1b0d10540f7f2b94cf45ba408c2835"]
@@ -85,32 +85,32 @@ const OMOTA = (() => {
     const source=new Uint8Array(buffer).slice(),files=await OMArchive.unzip(source);
     const manifest=files.has("manifest.json")?JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(files.get("manifest.json"))):null;
     if(manifest?.format!=="elink42-ota-bundle") return single(files);
-    if(manifest.version===3) {
-      if(manifest.target_revision!==21 || files.size!==10 || !files.has("LICENSES.txt") || Object.keys(manifest.models||{}).sort().join()!=="2,5")
+    if(manifest.version===4) {
+      if(manifest.target_revision!==24 || files.size!==12 || !files.has("LICENSES.txt") || Object.keys(manifest.models||{}).sort().join()!=="2,5")
         throw Error(OMI18n.t("整合 OTA 包结构无效"));
       const models={};
       for(const model of [2,5]) {
         const routes=manifest.models[model];
-        if(Object.keys(routes||{}).sort().join()!=="legacy,repaired,resume18") throw Error(OMI18n.t("整合 OTA 阶段不完整"));
+        if(Object.keys(routes||{}).sort().join()!=="legacy,repaired,resume18,resume20") throw Error(OMI18n.t("整合 OTA 阶段不完整"));
         models[model]={};
-        for(const family of ["legacy","repaired","resume18"]) {
+        for(const family of ["legacy","repaired","resume18","resume20"]) {
           const rows=routes[family];
           if(!Array.isArray(rows)||rows.length!==2) throw Error(OMI18n.t("整合 OTA 阶段不完整"));
           const stages=[];
           for(let i=0;i<2;i++) {
-            const revision=i?21:family==="resume18"?19:20,name=i||family==="resume18"?`model${model}-v${revision}.zip`:`model${model}-${family}-v20.zip`,row=rows[i];
+            const revision=i?24:family==="resume18"?19:family==="resume20"?21:23,name=i||family.startsWith("resume")?`model${model}-v${revision}.zip`:`model${model}-${family}-v23.zip`,row=rows[i];
             if(row?.file!==name || row.revision!==revision || !files.has(name)) throw Error(OMI18n.t("整合 OTA 阶段不完整"));
             const pack=await single(await OMArchive.unzip(files.get(name)));
             if(pack.model!==model || pack.revision!==revision || pack.sha256!==row.sha256 ||
                pack.sha256!==TWO_STAGE_IMAGES[model]?.[i?"target":family] ||
-               (!i && (family==="resume18"?!pack.lifecycle:pack.lifecycle || pack.repaired!==(family==="repaired"))) || (i && !pack.lifecycle))
+               (!i && (family.startsWith("resume")?!pack.lifecycle:pack.lifecycle || pack.repaired!==(family==="repaired"))) || (i && !pack.lifecycle))
               throw Error(OMI18n.t("整合 OTA 屏型、版本或过渡配对不符"));
             stages.push(pack);
           }
           models[model][family]=stages;
         }
       }
-      return {bundle:true,bundleVersion:3,models,revision:21,version:"20 → 21 · v18: 19 → 21",size:source.length,sha256:hex(await sha(source)),independent:true,source};
+      return {bundle:true,bundleVersion:4,models,revision:24,version:"23 → 24 · v18: 19 → 24 · v20: 21 → 24",size:source.length,sha256:hex(await sha(source)),independent:true,source};
     }
     if(manifest.version!==1 || manifest.target_revision!==17 || files.size!==8 || !files.has("LICENSES.txt") || Object.keys(manifest.models||{}).sort().join()!=="2,5")
       throw Error(OMI18n.t("整合 OTA 包结构无效"));
@@ -163,6 +163,8 @@ const OMOTA = (() => {
   function checkRevision(current, pack) {
     let message;
     if(current===18 && pack.revision!==19) message="v18 仅接受原配 v19；请使用新版整合包继续升级";
+    else if(current===20 && pack.revision!==21) message="v20 仅接受原配 v21；请使用新版整合包继续升级";
+    else if(current===23 && pack.revision!==24) message="v23 仅接受配套 v24；请使用新版整合包继续升级";
     else if(pack.lifecycle && current<18) message="本修复包需要过渡接收器；请使用新版两阶段整合包，没有发送升级命令";
     else if(pack.repaired && current<15) message="请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令";
     else if(current===15 && pack.revision!==16) message="v15 过渡固件只接受配套的 v16 修复包";
@@ -173,7 +175,8 @@ const OMOTA = (() => {
     if(revision===5 || (revision>=11 && revision<=14)) return "legacy";
     if(revision===16 || revision===17) return "repaired";
     if(revision===18) return "resume18";
-    return revision===19 || revision===20 ? "target" : null;
+    if(revision===20) return "resume20";
+    return [19,21,23].includes(revision) ? "target" : null;
   }
   async function transfer(client, input, consent, progress = () => {}) {
     target(client); const device = client.device;
@@ -304,7 +307,7 @@ const OMOTA = (() => {
     if(consent?.deviceId!==device.id || consent.eraseImages!==true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
     const bundle=await parse(input.source);
     if(!bundle.bundle) throw Error(OMI18n.t("整合 OTA 包结构无效"));
-    if(bundle.bundleVersion!==3) { const error=Error(OMI18n.t("旧整合包已停用，请载入内置 v21 两阶段升级包"));error.code="OTA_PRECHECK";throw error; }
+    if(bundle.bundleVersion!==4) { const error=Error(OMI18n.t("旧整合包已停用，请载入内置 v24 两阶段升级包"));error.code="OTA_PRECHECK";throw error; }
     const current=await readRevision(client);
     if(current>=bundle.revision) {
       const error=Error(OMI18n.t("设备已达到整合包版本，无需升级"));error.code="OTA_PRECHECK";throw error;
@@ -318,7 +321,7 @@ const OMOTA = (() => {
         const error=Error(OMI18n.t("过渡接收器未确认静默状态，已停止；不会自动重发"));error.code="DISPLAY_NOT_READY";throw error;
       }
     };
-    if(current===18 || current===20) await quietReceiver();
+    if([18,20,23].includes(current)) await quietReceiver();
     let result;
     for(let i=0;i<stages.length;i++) {
       if(client.device!==device || client.config.model!==model) throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
@@ -328,7 +331,7 @@ const OMOTA = (() => {
       try {
         const verified=await transfer(client,pack,consent,stageProgress);
         result=await confirmBoot(client,verified,stageProgress);
-        if(pack.revision===20) await quietReceiver();
+        if(pack.revision===23) await quietReceiver();
       } catch(error) { client.log(label+" · "+OMI18n.t("阶段未确认，已停止；不会自动重发"));throw error; }
     }
     return result;

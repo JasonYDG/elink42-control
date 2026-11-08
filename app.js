@@ -4,6 +4,8 @@
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
   let otaPackage = null;
+  let libraryKind="full",selectedWallpaper=null;
+  const sectionViews={calendar:"calendar",image:"image",gallery:"gallery",more:"settings"};
   let draft = F.defaultTemplates()[0], editingTodo = null, courseDay = 1, store;
   const lines = [], drawable = new Set(["image", "todo", "template", "course", "weather"]);
   const supported = window.isSecureContext && !!navigator.bluetooth;
@@ -33,9 +35,9 @@
     for (const [value, text] of rows) { const option = document.createElement("option"); option.value = String(value); option.textContent = text; control.append(option); }
     if (rows.some(row => String(row[0]) === before)) control.value = before;
   }
-  function button(text, callback) {
+  function button(text, callback, complete) {
     const b = document.createElement("button"); b.textContent = text;
-    b.addEventListener("click", () => action(callback)); return b;
+    b.addEventListener("click", () => action(callback,complete)); return b;
   }
   function row(container, text, buttons = []) {
     const div = document.createElement("div"), label = document.createElement("span"); div.className = "list-row";
@@ -43,6 +45,8 @@
   }
   function update() {
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
+    $("transfer-status").classList.toggle("busy",busy);
+    if(!client.ready)client.offlineRotation=null;
     $("connect").disabled = !supported || busy || client.ready;
     $("reconnect").disabled = !supported || busy || client.ready || !navigator.bluetooth?.getDevices || !$("saved-device").value;
     $("disconnect").disabled = !client.device?.gatt.connected || client.otaActive;
@@ -52,14 +56,14 @@
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
     const revision=client.firmwareRevision;
-    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===3 ? !OMOTA.bundleRoute(revision) :
+    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===4 ? !OMOTA.bundleRoute(revision) :
       !otaPackage.bundle && ((otaPackage.lifecycle && revision<18) || (otaPackage.repaired && revision<15)));
     const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
     $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (otaPackage.bundle && client.firmwareRevision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
     if(otaReady && otaPackage?.bundle)
-      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：v5、v11–v14 或 v16–v17 经静默 v20 到 v21；旧 v18 经原配 v19 到 v21；v19、v20 只需一次。最终重启显示设备信息，日历需手动启用。");
+      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：旧版经静默 v23 到 v24；v18 经原配 v19、v20 经原配 v21；v19、v21、v23 直升 v24。最终重启显示设备信息，日历需手动启用。");
     if(otaReady && needsTransition && !otaPackage.bundle)
       $("ota-capability").textContent=OMI18n.t(otaPackage.lifecycle?"本修复包需要 v18 接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
     if(otaReady && revision===15)
@@ -77,6 +81,18 @@
     const canSend = ready && client.canPublish && !!frame && !loading && drawable.has(tab);
     $("publish").disabled = $("store-frame").disabled = !canSend;
     $("download").disabled = !frame || loading || !drawable.has(tab);
+    $("image-file").disabled=busy || loading;
+    for(const id of ["image-target","image-fit","photo-source","photo-slot","photo-fit","gallery-source","save-auto","auto-frequency"])$(id).disabled=busy || loading;
+    for(const node of $("library-grid").children)node.disabled=busy || loading;
+    $("save-slot").disabled=$("save-auto").checked || busy;
+    const imageTab=tab==="image",prepared=imageTab && $("image-target").value==="calendar";
+    $("publish").textContent=OMI18n.t(imageTab?(prepared?"保存并启用图片日历":"保存并显示图片"):"发送到屏幕");
+    $("store-frame").textContent=OMI18n.t(prepared?"保存并继续设置日历":"仅保存到设备");
+    $("quick-change").disabled=!ready || !client.canPublish || !OMRotation.presentation(client);
+    const rotation=client.offlineRotation;
+    $("auto-rotation-panel").hidden=!["calendar","photo-calendar","image","gallery"].includes(tab);
+    $("auto-apply").disabled=!ready || !OMRotation.supported(client) || (!rotation?.active && !OMRotation.presentation(client));
+    $("auto-state").textContent=OMI18n.t(!client.ready?"连接设备后可读取自动换图状态。":!OMRotation.supported(client)?"离线日、周、月换图需要 v24 固件，请先升级。":!rotation?"自动换图状态尚未核实，请重新读取或连接。":rotation.active?"已在设备启用，关闭网页后仍会执行。当前存储源的全部有效图片依次参与轮播。":"尚未启用。启用图片日历或换图时，保存两张以上图片会默认每天更换。");
     const slot = gallery?.external === external() && gallery.slots.find(s => s.slot === Number($("gallery-slot").value));
     for (const id of ["slot-display", "slot-delete", "slot-background", "slot-remark-save"]) $(id).disabled = !ready || !slot?.valid;
     $("rotation-save").disabled = !ready || !gallery || gallery.external !== external();
@@ -94,9 +110,9 @@
       OMI18n.t("SSD1619 原驱动有局刷；JD79668 原驱动没有局刷接口。");
     $("nfc-write").disabled = !ready || !("NDEFReader" in window);
     $("nfc-read").disabled = !("NDEFReader" in window);
-    if(revision===18 || revision===20) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
+    if([18,20,23].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","course-send-week","publish","store-frame","slot-display","slot-delete",
-      "slot-background","slot-remark-save","rotation-save","scheduler-start"] ) $(id).disabled=true;
+      "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -151,18 +167,25 @@
   function jsonDownload(name, data) { download(name, new Blob([JSON.stringify(data, null, 2)], {type: "application/json"})); }
   async function jsonFile(file) { if (!file || file.size > 4500000) throw Error(OMI18n.t("JSON 文件最大 4.5 MB")); return JSON.parse(await file.text()); }
   const tabs = [...document.querySelectorAll("[data-tab]")];
+  const sectionOf=name=>["calendar","photo-calendar"].includes(name)?"calendar":["image","gallery"].includes(name)?name:"more";
   function selectTab(button) {
     tab = button.dataset.tab;
+    const section=sectionOf(tab);sectionViews[section]=tab;
     for (const b of tabs) { const on = b === button; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; $(b.getAttribute("aria-controls")).hidden = !on; }
+    for(const b of tabs)b.hidden=sectionOf(b.dataset.tab)!==section;
+    $("feature-tabs").hidden=section==="image" || section==="gallery";
+    for(const name of Object.keys(sectionViews))$("nav-"+name).setAttribute("aria-pressed",String(name===section));
     client.armIdleDisconnect();
     preview();
   }
-  tabs.forEach((b, i) => {
+  for(const name of Object.keys(sectionViews))bind("nav-"+name,()=>selectTab($("tab-"+sectionViews[name])),"");
+  tabs.forEach(b => {
     b.addEventListener("click", () => selectTab(b));
     b.addEventListener("keydown", event => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-      event.preventDefault(); const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (i + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
-      tabs[next].focus(); selectTab(tabs[next]);
+      event.preventDefault();const shown=tabs.filter(item=>!item.hidden),i=shown.indexOf(b);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? shown.length - 1 : (i + (event.key === "ArrowRight" ? 1 : -1) + shown.length) % shown.length;
+      shown[next].focus(); selectTab(shown[next]);
     });
   });
   function restoreDevicePresentation() {
@@ -185,6 +208,7 @@
     if (client.board.name === OMProtocol.OTA_MARKER) {
       try { await client.operation(() => OMOTA.readRevision(client)); }
       catch (error) { log(error.message); throw Error(OMI18n.t("无法核对固件版本，请重新连接后重试；没有发送升级命令。")); }
+      if(OMRotation.supported(client)){await OMRotation.read(client);if(client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
       if (client.firmwareRevision < OMFirmware.revision && window.confirm(
         OMI18n.msg`当前固件 v${client.firmwareRevision}，网页内置升级包 v${OMFirmware.revision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
         selectTab($("tab-ota")); await loadBundledFirmware();
@@ -200,13 +224,13 @@
   bind("forget-device", () => change(data => { data.devices = data.devices.filter(d => d.id !== $("saved-device").value); }), OMI18n.t("已取消本地记录。系统蓝牙权限可在浏览器站点设置中移除。"));
   $("saved-device").addEventListener("change", update);
   bind("disconnect", () => { client.disconnect(); gallery = null; }, OMI18n.t("已断开，已提交的刷新可能仍在继续。"));
-  const startCalendar=(photo=false,date=new Date())=>client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value);
+  const startCalendar=(photo=false,date=new Date())=>{client.offlineRotation=null;return client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value);};
   bind("native-calendar", () => startCalendar());
   bind("native-clock", () => client.mode(2, progress, new Date(), $("clock-full").checked));
   $("clock-full").addEventListener("change", update);
   bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,"zh",!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
   bind("calendar-style", () => startCalendar());
-  bind("photo-calendar-start",()=>startCalendar(true));
+  bind("photo-calendar-start",()=>locked(async()=>{await startCalendar(true);await defaultRotation(Number($("photo-slot").value),$("photo-source").value==="1",true);}));
   function syncCalendar(fromPhoto=false,persist=true){
     if(fromPhoto){$("calendar-layout").value=$("photo-country").value;$("calendar-language").value=$("photo-language").value;}
     else {$("photo-country").value=$("calendar-layout").value;$("photo-language").value=$("calendar-language").value;}
@@ -241,9 +265,9 @@
     uiBusy = true; update(); $("ota-package").textContent = OMI18n.t("正在校验 ZIP、签名、固件哈希及保护区…");
     try {
       otaPackage = await OMOTA.parse(await file.arrayBuffer());
-      if(otaPackage.bundle && otaPackage.bundleVersion!==3) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v21 两阶段升级包"));
+      if(otaPackage.bundle && otaPackage.bundleVersion!==4) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v24 两阶段升级包"));
       $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
-      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v21。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
+      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v24。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
     } catch (error) { otaPackage=null;$("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
@@ -271,10 +295,10 @@
     const consent = {deviceId: client.device.id, eraseImages: $("ota-consent").checked};
     if (!consent.eraseImages) throw Error(OMI18n.t("请完成图库清空确认"));
     const text = OMI18n.msg`目标：${client.device.name || client.device.id}\n固件 SHA-256：${otaPackage.sha256}\n升级会清空设备全部图片，期间不能断电或退出。` +
-      OMI18n.t(otaPackage.bundle?"\n最多两次刷写：静默 v20 → v21（旧 v18：v19 → v21）。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
+      OMI18n.t(otaPackage.bundle?"\n最多两次刷写：静默 v23 → v24（旧 v18 经 v19，旧 v20 经 v21）。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     await client.ota(otaPackage, consent, progress);
-    if(otaPackage.revision===15 || otaPackage.revision===18 || otaPackage.revision===20) {
+    if(otaPackage.revision===15 || otaPackage.revision===18 || [20,23].includes(otaPackage.revision)) {
       const message=OMI18n.t(otaPackage.revision!==15?"过渡接收器已确认；请载入内置整合包继续升级。":"v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
       gallery=null;otaPackage=null;$("ota-consent").checked=false;
       $("ota-service").textContent=message;result(message);selectTab($("tab-ota"));update();return;
@@ -285,11 +309,54 @@
   window.addEventListener("beforeunload", event => {
     if (!client.otaActive) return; event.preventDefault(); event.returnValue = "";
   });
-  bind("publish", () => client.publish(snapshot(), progress));
-  bind("store-frame", async () => {const prepared=tab==="image" && $("image-target").value==="calendar";await client.store(snapshot(), Number($("save-slot").value), external(), progress);if(prepared)$("photo-fit").value="prepared";});
+  async function locked(callback){
+    if(uiBusy || client.busy || schedulerRunning)throw Error(OMI18n.t("设备正在操作，请稍后重试"));
+    uiBusy=true;update();try{return await callback();}finally{uiBusy=false;update();}
+  }
+  async function defaultRotation(slot,source,photo){
+    client.offlineRotation=null;
+    if(!OMRotation.supported(client))return;
+    const state=gallery?.external===source?gallery:await client.gallery(source);
+    if(state.slots.filter(s=>s.valid).length<2){await OMRotation.read(client);return;}
+    const frequency=Number($("auto-frequency").value);
+    await OMRotation.configure(client,{frequency,slot,source:Number(source),photo});
+  }
+  async function rememberPicture(slot,source){
+    await client.operation(async()=>{
+      await client.write(Uint8Array.of(0x56,slot,Number(source)));await client.readCalendar();
+      if(client.config.photoSlot!==slot || client.config.photoSource!==Number(source))throw Error(OMI18n.t("显示图片位置读回不符"));
+    });
+  }
+  async function savePicture(show=false,knownState=null){
+    const pixels=snapshot(),prepared=tab==="image" && $("image-target").value==="calendar",source=external(),device=client.device;
+    const country=Number($("calendar-layout").value),fit=prepared?"prepared":$("photo-fit").value;
+    const state=knownState || await client.gallery(source);
+    if(state.external!==source)throw Error(OMI18n.t("存储源已切换，请重新读取。"));
+    if(client.device!==device || !device.gatt.connected)throw Error(OMI18n.t("目标设备已变化，未保存图片"));
+    let slot=Number($("save-slot").value);
+    if($("save-auto").checked){
+      const used=state.slots.filter(s=>s.valid).map(s=>s.slot),start=used.length?Math.max(...used)+1:0;
+      slot=Array.from({length:state.count},(_,i)=>(start+i)%state.count).find(i=>!state.slots.find(s=>s.slot===i)?.valid);
+      if(slot===undefined)throw Error(OMI18n.t("设备图片已满，请到设备图片页面手动删除不需要的图片；本次没有覆盖或删除。"));
+    }
+    const saved=await client.store(pixels,slot,source,progress);
+    gallery={...state,slots:state.slots.map(s=>s.slot===slot?saved:s)};renderGallery();
+    $("gallery-slot").value=String(slot);$("photo-slot").value=String(slot);$("save-slot").value=String(slot);
+    if(prepared)$("photo-fit").value="prepared";
+    if(!show){if(prepared)selectTab($("tab-photo-calendar"));result(OMI18n.t("图片已保存到位置 ")+slot);return;}
+    try{
+      if(prepared)await client.internationalCalendar(country,"zh",true,slot,source,progress,new Date(),fit);
+      else {await client.slotAction("display",slot,source,progress);await rememberPicture(slot,source);}
+      await defaultRotation(slot,source,prepared);
+      result(OMI18n.t("图片已保存并提交显示，位置 ")+slot);
+    }catch(error){throw Error(OMI18n.t("图片已保存到位置 ")+slot+OMI18n.t("；显示或自动换图未确认，请勿重复保存。 ")+error.message);}
+  }
+  bind("publish",()=>locked(()=>tab==="image"?savePicture(true):client.publish(snapshot(),progress)),"");
+  bind("store-frame",()=>locked(()=>savePicture()),"");
+  $("save-auto").addEventListener("change",update);
   bind("download", () => { snapshot(); const output=newCanvas();if(tab==="image" && $("image-target").value==="calendar")output.width=256;output.getContext("2d").drawImage($("preview"),0,0);return new Promise((resolve, reject) => output.toBlob(blob => { if (!blob) { reject(Error(OMI18n.t("无法导出画面"))); return; } download(`om6626-${tab}-${output.width}x300.png`, blob); resolve(); })); }, OMI18n.t("已导出 PNG。"));
-  $("image-file").addEventListener("change", event => action(async () => {
-    const file = event.target.files[0], token = ++imageToken; if (!file) return;
+  async function loadImage(file,target){
+    const token = ++imageToken; if (!file) return;
     if (file.size > 15 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp", "image/bmp"].includes(file.type)) throw Error(OMI18n.t("请选择 15 MB 内的 PNG/JPEG/WebP/BMP"));
     loading = true; frame = null; update();
     try {
@@ -298,15 +365,53 @@
       if (image.width * image.height > 40000000) { image.close(); throw Error(OMI18n.t("图片超过 4000 万像素")); }
       bitmap?.close(); bitmap = image; $("image-name").textContent = file.name;
       for(const [id,value] of [["image-angle","0"],["image-zoom","1"],["image-x","0"],["image-y","0"]])$(id).value=value;
-      const calendar=Math.abs(image.width/image.height-256/300)<0.002;
+      const calendar=target?target==="calendar":Math.abs(image.width/image.height-256/300)<0.002;
       $("image-target").value=calendar?"calendar":"full";
-      if(calendar){$("photo-fit").value="prepared";$("image-fit").value="cover";$("rotate").checked=false;}
+      $("image-fit").value="cover";$("rotate").checked=false;
       store.change(d=>{d.settings.imageTarget=$("image-target").value;});
     } finally { if (token === imageToken) { loading = false; await preview(); } }
-  }, OMI18n.t("图片已载入，可调整裁切、旋转和抖动。")));
+  }
+  $("image-file").addEventListener("change",event=>action(async()=>{selectedWallpaper=null;await loadImage(event.target.files[0]);renderLibrary();},OMI18n.t("图片已载入，可调整裁切、旋转和抖动。")));
+  function wallpaperLabel(item){return item.month?OMI18n.t("月份 ")+item.month+" · "+OMI18n.label(item.terms):item.code+(item.reference?" · "+OMI18n.t("参考图"):"");}
+  function renderLibrary(){
+    $("library-grid").replaceChildren();
+    for(const item of OMWallpapers.filter(p=>p.kind===libraryKind)){
+      const node=button("",()=>chooseWallpaper(item),OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。"));node.className="wallpaper-card";node.dataset.wallpaper=item.id;
+      node.setAttribute("aria-pressed",String(item.id===selectedWallpaper));
+      const img=document.createElement("img");img.src=item.thumbnail;img.alt="";img.loading="lazy";img.decoding="async";img.width=item.kind==="calendar"?128:160;img.height=item.kind==="calendar"?150:120;
+      const label=document.createElement("span");label.textContent=wallpaperLabel(item);node.append(img,label);$("library-grid").append(node);
+    }
+    for(const kind of ["full","calendar"])$("library-"+kind).setAttribute("aria-pressed",String(kind===libraryKind));
+    $("library-state").textContent=OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。");update();
+  }
+  async function chooseWallpaper(item){
+    loading=true;update();
+    try{
+      const response=await fetch(item.image);if(!response.ok)throw Error(OMI18n.t("图片载入失败，请重试"));
+      const blob=await response.blob();Object.defineProperty(blob,"name",{value:wallpaperLabel(item)+".png"});
+      await loadImage(blob,item.kind);selectedWallpaper=item.id;$("wallpaper-library").open=false;renderLibrary();
+    }finally{loading=false;update();}
+  }
+  for(const kind of ["full","calendar"])bind("library-"+kind,()=>{libraryKind=kind;renderLibrary();},"");
+  bind("photo-choose-new",()=>{selectTab($("tab-image"));libraryKind="calendar";$("wallpaper-library").open=true;renderLibrary();},"");
+  bind("quick-change",()=>locked(async()=>{
+    const purpose=OMRotation.presentation(client);if(!purpose)throw Error(OMI18n.t("请先启用图片日历或全屏图片"));
+    const source=!!(client.offlineRotation?.active?client.offlineRotation.source:client.config.photoSource);
+    const state=await client.gallery(source);
+    if(!state.slots.some(s=>!s.valid))throw Error(OMI18n.t("设备图片已满，请到设备图片页面手动删除不需要的图片；本次没有覆盖或删除。"));
+    const candidates=OMWallpapers.filter(p=>p.kind===purpose && !p.reference),index=candidates.findIndex(p=>p.id===selectedWallpaper);
+    const item=candidates[(index+1)%candidates.length];
+    $("gallery-source").value=String(Number(source));$("save-auto").checked=true;selectTab($("tab-image"));await chooseWallpaper(item);await savePicture(true,state);
+  }),"");
+  bind("auto-apply",()=>locked(async()=>{
+    const current=await OMRotation.read(client),photo=OMRotation.presentation(client)==="calendar";
+    const source=current.active?current.source:Number(client.config.photoSource);
+    const slot=current.active?current.slot:client.config.photoSlot;
+    await OMRotation.configure(client,{frequency:Number($("auto-frequency").value),slot,source,photo});
+  }));
   for (const id of ["image-target", "image-fit", "image-angle", "image-zoom", "image-x", "image-y", "rotate", "preview-model", "todo-title", "todo-mode", "todo-selected", "template-title", "template-content"])
     $(id).addEventListener("input", preview);
-  $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});if($("image-target").value==="calendar")$("photo-fit").value="prepared";preview();},""));
+  $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
   function refreshLists() {
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
     options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
@@ -409,15 +514,18 @@
     const value = await response.json(); saying = String(value.text || "").slice(0, 500); $("saying-text").textContent = saying; await preview();
   }, OMI18n.t("一言已更新。"));
   async function readGallery() {
-    const state = await client.gallery(external()); gallery = state;
-    $("gallery-state").textContent = OMI18n.msg`${state.external ? OMI18n.t("外置") : OMI18n.t("内部")} · ${state.count} 槽 · 每槽 ${state.slotBytes.toLocaleString()} B · 已用 ${state.slots.filter(s => s.valid).length}`;
-    options("gallery-slot", state.slots.map(s => [s.slot, `${s.slot} · ${s.valid ? (s.remark || OMI18n.t("已有图片")) : OMI18n.t("空槽")}`]));
+    gallery = await client.gallery(external());renderGallery();
+  }
+  function renderGallery(){
+    const state=gallery,valid=state.slots.filter(s=>s.valid);
+    $("gallery-state").textContent = OMI18n.t(state.external?"外置":"内部")+" · "+OMI18n.t("已存图片 ")+valid.length+" / "+state.count;
+    options("gallery-slot", valid.map(s => [s.slot, `${s.slot} · ${s.remark || OMI18n.t("已有图片")}`]));
     $("photo-source").value=String(state.external?1:0);
     options("photo-slot",state.slots.filter(s=>s.valid).map(s=>[s.slot,`${s.slot} · ${s.remark||OMI18n.t("已有图片")}`]));
     $("photo-state").textContent=OMI18n.t("Slot pixels are read by the device; this browser preview shows the date layout only.");
     $("gallery-list").replaceChildren();
-    for (const s of state.slots) row("gallery-list", `${s.slot} · ${s.valid ? s.size + " B · CRC " + s.crc.toString(16).padStart(4, "0") + " · " + (s.remark || "") : OMI18n.t("空槽")}`);
-    $("rotation-mode").value = String(state.mode); $("rotation-interval").value = String(state.interval || 60);
+    for (const s of valid) row("gallery-list", OMI18n.t("位置 ")+s.slot+" · "+(s.remark||OMI18n.t("已有图片")),[button(OMI18n.t("选择"),()=>{$("gallery-slot").value=String(s.slot);slotSelected();})]);
+    $("rotation-mode").value = String(state.mode<=2?state.mode:0); $("rotation-interval").value = String(state.interval || 60);
     $("rotation-days").value = [...state.days.slice(1), state.days[0]].join(","); slotSelected(); update();
   }
   function slotSelected() { $("slot-remark").value = gallery?.slots.find(s => s.slot === Number($("gallery-slot").value))?.remark || ""; update(); }
@@ -431,11 +539,17 @@
     const slot = Number($("gallery-slot").value);
     if(name==="background"){
       $("photo-source").value=$("gallery-source").value;$("photo-slot").value=String(slot);
-      selectTab($("tab-photo-calendar"));return startCalendar(true);
+      selectTab($("tab-photo-calendar"));return locked(async()=>{await startCalendar(true);await defaultRotation(slot,external(),true);});
     }
     if (name === "delete" && !window.confirm(OMI18n.msg`确定删除${external() ? OMI18n.t("外置") : OMI18n.t("内部")}槽 ${slot} 的图片和备注？原设备没有图片导出接口，此操作无法从网页撤销。`)) return;
     await client.slotAction(name, slot, external(), progress, $("slot-remark").value);
     if (["delete", "remark"].includes(name)) await readGallery();
+    if(name==="display"){await rememberPicture(slot,external());await defaultRotation(slot,external(),false);}
+    if(name==="delete" && OMRotation.supported(client)){
+      const policy=await OMRotation.read(client);
+      if(policy.active && policy.source===Number(external()) && gallery.slots.filter(s=>s.valid).length<2)
+        await OMRotation.configure(client,{frequency:0,slot,source:Number(external()),photo:policy.photo});
+    }
   });
   bind("rotation-save", () => client.rotate(Number($("rotation-mode").value), Number($("rotation-interval").value), daysInput($("rotation-days").value), external(), progress));
   function showHolidays(value) { $("holiday-year").value = String(value.year); $("holiday-text").value = value.entries.map(e => `${String(e.month).padStart(2, "0")}-${String(e.day).padStart(2, "0")} ${e.off ? "off" : "work"}`).join("\n"); }
@@ -534,7 +648,7 @@
   // Canvas dragging changes only editor coordinates; transmission uses an immutable frame snapshot.
   let drag;
   $("preview").addEventListener("pointerdown", e => {
-    if (!["image", "template"].includes(tab)) return;
+    if (e.pointerType==="touch" || !["image", "template"].includes(tab)) return;
     drag = {x: e.clientX, y: e.clientY, left: tab === "image" ? Number($("image-x").value) : draft.elements[Number($("element-list").value)]?.x,
       top: tab === "image" ? Number($("image-y").value) : draft.elements[Number($("element-list").value)]?.y};
     $("preview").setPointerCapture(e.pointerId);
@@ -547,13 +661,13 @@
     preview();
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) $("preview").addEventListener(event, () => { drag = null; });
-  $("compatibility").textContent = supported ? OMI18n.t("浏览器支持蓝牙，连接由你点击发起。") : OMI18n.t("请使用支持 Web Bluetooth 的桌面 Edge / Chrome，并从本地启动器打开。");
+  $("compatibility").textContent = supported ? OMI18n.t("浏览器支持蓝牙，连接由你点击发起。") : OMI18n.t("此浏览器不支持网页蓝牙，仍可选图和预览。连接设备请使用支持 Web Bluetooth 的浏览器。");
   applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   OMI18n.onChange=()=>{
     for(const id of ["compatibility","nfc-state","result","photo-state","scheduler-state","ota-package","ota-kind","ota-service","gallery-state"])$(id).textContent=OMI18n.t($(id).textContent);
-    update();refreshLists();calendarInfo();preview();
+    update();refreshLists();calendarInfo();renderLibrary();preview();
   };
   $("ui-language").addEventListener("change",()=>OMI18n.setLanguage($("ui-language").value));
   OMI18n.apply();syncCalendar(false,false);
-  $("course-text").value = store.data.courses[courseDay]; preview();
+  $("course-text").value = store.data.courses[courseDay];renderLibrary();selectTab($("tab-calendar"));
 })();
