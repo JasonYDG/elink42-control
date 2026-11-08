@@ -775,6 +775,19 @@ Object.assign(OMTranslations, {
   "电压采样超时，已停止刷新，蓝牙连接已保留":"Voltage sampling timed out. Refresh stopped; Bluetooth remains connected.",
   "屏幕初始化失败，已停止刷新，蓝牙连接已保留":"Display initialization failed. Refresh stopped; Bluetooth remains connected."
 });
+Object.assign(OMTranslations, {
+  "旧整合包已停用，请载入内置 v21 两阶段升级包":"The old bundle is retired. Load the built-in v21 update.",
+  "载入内置 v21 两阶段升级包":"Load bundled v21 update",
+  "一个文件，最多两次刷写：v5、v11–v14 或 v16–v17 经静默 v20 到 v21；旧 v18 经原配 v19 到 v21；v19、v20 只需一次。最终重启显示设备信息，日历需手动启用。":"One file, at most two writes: v5, v11–v14 and v16–v17 use quiet v20 then v21; field v18 uses its original v19 then v21. v19 and v20 need one write. Reboot shows device information; enable the calendar manually.",
+  "整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v21。":"Bundle signatures, models and pairings verified. Confirm once for at most two writes to v21.",
+  "\n最多两次刷写：静默 v20 → v21（旧 v18：v19 → v21）。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\nAt most two writes: quiet v20 → v21 (field v18: v19 → v21). Device time is temporarily reset. Final reboot shows name, MAC and revision. Each reboot is verified; failure stops the update. Start?",
+  "过渡接收器已确认；请载入内置整合包继续升级。":"Transition receiver verified. Load the built-in bundle to continue.",
+  "过渡接收器只用于继续升级，请留在 OTA 页面":"The transition receiver is only for continuing the update. Stay on the OTA tab.",
+  "过渡接收器未确认静默状态，已停止；不会自动重发":"The transition receiver did not confirm quiet mode. Stopped; writes are not retried automatically.",
+  "本修复包需要过渡接收器；请使用新版两阶段整合包，没有发送升级命令":"This repair requires a transition receiver. Use the new bundle; no update command was sent.",
+  "v18 仅接受原配 v19；请使用新版整合包继续升级":"Field v18 accepts only its original v19. Use the new bundle to continue.",
+  "日历比例图片自动识别为左图。保存至空槽后选择专用日历图片，填满左侧 256 × 300；完整全屏图片模式会缩小并留白。":"Calendar-aspect images are detected automatically. Save to an empty slot and select Prepared calendar image to fill the left 256 × 300 area. Full-screen fitting shrinks the image with margins."
+});
 const OMI18n = (() => {
   const characters = Object.fromEntries("万萬与與专專两兩个個临臨为為亚亞产產仅僅从從价價会會传傳体體侧側储儲儿兒关關内內册冊写寫况況准準减減击擊划劃删刪别別办辦务務动動劳勞区區协協单單卫衛历歷压壓双雙发發变變台臺号號启啟响響唤喚围圍国國图圖坏壞处處备備复復学學实實宪憲宽寬对對导導将將尔爾层層属屬师師带帶庆慶库庫应應开開强強当當录錄径徑态態惊驚户戶执執护護报報择擇损損换換据據数數斋齋断斷无無旧舊时時显顯暂暫机機权權条條来來构構标標样樣检檢横橫气氣汉漢没沒浅淺测測浏瀏温溫湾灣满滿灯燈点點状狀独獨现現电電画畫盖蓋码碼确確离離种種称稱稣穌稳穩笺箋签簽简簡类類紧緊红紅约約级級纪紀纵縱线線细細终終绑綁结結给給络絡绝絕统統继繼绪緒续續编編缩縮网網联聯脑腦脚腳节節获獲蓝藍蛰蟄补補装裝观觀览覽计計认認议議记記许許设設证證识識诊診试試话話诞誕询詢详詳语語说說请請读讀课課调調败敗资資转轉轮輪载載较較辑輯输輸边邊迁遷过過运運这這进進连連适適选選释釋钟鐘钥鑰销銷锁鎖错錯镜鏡长長闭閉闲閒间間阈閾队隊际際随隨难難静靜页頁项項顺順须須预預频頻题題颜顏马馬驱驅验驗黄黃".match(/../gu).map(pair=>[...pair]));
   const traditional = text => text.replace(/[\u3400-\u9fff]/gu, char=>characters[char] ?? char);

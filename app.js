@@ -52,14 +52,14 @@
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
     $("ota-consent").disabled = busy;
     const revision=client.firmwareRevision;
-    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===2 ? !OMOTA.bundleRoute(revision) :
+    const needsTransition=!!otaPackage && (otaPackage.bundleVersion===3 ? !OMOTA.bundleRoute(revision) :
       !otaPackage.bundle && ((otaPackage.lifecycle && revision<18) || (otaPackage.repaired && revision<15)));
     const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
     $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (otaPackage.bundle && client.firmwareRevision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
     if(otaReady && otaPackage?.bundle)
-      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：v5、v11–v14 或 v16–v17 经静默 v18 直接到 v19；v18 只需一次。最终重启显示设备信息，日历需手动启用。");
+      $("ota-capability").textContent=OMI18n.t("一个文件，最多两次刷写：v5、v11–v14 或 v16–v17 经静默 v20 到 v21；旧 v18 经原配 v19 到 v21；v19、v20 只需一次。最终重启显示设备信息，日历需手动启用。");
     if(otaReady && needsTransition && !otaPackage.bundle)
       $("ota-capability").textContent=OMI18n.t(otaPackage.lifecycle?"本修复包需要 v18 接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
     if(otaReady && revision===15)
@@ -94,7 +94,7 @@
       OMI18n.t("SSD1619 原驱动有局刷；JD79668 原驱动没有局刷接口。");
     $("nfc-write").disabled = !ready || !("NDEFReader" in window);
     $("nfc-read").disabled = !("NDEFReader" in window);
-    if(revision===18) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
+    if(revision===18 || revision===20) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","course-send-week","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start"] ) $(id).disabled=true;
   }
@@ -241,9 +241,9 @@
     uiBusy = true; update(); $("ota-package").textContent = OMI18n.t("正在校验 ZIP、签名、固件哈希及保护区…");
     try {
       otaPackage = await OMOTA.parse(await file.arrayBuffer());
-      if(otaPackage.bundle && otaPackage.bundleVersion!==2) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v19 两阶段升级包"));
+      if(otaPackage.bundle && otaPackage.bundleVersion!==3) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v21 两阶段升级包"));
       $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
-      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v19。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
+      $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v21。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
     } catch (error) { otaPackage=null;$("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
@@ -271,11 +271,11 @@
     const consent = {deviceId: client.device.id, eraseImages: $("ota-consent").checked};
     if (!consent.eraseImages) throw Error(OMI18n.t("请完成图库清空确认"));
     const text = OMI18n.msg`目标：${client.device.name || client.device.id}\n固件 SHA-256：${otaPackage.sha256}\n升级会清空设备全部图片，期间不能断电或退出。` +
-      OMI18n.t(otaPackage.bundle?"\n最多两次刷写：静默 v18 → v19。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
+      OMI18n.t(otaPackage.bundle?"\n最多两次刷写：静默 v20 → v21（旧 v18：v19 → v21）。会暂时清零设备时间；过渡期间保留原画面，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     await client.ota(otaPackage, consent, progress);
-    if(otaPackage.revision===15 || otaPackage.revision===18) {
-      const message=OMI18n.t(otaPackage.revision===18?"v18 静默接收器已确认；请载入内置整合包继续到 v19，仅剩一次刷写。":"v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
+    if(otaPackage.revision===15 || otaPackage.revision===18 || otaPackage.revision===20) {
+      const message=OMI18n.t(otaPackage.revision!==15?"过渡接收器已确认；请载入内置整合包继续升级。":"v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
       gallery=null;otaPackage=null;$("ota-consent").checked=false;
       $("ota-service").textContent=message;result(message);selectTab($("tab-ota"));update();return;
     }
@@ -286,7 +286,7 @@
     if (!client.otaActive) return; event.preventDefault(); event.returnValue = "";
   });
   bind("publish", () => client.publish(snapshot(), progress));
-  bind("store-frame", async () => {await client.store(snapshot(), Number($("save-slot").value), external(), progress);if(tab==="image" && $("image-target").value==="calendar")$("photo-fit").value="prepared";});
+  bind("store-frame", async () => {const prepared=tab==="image" && $("image-target").value==="calendar";await client.store(snapshot(), Number($("save-slot").value), external(), progress);if(prepared)$("photo-fit").value="prepared";});
   bind("download", () => { snapshot(); const output=newCanvas();if(tab==="image" && $("image-target").value==="calendar")output.width=256;output.getContext("2d").drawImage($("preview"),0,0);return new Promise((resolve, reject) => output.toBlob(blob => { if (!blob) { reject(Error(OMI18n.t("无法导出画面"))); return; } download(`om6626-${tab}-${output.width}x300.png`, blob); resolve(); })); }, OMI18n.t("已导出 PNG。"));
   $("image-file").addEventListener("change", event => action(async () => {
     const file = event.target.files[0], token = ++imageToken; if (!file) return;
@@ -297,11 +297,16 @@
       if (token !== imageToken) { image.close(); return; }
       if (image.width * image.height > 40000000) { image.close(); throw Error(OMI18n.t("图片超过 4000 万像素")); }
       bitmap?.close(); bitmap = image; $("image-name").textContent = file.name;
+      for(const [id,value] of [["image-angle","0"],["image-zoom","1"],["image-x","0"],["image-y","0"]])$(id).value=value;
+      const calendar=Math.abs(image.width/image.height-256/300)<0.002;
+      $("image-target").value=calendar?"calendar":"full";
+      if(calendar){$("photo-fit").value="prepared";$("image-fit").value="cover";$("rotate").checked=false;}
+      store.change(d=>{d.settings.imageTarget=$("image-target").value;});
     } finally { if (token === imageToken) { loading = false; await preview(); } }
   }, OMI18n.t("图片已载入，可调整裁切、旋转和抖动。")));
   for (const id of ["image-target", "image-fit", "image-angle", "image-zoom", "image-x", "image-y", "rotate", "preview-model", "todo-title", "todo-mode", "todo-selected", "template-title", "template-content"])
     $(id).addEventListener("input", preview);
-  $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
+  $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});if($("image-target").value==="calendar")$("photo-fit").value="prepared";preview();},""));
   function refreshLists() {
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
     options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
