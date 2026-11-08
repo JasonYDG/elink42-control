@@ -15,3 +15,12 @@ SDK/
 backup/
 runtime/
 *-signing.json
+
+# Only the explicitly released, signed OTA and application HEX downloads are public.
+!firmware/
+firmware/*
+!firmware/elink42-ota-v28.zip
+!firmware/elink42-tricolor-ssd1619-v28.hex
+!firmware/elink42-fourcolor-jd79668-v28.hex
+!firmware/README.md
+!firmware/LICENSES.txt

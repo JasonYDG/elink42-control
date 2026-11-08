@@ -48,7 +48,7 @@ test("v19 initializes through the acknowledged queue and never sends legacy comm
 });
 
 test("ADC timeout and initialization failure preserve the connection and stop the operation",async()=>{
- for(const reason of [4,5]){
+ for(const reason of [4,5,8]){
   const {client}=simulatedPeripheral();
   client.control.writeValueWithResponse=async bytes=>{
    const value=Uint8Array.of(0x51,bytes[0],bytes.at(-1),0xA8,reason,0);
@@ -372,7 +372,7 @@ test("storage rejects occupied or out-of-range slot before erase command, and CR
   }
   const r=galleryPeripheral();r.raw.badCrc=true;
   await assert.rejects(r.client.store({packed:new Uint8Array(30000)},0,false,()=>{}),/CRC/);
-  assert.ok(!r.packets.some(p=>p[0]===0x45||p[0]===0x05));assert.equal(r.client.ready,false);
+  assert.ok(!r.packets.some(p=>p[0]===0x45||p[0]===0x05));assert.equal(r.client.ready,true);assert.equal(r.client.device.gatt.connected,true);
 });
 test("small-MTU gallery fails safely, weekly mapping rejects empty slots and link failure omits commit",async()=>{
   const small=galleryPeripheral(false,20);

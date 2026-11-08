@@ -205,8 +205,8 @@ class OMClient {
       await this.write(Uint8Array.of(...bytes, sequence));
       this.log(OMI18n.msg`已提交命令 0x${bytes[0].toString(16)}，序号=${sequence}`);
       const reply = await done.promise;
-      if(reply[3]===0xA8 && reply.length===6 && reply[5]===0 && reply[4]>=1 && reply[4]<=5) {
-        const message=["","SPI 传输失败，已停止刷新，蓝牙连接已保留","刷新计时器未运行，已停止刷新，蓝牙连接已保留","屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留","电压采样超时，已停止刷新，蓝牙连接已保留","屏幕初始化失败，已停止刷新，蓝牙连接已保留"][reply[4]];
+      if(reply[3]===0xA8 && reply.length===6 && reply[5]===0 && ((reply[4]>=1 && reply[4]<=5) || reply[4]===8)) {
+        const message={1:"SPI 传输失败，已停止刷新，蓝牙连接已保留",2:"刷新计时器未运行，已停止刷新，蓝牙连接已保留",3:"屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留",4:"电压采样超时，已停止刷新，蓝牙连接已保留",5:"屏幕初始化失败，已停止刷新，蓝牙连接已保留",8:"Flash 就绪或校验失败，已停止保存，蓝牙连接已保留"}[reply[4]];
         const error=Error(OMI18n.t(message));error.code="DISPLAY_NOT_READY";throw error;
       }
       if (reply[3] & 4) {
@@ -424,8 +424,10 @@ class OMClient {
       }
       await this.write(Uint8Array.of(external ? 0x4E : 0x42));
       const row = await this.slotMetadata(slot, external);
-      if (!row.valid || row.width !== 400 || row.height !== 300 || row.size !== bytes.length || row.crc !== crc || row.color !== start[6])
-        throw Error(OMI18n.t("设备记录的图片长度、格式或 CRC 与发送内容不符；未提交显示"));
+      if (!row.valid || row.width !== 400 || row.height !== 300 || row.size !== bytes.length || row.crc !== crc || row.color !== start[6]) {
+        const error=Error(OMI18n.t("设备记录的图片长度、格式或 CRC 与发送内容不符；未提交显示"));
+        error.code="DISPLAY_NOT_READY";throw error;
+      }
       this.log(OMI18n.t("槽位 ") + slot + OMI18n.t(" 已记录 30,000 字节及匹配 CRC；Flash 实际内容和显示仍需实机确认"));
       return row;
     });
