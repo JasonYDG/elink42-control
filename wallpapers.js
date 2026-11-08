@@ -495,19 +495,6 @@ const OMWallpapers = [
     "original_sha256": "570c9a10bcd9be2f391d1ebbf32a67d8f9d202a3af07c8472b17931d77e8ea63"
   },
   {
-    "id": "full-39",
-    "kind": "full",
-    "code": "600480067559873860BFABB615791B66",
-    "month": null,
-    "terms": null,
-    "reference": true,
-    "thumbnail": "assets/wallpapers/thumbs/full-39.webp",
-    "image": "assets/wallpapers/display/full-39.png",
-    "width": 490,
-    "height": 340,
-    "original_sha256": "f2536f21c356d69d148735869b8814922e3a172bf10d5c56f8d0a1b5ff43ab1b"
-  },
-  {
     "id": "full-40",
     "kind": "full",
     "code": "AAA",

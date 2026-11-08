@@ -6,6 +6,15 @@ const ctx={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,Dat
 const {P,F,A}=vm.runInNewContext(["i18n.js","charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";OMI18n.setLanguage('zh');({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
 const plain=value=>JSON.parse(JSON.stringify(value));
 
+test('built-in wallpapers exclude the reported error screenshot and retain stable image IDs',()=>{
+  const rows=vm.runInNewContext(fs.readFileSync(path.join(root,'wallpapers.js'),'utf8')+';OMWallpapers');
+  assert.equal(rows.length,58);assert.equal(rows.filter(r=>r.kind==='calendar').length,18);
+  assert.equal(new Set(rows.map(r=>r.id)).size,58);
+  assert.ok(!rows.some(r=>r.id==='full-39'||r.original_sha256==='f2536f21c356d69d148735869b8814922e3a172bf10d5c56f8d0a1b5ff43ab1b'));
+  assert.ok(rows.some(r=>r.id==='full-40'&&r.code==='AAA'));
+  for(const row of rows)for(const key of ['image','thumbnail'])assert.ok(fs.existsSync(path.join(root,row[key])));
+});
+
 test("local workspace is transactional, validated and preserves prior value on quota failure",()=>{
   let saved=null,fail=false;
   const storage={getItem:()=>saved,setItem(k,v){if(fail)throw Error("quota");saved=v;}};
