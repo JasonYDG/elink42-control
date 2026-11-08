@@ -30,7 +30,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const tabs=[...html.matchAll(/<button\b[^>]*id="([^"]+)"[^>]*aria-controls="([^"]+)"[^>]*data-tab="([^"]+)"/g)].map(m=>{
     const b=get(m[1]);b.dataset.tab=m[3];b.setAttribute("aria-controls",m[2]);return b;
   });
-  let notify,stored=Array(22).fill(null),chunks=[],target=0,external=false,calendarOption=initial.flags||0,calendarCountry=initial.country||0,calendarMode=initial.mode||0,photoSlot=initial.slot??255,photoSource=initial.source||0,offlineFrequency=0,offlinePhoto=false;
+  let notify,stored=Array(22).fill(null),chunks=[],target=0,external=false,calendarOption=initial.flags||0,calendarCountry=initial.country||0,calendarMode=initial.mode||0,photoSlot=initial.slot??255,photoSource=initial.source||0,offlineFrequency=0,offlinePhoto=false,selectionBusy=false;
   const text=s=>new TextEncoder().encode(s);
   function emit(bytes){control.value=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);notify({target:control});}
   function meta(slot,ext){const b=new Uint8Array(18),v=new DataView(b.buffer);b.set([ext?0x74:0x49,slot]);
@@ -39,14 +39,15 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     async writeValueWithResponse(bytes){packets.push(bytes.slice());const op=bytes[0];
       if(op===0x23 && bytes[1]<=1)calendarOption=bytes[1];
       if(op===0x20){calendarMode=bytes[6];if(calendarMode!==1)offlineFrequency=0;}
-      if(op===0x56){photoSlot=bytes[1];photoSource=bytes[2];}
+      if(op===0x56){photoSlot=bytes[1];photoSource=bytes[2];if(initial.nativeSelection && calendarMode===1)selectionBusy=true;}
+      if(op===0x26 && selectionBusy)return; // Native GATT rejects mutations while the unacknowledged 0x56 refresh is busy.
       if(op===0x24 && bytes[1]===0x49 && bytes[2]===0x52){emit(Uint8Array.of(0x58,photoSource,offlineFrequency,photoSlot,Number(offlinePhoto),Number(!!offlineFrequency && calendarMode===1)));return;}
       if(op===0x26){offlineFrequency=bytes[1];offlinePhoto=!!bytes[2];if(offlineFrequency)calendarMode=1;}
       if(op===0x24 && bytes[1]===0x4A && international){if(bytes.length===5 && calendarMode===0){calendarCountry=bytes[2];calendarOption=bytes[3];}emit(Uint8Array.of(0x55,calendarOption,0x4A,calendarCountry,calendarMode,photoSlot,photoSource));return;}
       if(op===0x24 && bytes.length===1){emit(Uint8Array.of(0x55,calendarOption));return;}
       if(op===0x24 && bytes.length===3 && bytes[1]===0x49 && international){emit(Uint8Array.of(0x55,calendarOption,0x49));return;}
       if(op===0)emit(Uint8Array.of(0x42,1,...text(ota?"BOARD_ELINK":"BOARD_ZKWEB")));
-      if(op===1 || op===0x25){emit(text("mtu=180"));emit(text("t=123"));}
+      if(op===1 || op===0x25){if(initial.displaceForRotation && calendarMode===1)photoSlot=5;emit(text("mtu=180"));emit(text("t=123"));}
       if([5,6,0x20,0x24,0x25,0x26,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),initial.displayFailure && [0x45,0x50].includes(op)?0xA8:0xA0));
       if(op===0x46||op===0x51){const b=new Uint8Array(36),v=new DataView(b.buffer);b[0]=op===0x46?0x53:0x73;b.set(text("EIMG"),2);
         v.setUint16(6,400,true);v.setUint16(8,300,true);b[10]=model===5?3:2;b[11]=model===5?0x30:0x20;v.setUint32(12,30000,true);v.setUint32(16,32768,true);b[20]=22;b[23]=60;b.fill(255,25,32);
@@ -377,4 +378,27 @@ test('a saved image survives unconfirmed display and reports its position withou
 });
 for(const revision of [18,20,23])test(`quiet v${revision} disables new image and rotation controls`,async()=>{
  const u=ui(5,true,'zh',true,{revision,confirm:false});await u.click('connect');for(const id of ['quick-change','store-frame','auto-apply'])assert.equal(u.get(id).disabled,true,id);
+});
+test('native active-calendar selection cannot cause a second refresh and drop the rotation command',async()=>{
+ const u=ui(5,true,'zh',true,{revision:24,nativeSelection:true});await u.click('connect');u.stored[0]=123;
+ await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,width:256,height:300,name:'photo.png'});
+ const start=u.packets.length;await u.click('publish');const packets=u.packets.slice(start);
+ assert.match(u.get('result').textContent,/已保存并提交/);assert.equal(u.device.gatt.connected,true);
+ assert.equal(packets.filter(p=>p[0]===0x20 && p[6]===1).length,1);
+ assert.equal(packets.filter(p=>p[0]===0x56).length,1,'Only the paused calendar setup may select a picture');
+ assert.equal(packets.filter(p=>p[0]===0x26).length,1);
+ const after=u.packets.length;await u.input('auto-frequency','4','change');await u.click('auto-apply');
+ assert.ok(!u.packets.slice(after).some(p=>p[0]===0x56 || (p[0]===0x20 && p[6]===1)),'Frequency changes must not redraw');
+ assert.equal(u.packets.slice(after).filter(p=>p[0]===0x26).length,1);assert.equal(u.device.gatt.connected,true);
+ const stop=u.packets.length;await u.input('auto-frequency','0','change');await u.click('auto-apply');
+ const stopped=u.packets.slice(stop),index=stopped.findIndex(p=>p[0]===0x26 && p[1]===0);
+ assert.ok(index>=0 && stopped.slice(0,index).some(p=>p[0]===0x24 && p.length===2),'Stopping rotation must also wait for the current refresh');
+ assert.ok(!stopped.some(p=>p[0]===0x56));assert.equal(u.device.gatt.connected,true);
+});
+test('rotation target readback mismatch preserves the saved picture and stops before a setter or reselection',async()=>{
+ const u=ui(5,true,'zh',true,{revision:24,nativeSelection:true,displaceForRotation:true});await u.click('connect');u.stored[0]=123;
+ await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,width:256,height:300,name:'photo.png'});const start=u.packets.length;
+ await u.click('publish');const packets=u.packets.slice(start);assert.ok(u.stored[1]);assert.match(u.get('result').textContent,/已保存到位置 1.*当前图片位置与轮播目标不符/);
+ assert.ok(!packets.some(p=>p[0]===0x26));assert.equal(packets.filter(p=>p[0]===0x56).length,1);
+ assert.equal(u.device.gatt.connected,true,'A read-only target mismatch must preserve the stable connection');
 });

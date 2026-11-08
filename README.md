@@ -1,4 +1,6 @@
-# ELINK42 Web 0.6.15 / 离线换图 v24
+# ELINK42 Web 0.6.16 / 离线换图 v24
+
+修复“保存并启用图片日历”后的重复刷新与轮播设置超时：轮播设置改为只读核对当前图片，不再向运行中的日历重复发送0x56。设备忙时原生GATT会拒绝0x26；移除多余刷新后，设置命令在上一刷新完成后提交。固件、BLE传输、超时、波形和OTA包保持原样，已有v24无需重新OTA。
 
 [在线控制台](https://jasonydg.github.io/elink42-control/) · [原图与12个月节气壁纸](https://github.com/JasonYDG/elink42-control/tree/main/images)
 
