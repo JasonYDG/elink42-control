@@ -1,5 +1,6 @@
 "use strict";
 const OMTranslations = {
+  "当前图片位置与轮播目标不符，未提交自动换图。":"The displayed picture does not match the rotation target. Rotation was not submitted.",
   "高级轮播（分钟或星期映射）":"Advanced rotation (minutes or weekday mapping)",
   "自动换图状态尚未核实，请重新读取或连接。":"Rotation status is unverified. Read it again or reconnect.",
   "显示图片位置读回不符":"Displayed picture position readback does not match.",

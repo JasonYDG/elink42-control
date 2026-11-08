@@ -24,8 +24,13 @@ const OMRotation=(()=>{
         }
         if(slot>=state.count || count<2)throw Error(OMI18n.t("至少保存两张图片后才能启用自动换图。"));
         if(client.device!==device || !device.gatt.connected)throw Error(OMI18n.t("目标设备已变化，自动换图未提交"));
-        await client.write(Uint8Array.of(0x56,slot,source));
+        // 0x56 redraws an active calendar; confirm the displayed image without selecting it again.
+        if(!await client.readCalendar() || client.config.photoSlot!==slot || client.config.photoSource!==source){
+          const error=Error(OMI18n.t("当前图片位置与轮播目标不符，未提交自动换图。"));
+          error.code="DISPLAY_NOT_READY";throw error;
+        }
       }
+      await client.waitForDisplay();
       await client.command(Uint8Array.of(0x26,frequency,photo?1:0));
       const value=await query(client);
       if(value.frequency!==frequency || (frequency && (value.source!==source || value.slot!==slot || value.photo!==photo || !value.active)))
