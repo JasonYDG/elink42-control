@@ -1,0 +1,623 @@
+{
+  "images": [
+    {
+      "path": "full-screen/001.png",
+      "origin": "existing Image folder",
+      "sha256": "c8365c856c8119b83e14774cb516a205da99acc09ac8f32b06256c13a94b709d",
+      "size": 1335492,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/002.png",
+      "origin": "existing Image folder",
+      "sha256": "cb025ab8105d2b03d1658a2ac14c223d9b327dc7a416f9d8fd39e07a36a1d819",
+      "size": 1802514,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/003.png",
+      "origin": "existing Image folder",
+      "sha256": "bea363c3477bba9c8147aa9ba6941678fb7b3311656d2755fb33b912f37c7f01",
+      "size": 1427017,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/004.png",
+      "origin": "existing Image folder",
+      "sha256": "9c0c6e4235b5c2db72ade34b3309c3cdc8896c856fba6fcbe2e97326937d3605",
+      "size": 1601380,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/005.png",
+      "origin": "existing Image folder",
+      "sha256": "8eabf11dfb9ddb29c51866efe08e0b6f0dadb82f75a21043a39b6eb07f6e074c",
+      "size": 1804715,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/006.png",
+      "origin": "existing Image folder",
+      "sha256": "7dd17502b9a571a852df69528c6cd06ec95793707df1705861601a46fb45ea43",
+      "size": 1477550,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/007.png",
+      "origin": "existing Image folder",
+      "sha256": "299692c242ea04dc3ce668c5a094a13a7fd344c6c968f2d117929ebaa4657557",
+      "size": 1685872,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/008.png",
+      "origin": "existing Image folder",
+      "sha256": "09feba3feebd5c16d24bcb2074eee42bbae47ce0d33e7a74acbf52946315805a",
+      "size": 1617305,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/009.png",
+      "origin": "existing Image folder",
+      "sha256": "d59d29db15f79eb941be3d2c3377851f5b5d267b529533e427caae0765383e24",
+      "size": 2287631,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/010.png",
+      "origin": "existing Image folder",
+      "sha256": "ee6216cd4f0cd4accc058dfabb7e2a20edc6e489c077d1937deb75f161ba0757",
+      "size": 1665707,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/011.png",
+      "origin": "existing Image folder",
+      "sha256": "26b481c870db30eee236e8a443710ad30730fc526aad18dac59cfd53f06f77d4",
+      "size": 1721146,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/012.png",
+      "origin": "existing Image folder",
+      "sha256": "36ba6fadaad206ee32a2cdec9323381ceb7829b8af6f643d6cf8f70ad813baad",
+      "size": 1954663,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/013.png",
+      "origin": "existing Image folder",
+      "sha256": "59bd5cd05ffbe6336c3bb2d154444dbb4b33caf23c0d3b2433b81e728d5bb824",
+      "size": 1907106,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/014.png",
+      "origin": "existing Image folder",
+      "sha256": "8cf169751c5a3213345c89996c2b2bcc00cff1135b22d76751ddc71ee884454b",
+      "size": 2348854,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/015.png",
+      "origin": "existing Image folder",
+      "sha256": "868b38fb14f6b79e7becfb7e56a9f99197c536446bde386dcef3ae7d99d676d3",
+      "size": 1510626,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/016.png",
+      "origin": "existing Image folder",
+      "sha256": "5969aa336ea9037eddf015a71376230e6c43955f816e9c3a0e1181bf55c204d5",
+      "size": 1626148,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/017.png",
+      "origin": "existing Image folder",
+      "sha256": "c06c9bc06147eebd73e6e4f1b162bf5def55cb959d968b7f4e884f23d41f6ac4",
+      "size": 1881143,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/018.png",
+      "origin": "existing Image folder",
+      "sha256": "433c8c24b05ae908a10c4222a4614d4d4b062a4e4f7fde218d240f6b92f72461",
+      "size": 2785908,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/019.png",
+      "origin": "existing Image folder",
+      "sha256": "1e788ab2f366f43a8ef04dbd303631718b984d06aaa03d474671621dc85c542f",
+      "size": 2093150,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/020.png",
+      "origin": "existing Image folder",
+      "sha256": "8d6b9d1cdf54b5c7bb1583a71c215ab919ae5ca8797b395e25190d47315c3013",
+      "size": 1418081,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/021.png",
+      "origin": "existing Image folder",
+      "sha256": "df4880b24ded266a3b535654368eeb6714f2eb0d9f427c6d35a4dedcd786f2ac",
+      "size": 2070235,
+      "dimensions": [
+        1792,
+        1344
+      ]
+    },
+    {
+      "path": "full-screen/022.png",
+      "origin": "existing Image folder",
+      "sha256": "fb1ff6d8008e37697b2de8491d7543a82c4c12cdcbe50fe52a7d081c18d9c8ee",
+      "size": 1969429,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/023.png",
+      "origin": "existing Image folder",
+      "sha256": "61d87e5404c08ed2947e860bf7ae8c7fa841b7f65d6da37d24e5734f52c8b3d3",
+      "size": 2032278,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/024.png",
+      "origin": "existing Image folder",
+      "sha256": "fd059707856114047c1a010123ff653f14ad982d58d8cf0db8f6be851d00521f",
+      "size": 2063090,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/025.png",
+      "origin": "existing Image folder",
+      "sha256": "a87603698eba91a270453c8b822fbbb1978d25ae65bd05524382f5c5f9708c91",
+      "size": 2176290,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/026.png",
+      "origin": "existing Image folder",
+      "sha256": "c47ed83d53a3b66171c5f228b10d3fee2ff6de1be6c42ec018581ddf2ccd2dd3",
+      "size": 2219102,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/027.png",
+      "origin": "existing Image folder",
+      "sha256": "51bf7b735f641e383d4ea1db8cc27b4f43e7533113fa712610636ffcb3181e19",
+      "size": 2416980,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/028.png",
+      "origin": "existing Image folder",
+      "sha256": "2fb3acb2980a73492b0e075ecefbe7891afff5b1257d784fb63ab2ce323634dc",
+      "size": 2743815,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/029.png",
+      "origin": "existing Image folder",
+      "sha256": "395c33fb6c34850e54abc631a8c82e5a003dcb5ae298d7b7d01eadc08232feb8",
+      "size": 2166081,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/030.png",
+      "origin": "existing Image folder",
+      "sha256": "4a72a35add2b283285d2eaa39ac1265d60cb8dce8b5137680b78aad5fc6501b0",
+      "size": 2420979,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/031.png",
+      "origin": "existing Image folder",
+      "sha256": "4765ec7afdaf6536ddd77f289bd3140e534dc849721d63163e802cfcecd62b4d",
+      "size": 2262803,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/032.png",
+      "origin": "existing Image folder",
+      "sha256": "8afce09b7e2ee55381c7f9152ffe9a32848e76903310015e502d823d1bcca903",
+      "size": 2656594,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/033.png",
+      "origin": "existing Image folder",
+      "sha256": "f8f2149dafd3ec7098235483a9373a407c723b04a41e815b316a8463a9c31283",
+      "size": 2151831,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/034.png",
+      "origin": "existing Image folder",
+      "sha256": "26e6d969c5cbe6650916b4e9fee3ce01ec3fa33dc5e8b7f6701e9ec94f2b1db8",
+      "size": 2192485,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/035.png",
+      "origin": "existing Image folder",
+      "sha256": "74ba4565d8f973c78208d12bf1cdd7a0af800cc75adf11957167176f37d46c4b",
+      "size": 2048209,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/036.png",
+      "origin": "existing Image folder",
+      "sha256": "30a029976a492c8dacdf032743a2426f249fdae4dca6b134401c454d279a8bf7",
+      "size": 1752071,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/037.png",
+      "origin": "existing Image folder",
+      "sha256": "4616ac2f7edd2d29d8ee34af3274cf4d0612e9c0ba63b4a0f17d34d7ca574b86",
+      "size": 2346727,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/038.png",
+      "origin": "existing Image folder",
+      "sha256": "570c9a10bcd9be2f391d1ebbf32a67d8f9d202a3af07c8472b17931d77e8ea63",
+      "size": 2160460,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/reference/600480067559873860BFABB615791B66.jpg",
+      "origin": "existing Image folder",
+      "sha256": "f2536f21c356d69d148735869b8814922e3a172bf10d5c56f8d0a1b5ff43ab1b",
+      "size": 28597,
+      "dimensions": [
+        490,
+        340
+      ]
+    },
+    {
+      "path": "full-screen/AAA.png",
+      "origin": "existing Image folder",
+      "sha256": "262721163036054984c0887a028fe223332eac4ebf8752304b83aa77782ab670",
+      "size": 2634451,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "full-screen/BBB.png",
+      "origin": "existing Image folder",
+      "sha256": "f4b88d205b8f7f6b56af28dc59972fa80b3cea2b2065cdcab5b424f51d359253",
+      "size": 2859745,
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/originals/C00.png",
+      "origin": "existing Image folder",
+      "sha256": "323fb41b44e46eb071f606a3f4242b50fd3131f8f1353a4458ee11ab50ec98bd",
+      "size": 1500256,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/originals/C002.png",
+      "origin": "existing Image folder",
+      "sha256": "9aeea344b1030a6f4dabefbd37e24da26ec7fb1327d29af89d7b287fb0f40b4a",
+      "size": 1629867,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/originals/C003.png",
+      "origin": "existing Image folder",
+      "sha256": "7812d5d8e4f665d002d9a6152d9b7a7a2bcffa55b1b0b5119b63634f9212dfc8",
+      "size": 1670548,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/originals/C004.png",
+      "origin": "existing Image folder",
+      "sha256": "fc68e82af12109f4fc94d5ee6acc6315296703dc5b96da32045c6e272a48bf70",
+      "size": 1701982,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/originals/C005.png",
+      "origin": "existing Image folder",
+      "sha256": "cc4b844df710b51cd0b15cd1c17f255f8df7f89acb5ec1f1a3cbdbf5acfcb5e6",
+      "size": 1445737,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/originals/C006.png",
+      "origin": "existing Image folder",
+      "sha256": "0784a5fc4f19bd0573122cfec0d22049d32bf929fb0cfd9251d50a3bbf15243b",
+      "size": 1613276,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/01-winter-plum.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 1,
+      "solar_terms": "小寒 / 大寒",
+      "sha256": "10ca219bd8c0f12899d0d850357fc7c83643fc4350a6d9b848d07784a37b0a4e",
+      "size": 1610969,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/02-spring-rain.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 2,
+      "solar_terms": "立春 / 雨水",
+      "sha256": "3a529da5be72f165f68563954bbc7764c6efb7e25039fe63358d7aeb9a7df625",
+      "size": 1852477,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/03-spring-awakening.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 3,
+      "solar_terms": "惊蛰 / 春分",
+      "sha256": "793771c495a1c27d7ed599eec31af61eeef8576dbfe6a3b32f1594ebd638aa9b",
+      "size": 1918614,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/04-tea-rain.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 4,
+      "solar_terms": "清明 / 谷雨",
+      "sha256": "31345a317208fe300fe8ab0f2738f649fc2c2681477aea0811809e88b7f1b454",
+      "size": 2043174,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/05-early-summer.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 5,
+      "solar_terms": "立夏 / 小满",
+      "sha256": "8f2e5d24d286ec86bcd9cba3ebc2fe3f1431f19838a08e16babd3e369bb76e50",
+      "size": 1594681,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/06-summer-harvest.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 6,
+      "solar_terms": "芒种 / 夏至",
+      "sha256": "c3c1bfd3c0d48e4cf91eb62a1516c6c8c3a7539f1fc54b7cd5771f1aeb7c2be0",
+      "size": 1734545,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/07-midsummer-lotus.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 7,
+      "solar_terms": "小暑 / 大暑",
+      "sha256": "ade724f6fe2a199840dcb40d5f90a033e5dacab1863b0de84388e16bae7be726",
+      "size": 1783038,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/08-early-autumn.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 8,
+      "solar_terms": "立秋 / 处暑",
+      "sha256": "0c5fbde9819fa065722cef86fdb9aa71a26111804651e17d7919244a965a1e71",
+      "size": 1857687,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/09-autumn-reeds.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 9,
+      "solar_terms": "白露 / 秋分",
+      "sha256": "a53e8f33ab28b063c587b9612b13ef8ef202a397ee12a8545646e19c8f560c93",
+      "size": 1827937,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/10-frost-maple.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 10,
+      "solar_terms": "寒露 / 霜降",
+      "sha256": "c7a8beb6952d8656ebec509e3a934a2f829db4850da46306fec877c7949a1539",
+      "size": 2051940,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/11-winter-persimmon.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 11,
+      "solar_terms": "立冬 / 小雪",
+      "sha256": "c49168873492e761986f458fd320b8931b124f2c158659401d8c4732a04399b3",
+      "size": 1899337,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "path": "calendar-wallpapers/monthly/12-winter-snow.png",
+      "origin": "built-in imagegen; original output bytes",
+      "month": 12,
+      "solar_terms": "大雪 / 冬至",
+      "sha256": "cd742dc75515313ece6dde91feab5c2b6e894ab81fd59a38f3850dae7410bbe1",
+      "size": 1952790,
+      "dimensions": [
+        1159,
+        1358
+      ]
+    }
+  ],
+  "originals_modified": false,
+  "native_calendar_target": [
+    256,
+    300
+  ]
+}

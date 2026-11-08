@@ -1,0 +1,66 @@
+{
+  "mode": "built-in imagegen",
+  "style": "Full-bleed portrait Chinese woodcut / paper-cut, black white red yellow, no text or calendar grids; small four-color e-ink use. Native high-resolution outputs preserved, web converts to 256x300.",
+  "prompts": [
+    {
+      "month": 1,
+      "prompt": "Snowy pine, red plum and village windows for Xiaohan / Dahan.",
+      "provenance": "scene brief retained from generation; not an exact prompt transcript"
+    },
+    {
+      "month": 2,
+      "prompt": "Swallows, willow, rain, red plum and stone bridge for Lichun / Yushui.",
+      "provenance": "scene brief retained from generation; not an exact prompt transcript"
+    },
+    {
+      "month": 3,
+      "prompt": "Butterfly, peach blossom and rapeseed for Jingzhe / Chunfen.",
+      "provenance": "scene brief retained from generation; not an exact prompt transcript"
+    },
+    {
+      "month": 4,
+      "prompt": "Bamboo, tea terraces, red azalea and yellow umbrella for Qingming / Guyu.",
+      "provenance": "scene brief retained from generation; not an exact prompt transcript"
+    },
+    {
+      "month": 5,
+      "prompt": "Lotus leaves, red buds, dragonfly and wheat for Lixia / Xiaoman.",
+      "provenance": "scene brief retained from generation; not an exact prompt transcript"
+    },
+    {
+      "month": 6,
+      "prompt": "Golden wheat, egret and sun for Mangzhong / Xiazhi.",
+      "provenance": "scene brief retained from generation; not an exact prompt transcript"
+    },
+    {
+      "month": 7,
+      "prompt": "Create ONE finished portrait calendar-left wallpaper PNG, aspect 64:75 for a 256x300 layout. Chinese woodcut and paper-cut illustration, bold simple shapes, strong silhouettes, crisp contours, suitable for a tiny four-color e-ink screen. ONLY black, white, cinnabar red and warm golden yellow; no gray shading, no gradients, no tiny texture. FULL BLEED artwork reaches all four edges, no border, no mat, no inset. NO words, characters, numbers, lettering, logos, watermark, or calendar grid. JULY: solar terms Xiaoshu and Dashu. A lush summer lotus pond, large red lotus flowers among black and white leaves, golden sun reflections and a black cicada on a willow branch. Broad pond ripples fill the lower edge, close leaves cut off by the frame. Heat and tranquil midsummer, striking vertical composition.",
+      "provenance": "exact generation prompt"
+    },
+    {
+      "month": 8,
+      "prompt": "Create ONE finished portrait calendar-left wallpaper PNG, aspect 64:75 for a 256x300 layout. Chinese woodcut and paper-cut illustration, bold simple shapes, strong silhouettes, crisp contours, suitable for a tiny four-color e-ink screen. ONLY black, white, cinnabar red and warm golden yellow; no gray shading, no gradients, no tiny texture. FULL BLEED artwork reaches all four edges, no border, no mat, no inset. NO words, characters, numbers, lettering, logos, watermark, or calendar grid. AUGUST: solar terms Liqiu and Chushu. The turn from summer into autumn: large textured lotus seed pods, ripening golden rice heads, a red dragonfly, first red leaves blowing across a country field, warm sun. Strong sweeping diagonal stems, full-bleed composition with no border.",
+      "provenance": "exact generation prompt"
+    },
+    {
+      "month": 9,
+      "prompt": "ONE finished portrait calendar-left wallpaper PNG, aspect64:75 for256x300 layout. Chinese woodcut and paper-cut illustration, bold flat shapes and strong crisp silhouettes for small four-color e-ink. ONLY black, white, cinnabar red, warm golden yellow. No gradients or gray shading. Full bleed to all four edges, no frame, no mat, no blank margins. NO text, symbols, lettering, numbers, logo, watermark or calendar grid. SEPTEMBER: solar terms Bailu and Qiufen. Elegant egrets standing in black water with golden reeds and large pearly dew drops, a red full autumn moon framed by reed plumes, distant mountain silhouettes, broad ripples. Poetic clear cool autumn.",
+      "provenance": "exact generation prompt"
+    },
+    {
+      "month": 10,
+      "prompt": "ONE finished portrait calendar-left wallpaper PNG, aspect64:75 for256x300 layout. Chinese woodcut and paper-cut illustration, bold flat shapes and strong crisp silhouettes for small four-color e-ink. ONLY black, white, cinnabar red, warm golden yellow. No gradients or gray shading. Full bleed to all four edges, no frame, no mat, no blank margins. NO text, symbols, lettering, numbers, logo, watermark or calendar grid. OCTOBER: solar terms Hanlu and Shuangjiang. Dramatic red maple leaves overlap the top and side edges, bold golden chrysanthemums in the foreground with crystalline white frost highlights, black mountains and a winding white stream. Rich late autumn woodcut, high contrast and simple composition.",
+      "provenance": "exact generation prompt"
+    },
+    {
+      "month": 11,
+      "prompt": "ONE finished portrait calendar-left wallpaper PNG, aspect64:75 for256x300 layout. Chinese woodcut and paper-cut illustration, bold flat shapes and strong crisp silhouettes for small four-color e-ink. ONLY black, white, cinnabar red, warm golden yellow. No gradients or gray shading. Full bleed to all four edges, no frame, no mat, no blank margins. NO text, symbols, lettering, numbers, logo, watermark or calendar grid. NOVEMBER: solar terms Lidong and Xiaoxue. A large black persimmon branch with abundant bold red persimmons and a few golden leaves, first white snow sitting on the fruit and twigs, black-and-white village roofs beyond, golden sun at low horizon. Quiet beginning of winter, branches and snow fill the edges.",
+      "provenance": "exact generation prompt"
+    },
+    {
+      "month": 12,
+      "prompt": "ONE finished portrait calendar-left wallpaper PNG, aspect64:75 for256x300 layout. Chinese woodcut and paper-cut illustration, bold flat shapes and strong crisp silhouettes for small four-color e-ink. ONLY black, white, cinnabar red, warm golden yellow. No gradients or gray shading. Full bleed to all four edges, no frame, no mat, no blank margins. NO text, symbols, lettering, numbers, logo, watermark or calendar grid. DECEMBER: solar terms Daxue and Dongzhi. Heavy white snow on dramatic black pine branches, a single large glowing red Chinese lantern with a golden tassel, distant snow-covered mountain village and a curving river, golden moon. Deep winter stillness, strong graphic shapes, the pine and snow extend beyond the frame.",
+      "provenance": "exact generation prompt"
+    }
+  ]
+}
