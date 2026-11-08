@@ -1,5 +1,14 @@
 "use strict";
 const OMTranslations = {
+  "载入内置 v30 两阶段升级包":"Load bundled v30 two-stage update",
+  "旧整合包已停用，请载入内置 v30 两阶段升级包":"This older bundle is retired. Load the bundled v30 update.",
+  "v29 仅接受配套 v30；没有发送升级命令":"Version 29 accepts only its paired v30. No update commands were sent.",
+  "本修复包需要配套 v29 接收器；请使用新版两阶段整合包，没有发送升级命令":"This repair requires its matching v29 receiver. Use the new two-stage bundle. No update commands were sent.",
+  "过渡包与当前底层不匹配；没有发送升级命令":"The transition image does not match the running foundation. No update commands were sent.",
+  "此旧接收器锁定原配镜像，不能在两次刷写内升级到 v30；请使用对应屏型 HEX，未发送升级命令":"This receiver is locked to its original image and cannot reach v30 in two writes. Use the matching panel HEX. No update commands were sent.",
+  "支持的旧版经 v29 升至 v30，最多两次刷写；v29 续升一次。v15/v18/v20/v23/v27 需使用 HEX。最终重启显示设备信息，日历需手动启用。":"Supported older versions use v29 then v30, at most two writes. Version 29 resumes in one write. Versions 15, 18, 20, 23 and 27 require HEX. Final boot shows device information; enable the calendar manually.",
+  "整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v30。":"Bundle signatures, panel and pairing verified. Confirm once for at most two writes to v30.",
+  "\n最多两次刷写：匹配的 v29 → v30。会暂时清零设备时间；过渡期间请勿操作，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\nAt most two writes: the matching v29 then v30. The clock is temporarily cleared. Do not operate the device during transition. Final boot shows name, MAC and revision. Each reboot is verified; failures stop the update. Start?",
   "v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令":"Versions 1 and 2 have incompatible boot-record checks. Use the matching panel HEX. No update commands were sent.",
   "下载 OTA 整合包":"Download OTA bundle",
   "三色屏完整应用 HEX":"Tri-color application HEX",
