@@ -30,7 +30,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const tabs=[...html.matchAll(/<button\b[^>]*id="([^"]+)"[^>]*aria-controls="([^"]+)"[^>]*data-tab="([^"]+)"/g)].map(m=>{
     const b=get(m[1]);b.dataset.tab=m[3];b.setAttribute("aria-controls",m[2]);return b;
   });
-  let notify,stored=Array(22).fill(null),chunks=[],target=0,external=false,calendarOption=initial.flags||0,calendarCountry=initial.country||0,calendarMode=initial.mode||0,photoSlot=initial.slot??255,photoSource=initial.source||0;
+  let notify,stored=Array(22).fill(null),chunks=[],target=0,external=false,calendarOption=initial.flags||0,calendarCountry=initial.country||0,calendarMode=initial.mode||0,photoSlot=initial.slot??255,photoSource=initial.source||0,offlineFrequency=0,offlinePhoto=false;
   const text=s=>new TextEncoder().encode(s);
   function emit(bytes){control.value=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);notify({target:control});}
   function meta(slot,ext){const b=new Uint8Array(18),v=new DataView(b.buffer);b.set([ext?0x74:0x49,slot]);
@@ -38,14 +38,16 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const control={addEventListener(k,f){notify=f;},removeEventListener(){},async startNotifications(){const c=new Uint8Array(15);c[7]=model;c[11]=1;emit(c);},
     async writeValueWithResponse(bytes){packets.push(bytes.slice());const op=bytes[0];
       if(op===0x23 && bytes[1]<=1)calendarOption=bytes[1];
-      if(op===0x20)calendarMode=bytes[6];
+      if(op===0x20){calendarMode=bytes[6];if(calendarMode!==1)offlineFrequency=0;}
       if(op===0x56){photoSlot=bytes[1];photoSource=bytes[2];}
+      if(op===0x24 && bytes[1]===0x49 && bytes[2]===0x52){emit(Uint8Array.of(0x58,photoSource,offlineFrequency,photoSlot,Number(offlinePhoto),Number(!!offlineFrequency && calendarMode===1)));return;}
+      if(op===0x26){offlineFrequency=bytes[1];offlinePhoto=!!bytes[2];if(offlineFrequency)calendarMode=1;}
       if(op===0x24 && bytes[1]===0x4A && international){if(bytes.length===5 && calendarMode===0){calendarCountry=bytes[2];calendarOption=bytes[3];}emit(Uint8Array.of(0x55,calendarOption,0x4A,calendarCountry,calendarMode,photoSlot,photoSource));return;}
       if(op===0x24 && bytes.length===1){emit(Uint8Array.of(0x55,calendarOption));return;}
       if(op===0x24 && bytes.length===3 && bytes[1]===0x49 && international){emit(Uint8Array.of(0x55,calendarOption,0x49));return;}
       if(op===0)emit(Uint8Array.of(0x42,1,...text(ota?"BOARD_ELINK":"BOARD_ZKWEB")));
-      if(op===1){emit(text("mtu=180"));emit(text("t=123"));}
-      if([5,6,0x20,0x24,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),0xA0));
+      if(op===1 || op===0x25){emit(text("mtu=180"));emit(text("t=123"));}
+      if([5,6,0x20,0x24,0x25,0x26,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),initial.displayFailure && [0x45,0x50].includes(op)?0xA8:0xA0));
       if(op===0x46||op===0x51){const b=new Uint8Array(36),v=new DataView(b.buffer);b[0]=op===0x46?0x53:0x73;b.set(text("EIMG"),2);
         v.setUint16(6,400,true);v.setUint16(8,300,true);b[10]=model===5?3:2;b[11]=model===5?0x30:0x20;v.setUint32(12,30000,true);v.setUint32(16,32768,true);b[20]=22;b[23]=60;b.fill(255,25,32);
         if(rotation){b[22]=rotation[1];b[23]=rotation[2];b.set(rotation.slice(3),25);}emit(b);}
@@ -54,6 +56,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       if(op===0x40||op===0x4C){target=bytes[1];chunks=[];}
       if(op===0x41||op===0x4D)chunks.push(...bytes.slice(1));
       if(op===0x42||op===0x4E)stored[target]=api.P.crc16(new Uint8Array(chunks));
+      if(op===0x43||op===0x4F)stored[bytes[1]]=null;
       if(op===0x44||op===0x55)rotation=bytes.slice();
     }};
   let rotation=null;
@@ -72,34 +75,34 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:()=>new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
-    Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
+    fetch:url=>String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
+    Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
     document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}}},
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js","wallpapers.js","rotation.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const api=vm.runInNewContext(code,sandbox);
   return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
-for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed v21 bundle without starting OTA`,async()=>{
+for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed v24 bundle without starting OTA`,async()=>{
   const u=ui(model,true,"zh",true,{revision:11});await u.click("connect");
   assert.deepEqual(u.versionQueries,[[0]]);assert.equal(u.confirmations.length,1);
-  assert.match(u.confirmations[0],/v11.*v21.*清空图库/);assert.match(u.get("firmware-state").textContent,/v11/);
+  assert.match(u.confirmations[0],/v11.*v24.*清空图库/);assert.match(u.get("firmware-state").textContent,/v11/);
   assert.equal(u.get("tab-ota").getAttribute("aria-selected"),"true");
   assert.match(u.get("ota-package").textContent,new RegExp(model===5?"JD79668 四色":"SSD1619 三色"));
-  assert.match(u.get("ota-package").textContent,/版本 20.*21/);assert.match(u.get("ota-kind").textContent,/校验通过/);
+  assert.match(u.get("ota-package").textContent,/版本 23.*24/);assert.match(u.get("ota-kind").textContent,/校验通过/);
   assert.equal(u.get("ota-consent").checked,false);assert.equal(u.get("ota-start").disabled,true);
   assert.ok(!u.packets.some(p=>[5,6,0x20].includes(p[0])));
 });
 for(const model of [2,5])test(`UI ${model}: v5 enables upgrade after loading the built-in bundle and consenting`,async()=>{
  const u=ui(model,true,'zh',true,{revision:5});await u.click('connect');
- assert.match(u.get('firmware-state').textContent,/v5.*v21/);
- assert.match(u.get('ota-package').textContent,/版本 20.*21/);
+ assert.match(u.get('firmware-state').textContent,/v5.*v24/);
+ assert.match(u.get('ota-package').textContent,/版本 23.*24/);
  assert.equal(u.get('ota-start').disabled,true);
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();
  assert.equal(u.get('ota-start').disabled,false);assert.equal(u.idleTimers.size,0);
@@ -107,26 +110,26 @@ for(const model of [2,5])test(`UI ${model}: v5 enables upgrade after loading the
 });
 test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
   const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
-  assert.match(u.confirmations[0],/Current firmware v1; bundled update v21/);
+  assert.match(u.confirmations[0],/Current firmware v1; bundled update v24/);
   assert.equal(u.get("tab-calendar").getAttribute("aria-selected"),"true");assert.equal(u.get("ota-bundled").disabled,false);
-  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 20.*21/);
+  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 23.*24/);
 });
 
-test("the built-in bundle needs one start confirmation and finishes on v21",async()=>{
- const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:21});await u.click('connect');await u.click('ota-bundled');
+test("the built-in bundle needs one start confirmation and finishes on v24",async()=>{
+ const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:24});await u.click('connect');await u.click('ota-bundled');
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
  const before=u.confirmations.length;u.confirmation(true);await u.click('ota-start');
- assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/最多两次刷写.*v20.*v21.*确认开始/s);
- assert.match(u.get('firmware-state').textContent,/v21/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
+ assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/最多两次刷写.*v23.*v24.*确认开始/s);
+ assert.match(u.get('firmware-state').textContent,/v24/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
 });
-for(const revision of [21,22])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
+for(const revision of [24,25])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 test("v14 reports the bundled baseline and transition route without claiming latest firmware",async()=>{
  const u=ui(5,true,"zh",true,{revision:14});await u.click("connect");
- assert.match(u.get("firmware-state").textContent,/v14.*内置 v21/);
+ assert.match(u.get("firmware-state").textContent,/v14.*内置 v24/);
  assert.doesNotMatch(u.get("firmware-state").textContent,/最新/);
  assert.match(u.get("ota-capability").textContent,/最多两次刷写/);
 });
@@ -185,7 +188,7 @@ test("v18 keeps display actions disabled and offers the compatible continuation 
  const u=ui(5,true,'zh',true,{revision:18});await u.click('connect');
  for(const id of ['native-calendar','set-time','photo-calendar-start','publish','store-frame','scheduler-start'])assert.equal(u.get(id).disabled,true);
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
- assert.match(u.get('ota-capability').textContent,/旧 v18 经原配 v19 到 v21/);assert.equal(u.idleTimers.size,0);
+ assert.match(u.get('ota-capability').textContent,/v18 经原配 v19/);assert.equal(u.idleTimers.size,0);
 });
 test("v15 cannot start the new bundle and explains the two-write limit",async()=>{
  const u=ui(5,true,'zh',true,{revision:15});await u.click('connect');
@@ -341,7 +344,37 @@ for(const dimensions of [[256,300],[1159,1358]])test(`calendar-aspect ${dimensio
  const u=ui();await u.click('tab-image');
  for(const [id,value] of [['image-angle','90'],['image-zoom','0.6'],['image-x','20'],['image-y','-30']])await u.input(id,value);
  await u.file('image-file',{name:'calendar.png',size:100,type:'image/png',width:dimensions[0],height:dimensions[1]});
- assert.equal(u.get('image-target').value,'calendar');assert.equal(u.get('photo-fit').value,'prepared');
+ assert.equal(u.get('image-target').value,'calendar');assert.equal(u.get('photo-fit').value,'contain');
  const call=u.rendered.filter(r=>r.kind==='image').at(-1),options=call.args[2];assert.equal(options.target,'calendar');assert.equal(options.zoom,1);assert.equal(options.angle,0);assert.equal(options.x,0);assert.equal(options.y,0);
  await u.click('download');assert.match(u.downloads.at(-1).name,/256x300/);
+ await u.click('connect');await u.click('nav-image');await u.click('store-frame');assert.ok(u.stored[0]);assert.equal(u.get('photo-fit').value,'prepared');
+});
+test('saving chooses the next position and wraps to holes without overwriting',async()=>{
+ const u=ui();await u.click('connect');await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});
+ u.stored[0]=123;u.stored[3]=124;await u.click('store-frame');assert.ok(u.stored[4]);assert.equal(u.stored[0],123);
+ u.stored[21]=125;await u.click('store-frame');assert.ok(u.stored[1]);assert.ok(!u.packets.some(p=>[0x43,0x4f].includes(p[0])));
+});
+test('full storage stops both save and quick change before any storage write or deletion',async()=>{
+ const u=ui();await u.click('connect');await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});u.stored.fill(123);const before=u.packets.length;
+ await u.click('store-frame');assert.match(u.get('result').textContent,/已满/);await u.click('quick-change');assert.match(u.get('result').textContent,/已满/);
+ assert.ok(!u.packets.slice(before).some(p=>[0x40,0x41,0x42,0x43,0x4c,0x4d,0x4e,0x4f].includes(p[0])));
+});
+test('quick change uses the device photo mode even when the full-image editor is open, and enables daily offline policy',async()=>{
+ const u=ui(5,true,'zh',true,{revision:24,mode:1,flags:3,slot:2});await u.click('connect');u.stored[2]=123;u.stored[5]=124;await u.click('nav-image');await u.input('image-target','full','change');const before=u.packets.length;
+ await u.click('quick-change');const packets=u.packets.slice(before);assert.match(u.get('result').textContent,/已保存并提交/,JSON.stringify(packets.slice(-8).map(p=>[...p])));
+ assert.ok(packets.some(p=>p[0]===0x40 && p[1]===6));assert.ok(packets.some(p=>p[0]===0x56 && p[1]===6));assert.ok(packets.some(p=>p[0]===0x26 && p[1]===3 && p[2]===1));assert.ok(!packets.some(p=>p[0]===0x45));
+ assert.equal(u.get('image-target').value,'calendar');assert.match(u.get('auto-state').textContent,/关闭网页后仍会执行/);
+ await u.input('auto-frequency','4','change');await u.click('auto-apply');assert.ok(u.packets.some(p=>p[0]===0x26 && p[1]===4));
+ await u.input('auto-frequency','5','change');await u.click('auto-apply');assert.ok(u.packets.some(p=>p[0]===0x26 && p[1]===5));
+});
+test('full-image quick change preserves its domain on subsequent rotation mode readback',async()=>{
+ const u=ui(5,true,'zh',true,{revision:24});await u.click('connect');u.stored[0]=123;await u.click('quick-change');await u.click('quick-change');
+ assert.equal(u.get('image-target').value,'full');assert.equal(u.packets.filter(p=>p[0]===0x45).length,2);assert.equal(u.packets.filter(p=>p[0]===0x26 && p[2]===0).length,2);
+});
+test('a saved image survives unconfirmed display and reports its position without retrying storage',async()=>{
+ const u=ui(5,false,'zh',true,{displayFailure:true});await u.click('connect');await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});await u.click('publish');
+ assert.ok(u.stored[0]);assert.equal(u.packets.filter(p=>p[0]===0x40).length,1);assert.match(u.get('result').textContent,/已保存到位置 0.*请勿重复保存/);assert.equal(u.get('gallery-slot').value,'0');
+});
+for(const revision of [18,20,23])test(`quiet v${revision} disables new image and rotation controls`,async()=>{
+ const u=ui(5,true,'zh',true,{revision,confirm:false});await u.click('connect');for(const id of ['quick-change','store-frame','auto-apply'])assert.equal(u.get(id).disabled,true,id);
 });

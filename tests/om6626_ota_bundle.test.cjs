@@ -51,48 +51,48 @@ function peripheral(model,current,options={}){
 }
 const consent={deviceId:'bundle-target',eraseImages:true};
 
-test('public embedded bundle verifies all eight signed images and exact transition pairings',async()=>{
- const b=await parsed;assert.equal(F.revision,21);assert.equal(F.packages[2],F.packages[5]);assert.equal(b.bundleVersion,3);assert.equal(b.sha256,F.packages[2].sha256);
- for(const model of [2,5])for(const family of ['legacy','repaired'])assert.deepEqual(Array.from(b.models[model][family],p=>[p.model,p.revision]),[[model,20],[model,21]]);
+test('public embedded bundle verifies all ten signed images and exact transition pairings',async()=>{
+ const b=await parsed;assert.equal(F.revision,24);assert.equal(F.packages[2],F.packages[5]);assert.equal(b.bundleVersion,4);assert.equal(b.sha256,F.packages[2].sha256);
+ for(const model of [2,5])for(const family of ['legacy','repaired'])assert.deepEqual(Array.from(b.models[model][family],p=>[p.model,p.revision]),[[model,23],[model,24]]);
 });
 test('bundle rejects extra entries, incomplete stages and swapped signed panel images',async()=>{
- for(const mutate of [files=>files.set('extra',Uint8Array.of(1)),files=>files.delete('model2-legacy-v20.zip'),files=>files.set('model2-legacy-v20.zip',files.get('model5-legacy-v20.zip')),files=>files.set('model2-legacy-v20.zip',files.get('model2-repaired-v20.zip'))]){
+ for(const mutate of [files=>files.set('extra',Uint8Array.of(1)),files=>files.delete('model2-legacy-v23.zip'),files=>files.set('model2-legacy-v23.zip',files.get('model5-legacy-v23.zip')),files=>files.set('model2-legacy-v23.zip',files.get('model2-repaired-v23.zip'))]){
   const files=await A.unzip(bytes);mutate(files);await assert.rejects(OTA.parse(storedZip(files)),/整合 OTA/);
  }
 });
-for(const model of [2,5])for(const current of [5,11,14,16,17])test(`model ${model}: v${current} installs matching v20/v21 exactly twice with one operation lock`,async()=>{
+for(const model of [2,5])for(const current of [5,11,14,16,17])test(`model ${model}: v${current} installs matching v23/v24 exactly twice with one operation lock`,async()=>{
  const b=await parsed,r=peripheral(model,current),progress=[];const out=await r.client.ota(b,consent,(p,s)=>progress.push([p,s]));
- assert.equal(out.status,'boot-verified');assert.equal(out.revision,21);assert.deepEqual(r.installed,[20,21]);
+ assert.equal(out.status,'boot-verified');assert.equal(out.revision,24);assert.deepEqual(r.installed,[23,24]);
  for(const [i,p] of b.models[model][current<15?'legacy':'repaired'].entries()){assert.deepEqual(r.received[i].command,p.dat);assert.deepEqual(r.received[i].image,p.bin);}
- assert.equal(r.client.otaActive,false);assert.equal(r.client.busy,false);assert.equal(r.client.firmwareRevision,21);assert.equal(r.client.pending.size,0);
+ assert.equal(r.client.otaActive,false);assert.equal(r.client.busy,false);assert.equal(r.client.firmwareRevision,24);assert.equal(r.client.pending.size,0);
  assert.equal(r.appCommands.filter(b=>b[0]===0x20).length,2);assert.ok(r.appCommands.every(b=>[0x20,0x24].includes(b[0])));
  assert.ok(progress.every(([p],i)=>i===0||p>=progress[i-1][0]));assert.equal(progress.at(-1)[0],100);
 });
-for(const model of [2,5])test(`model ${model}: resumed v20 and current v19 need only one write`,async()=>{
- const r=peripheral(model,20);await r.client.ota(await parsed,consent);assert.deepEqual(r.installed,[21]);assert.deepEqual(r.received.map(p=>p.revision),[21]);
+for(const model of [2,5])test(`model ${model}: resumed v23 and current v19 need only one write`,async()=>{
+ const r=peripheral(model,23);await r.client.ota(await parsed,consent);assert.deepEqual(r.installed,[24]);assert.deepEqual(r.received.map(p=>p.revision),[24]);
 });
-test('unverified first reboot stops without installing v21',async()=>{
- const r=peripheral(5,14,{badBoot:20});await assert.rejects(r.client.ota(await parsed,consent),/版本不匹配/);
- assert.deepEqual(r.received.map(p=>p.revision),[20]);assert.equal(r.client.pending.size,0);assert.equal(r.client.otaActive,false);
+test('unverified first reboot stops without installing v24',async()=>{
+ const r=peripheral(5,14,{badBoot:23});await assert.rejects(r.client.ota(await parsed,consent),/版本不匹配/);
+ assert.deepEqual(r.received.map(p=>p.revision),[23]);assert.equal(r.client.pending.size,0);assert.equal(r.client.otaActive,false);
 });
 test('changed device after first reboot stops before the next stage',async()=>{
- const r=peripheral(5,14,{changeTarget:20});await assert.rejects(r.client.ota(await parsed,consent),/目标设备发生变化/);
- assert.deepEqual(r.received.map(p=>p.revision),[20]);
+ const r=peripheral(5,14,{changeTarget:23});await assert.rejects(r.client.ota(await parsed,consent),/目标设备发生变化/);
+ assert.deepEqual(r.received.map(p=>p.revision),[23]);
 });
-test('missing consent and already-current v21 never send DFU control/data',async()=>{
+test('missing consent and already-current v24 never send DFU control/data',async()=>{
  const a=peripheral(5,14);await assert.rejects(a.client.ota(await parsed,{}),/确认目标/);assert.equal(a.commands.length,0);
- const b=peripheral(5,21);await assert.rejects(b.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(b.commands.length,0);assert.equal(b.device.gatt.connected,true);
+ const b=peripheral(5,24);await assert.rejects(b.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(b.commands.length,0);assert.equal(b.device.gatt.connected,true);
 });
 for(const current of [10,15])test(`unsupported v${current} fails before time or DFU writes`,async()=>{
  const r=peripheral(5,current);await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
 });
-for(const current of [14,18,20])test(`v${current}: non-quiet receiver prevents the next write without replay`,async()=>{
- const r=peripheral(5,current,{badQuiet:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.deepEqual(r.received.map(p=>p.revision),current===14?[20]:[]);assert.equal(r.device.gatt.connected,true);
+for(const current of [14,18,23])test(`v${current}: non-quiet receiver prevents the next write without replay`,async()=>{
+ const r=peripheral(5,current,{badQuiet:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.deepEqual(r.received.map(p=>p.revision),current===14?[23]:[]);assert.equal(r.device.gatt.connected,true);
 });
 test('missing pause acknowledgments fails before DFU writes',async()=>{
  const r=peripheral(5,14,{noStatus:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
 });
-test('direct v21 cannot bypass the matching v20 receiver',async()=>{
+test('direct v24 cannot bypass the matching v23 receiver',async()=>{
  const r=peripheral(5,14);await assert.rejects(r.client.ota((await parsed).models[5].legacy[1],consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
 });
 test('v5 pause failure stops before any DFU control or data write',async()=>{
@@ -100,13 +100,21 @@ test('v5 pause failure stops before any DFU control or data write',async()=>{
  assert.equal(r.commands.length,0);assert.equal(r.received.length,0);assert.equal(r.device.gatt.connected,true);
 });
 
-for(const model of [2,5])test(`model ${model}: released v18 resumes through its exact original v19, then v21`,async()=>{
- const b=await parsed,r=peripheral(model,18);await r.client.ota(b,consent);assert.deepEqual(r.installed,[19,21]);
+for(const model of [2,5])test(`model ${model}: released v18 resumes through its exact original v19, then v24`,async()=>{
+ const b=await parsed,r=peripheral(model,18);await r.client.ota(b,consent);assert.deepEqual(r.installed,[19,24]);
  for(const [i,p] of b.models[model].resume18.entries()){assert.deepEqual(r.received[i].image,p.bin);assert.deepEqual(r.received[i].command,p.dat);}
 });
-for(const model of [2,5])test(`model ${model}: stable v19 updates directly to v21 with no display-init or sleep command`,async()=>{
- const r=peripheral(model,19);await r.client.ota(await parsed,consent);assert.deepEqual(r.installed,[21]);assert.ok(r.appCommands.every(p=>[0x20,0x24].includes(p[0])));
+for(const model of [2,5])test(`model ${model}: stable v19 updates directly to v24 with no display-init or sleep command`,async()=>{
+ const r=peripheral(model,19);await r.client.ota(await parsed,consent);assert.deepEqual(r.installed,[24]);assert.ok(r.appCommands.every(p=>[0x20,0x24].includes(p[0])));
 });
-test('released v18 refuses direct v21 before any device write',async()=>{
+test('released v18 refuses direct v24 before any device write',async()=>{
  const r=peripheral(5,18);await assert.rejects(r.client.ota((await parsed).models[5].legacy[1],consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
+});
+
+for(const model of [2,5])test(`model ${model}: field v20 uses exact released v21 before v24`,async()=>{
+ const b=await parsed,r=peripheral(model,20);await r.client.ota(b,consent);assert.deepEqual(r.installed,[21,24]);
+ for(const [i,p] of b.models[model].resume20.entries()){assert.deepEqual(r.received[i].image,p.bin);assert.deepEqual(r.received[i].command,p.dat);}
+});
+for(const model of [2,5])test(`model ${model}: stable v21 goes directly to v24`,async()=>{
+ const r=peripheral(model,21);await r.client.ota(await parsed,consent);assert.deepEqual(r.installed,[24]);
 });

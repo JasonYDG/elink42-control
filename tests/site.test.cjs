@@ -4,11 +4,12 @@ const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-contr
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.firmware_revision,21);assert.equal(Object.keys(manifest.assets).length,15);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.firmware_revision,24);assert.equal(Object.keys(manifest.assets).length,135);
   assert.ok(manifest.assets["firmware.js"]);
-  assert.deepEqual(fs.readdirSync(site).sort(),[...Object.keys(manifest.assets),"site-manifest.json"].sort());
+  const files=fs.readdirSync(site,{recursive:true,withFileTypes:true}).filter(p=>p.isFile()).map(p=>path.relative(site,path.join(p.parentPath,p.name)).split(path.sep).join('/')).sort();
+  assert.deepEqual(files,[...Object.keys(manifest.assets),"site-manifest.json"].sort());
   for(const [name,hash] of Object.entries(manifest.assets)){
-    assert.ok(!name.includes("/")&&!/\.(bin|hex|zip|elf|c|h|S|ld)$/i.test(name),name);
+    assert.ok(!name.includes('..')&&!/\.(bin|hex|zip|elf|c|h|S|ld)$/i.test(name),name);
     assert.equal(crypto.createHash("sha256").update(fs.readFileSync(path.join(site,name))).digest("hex"),hash);
   }
   for(const name of ["index.html"]){
