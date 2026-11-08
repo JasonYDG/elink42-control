@@ -74,12 +74,13 @@ test("Chinese weekdays and the almanac policy cover CN SG TW",()=>{
  for(const code of ['CN','SG','TW'])assert.equal(C.hasAlmanac(code),['CN','TW'].includes(code));
 });
 
-test("photo hero is red regular type and a selected holiday never paints over its date",()=>{
+test("photo hero uses red LCD rectangles and a selected holiday never paints over its date",()=>{
  const {R}=load(),events=[];
  const ctx={fillRect(...r){events.push(['fill',this.fillStyle,...r]);},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y){events.push(['text',s,this.fillStyle,this.font,x,y]);}};
  const canvas={getContext:()=>ctx};
  R.calendar(canvas,{code:'CN',date:new Date(2026,10,4),photo:true});
- assert.ok(events.some(e=>e[0]==='text'&&e[1]==='4'&&e[2]==='#b81928'&&e[4]===328&&e[5]===104));
+ assert.ok(events.some(e=>e[0]==='fill'&&e[1]==='#b81928'&&e[2]===309&&e[3]===58&&e[4]===4&&e[5]===24));
+ assert.ok(!events.some(e=>e[0]==='text'&&e[1]==='4'&&e[5]===104));
  events.length=0;R.calendar(canvas,{code:'TW',date:new Date(2027,1,4),photo:true});
  assert.ok(events.some(e=>e[0]==='text'&&e[1]==='今天是'));
  assert.ok(events.some(e=>e[0]==='text'&&e[1]==='立春'));
@@ -150,4 +151,15 @@ test('full-calendar solar and lunar labels use the same measured cell center',()
   assert.ok(solar&&lunar,`missing day ${day}`);assert.equal(solar.x+ctx.measureText(solar.s).width/2,cx);
   assert.equal(lunar.x+ctx.measureText(lunar.s).width/2,cx);
  }
+});
+
+test('full calendar uses a larger natural countdown instead of plus notation',()=>{
+ const {R}=load(),calls=[],ctx={fillRect(){},strokeRect(){},measureText:s=>({width:[...s].length*6}),fillText(s,x,y,w){calls.push({s,x,y,w,font:this.font});}};
+ R.calendar({getContext:()=>ctx},{code:'CN',date:new Date(2026,10,8)});
+ assert.deepEqual(calls.find(c=>c.s==='14天后小雪'),{s:'14天后小雪',x:307,y:272,w:166,font:'24px "Microsoft YaHei", "PingFang SC", sans-serif'});
+ assert.ok(!calls.some(c=>c.y>=250&&c.s.includes('+')));
+});
+test('native calendar-aspect image reaches all four left-panel edges',()=>{
+ const {R}=load(),calls=[],ctx={fillRect(){},save(){},restore(){},beginPath(){},rect(){},clip(){},translate(){},rotate(){},drawImage(...a){calls.push(a);}};
+ R.image({getContext:()=>ctx},{width:256,height:300},{target:'calendar'});assert.deepEqual(calls[0].slice(1),[-128,-150,256,300]);
 });

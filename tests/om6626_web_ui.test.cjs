@@ -74,7 +74,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
     fetch:()=>new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
     Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
-    ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async()=>({width:400,height:300,close(){}}),
+    ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
     document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}}},
@@ -86,20 +86,20 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
-for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed v19 bundle without starting OTA`,async()=>{
+for(const model of [2,5])test(`UI ${model}: old firmware prompts and loads the signed v21 bundle without starting OTA`,async()=>{
   const u=ui(model,true,"zh",true,{revision:11});await u.click("connect");
   assert.deepEqual(u.versionQueries,[[0]]);assert.equal(u.confirmations.length,1);
-  assert.match(u.confirmations[0],/v11.*v19.*清空图库/);assert.match(u.get("firmware-state").textContent,/v11/);
+  assert.match(u.confirmations[0],/v11.*v21.*清空图库/);assert.match(u.get("firmware-state").textContent,/v11/);
   assert.equal(u.get("tab-ota").getAttribute("aria-selected"),"true");
   assert.match(u.get("ota-package").textContent,new RegExp(model===5?"JD79668 四色":"SSD1619 三色"));
-  assert.match(u.get("ota-package").textContent,/版本 18.*19/);assert.match(u.get("ota-kind").textContent,/校验通过/);
+  assert.match(u.get("ota-package").textContent,/版本 20.*21/);assert.match(u.get("ota-kind").textContent,/校验通过/);
   assert.equal(u.get("ota-consent").checked,false);assert.equal(u.get("ota-start").disabled,true);
   assert.ok(!u.packets.some(p=>[5,6,0x20].includes(p[0])));
 });
 for(const model of [2,5])test(`UI ${model}: v5 enables upgrade after loading the built-in bundle and consenting`,async()=>{
  const u=ui(model,true,'zh',true,{revision:5});await u.click('connect');
- assert.match(u.get('firmware-state').textContent,/v5.*v19/);
- assert.match(u.get('ota-package').textContent,/版本 18.*19/);
+ assert.match(u.get('firmware-state').textContent,/v5.*v21/);
+ assert.match(u.get('ota-package').textContent,/版本 20.*21/);
  assert.equal(u.get('ota-start').disabled,true);
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();
  assert.equal(u.get('ota-start').disabled,false);assert.equal(u.idleTimers.size,0);
@@ -107,26 +107,26 @@ for(const model of [2,5])test(`UI ${model}: v5 enables upgrade after loading the
 });
 test("declining update leaves the page and package unchanged; the bundled button remains available",async()=>{
   const u=ui(5,true,"en",true,{revision:1,confirm:false});await u.click("connect");
-  assert.match(u.confirmations[0],/Current firmware v1; bundled update v19/);
+  assert.match(u.confirmations[0],/Current firmware v1; bundled update v21/);
   assert.equal(u.get("tab-calendar").getAttribute("aria-selected"),"true");assert.equal(u.get("ota-bundled").disabled,false);
-  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 18.*19/);
+  await u.click("ota-bundled");assert.match(u.get("ota-package").textContent,/revision 20.*21/);
 });
 
-test("the built-in bundle needs one start confirmation and finishes on v19",async()=>{
- const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:19});await u.click('connect');await u.click('ota-bundled');
+test("the built-in bundle needs one start confirmation and finishes on v21",async()=>{
+ const u=ui(5,true,'zh',true,{revision:14,confirm:false,otaBootRevision:21});await u.click('connect');await u.click('ota-bundled');
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
  const before=u.confirmations.length;u.confirmation(true);await u.click('ota-start');
- assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/最多两次刷写.*v18.*v19.*确认开始/s);
- assert.match(u.get('firmware-state').textContent,/v19/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
+ assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/最多两次刷写.*v20.*v21.*确认开始/s);
+ assert.match(u.get('firmware-state').textContent,/v21/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
 });
-for(const revision of [19,20])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
+for(const revision of [21,22])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 test("v14 reports the bundled baseline and transition route without claiming latest firmware",async()=>{
  const u=ui(5,true,"zh",true,{revision:14});await u.click("connect");
- assert.match(u.get("firmware-state").textContent,/v14.*内置 v19/);
+ assert.match(u.get("firmware-state").textContent,/v14.*内置 v21/);
  assert.doesNotMatch(u.get("firmware-state").textContent,/最新/);
  assert.match(u.get("ota-capability").textContent,/最多两次刷写/);
 });
@@ -181,11 +181,11 @@ test("independent OTA UI verifies project ZIP, requires data-loss consent and ca
   await u.file("ota-file",{name:"wrong.hex",size:10});assert.equal(u.get("ota-start").disabled,true);
   assert.equal(u.get("ota-consent").checked,false);
 });
-test("v18 keeps display actions disabled and offers the one remaining update",async()=>{
+test("v18 keeps display actions disabled and offers the compatible continuation route",async()=>{
  const u=ui(5,true,'zh',true,{revision:18});await u.click('connect');
  for(const id of ['native-calendar','set-time','photo-calendar-start','publish','store-frame','scheduler-start'])assert.equal(u.get(id).disabled,true);
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
- assert.match(u.get('ota-capability').textContent,/v18 只需一次/);assert.equal(u.idleTimers.size,0);
+ assert.match(u.get('ota-capability').textContent,/旧 v18 经原配 v19 到 v21/);assert.equal(u.idleTimers.size,0);
 });
 test("v15 cannot start the new bundle and explains the two-write limit",async()=>{
  const u=ui(5,true,'zh',true,{revision:15});await u.click('connect');
@@ -335,4 +335,13 @@ test("country holiday summaries show local upcoming holidays and China overrides
  assert.match(u.get("holiday-summary").textContent,/Taiwan: government-office calendar/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
  await u.input("calendar-layout","2","change");assert.match(u.get("holiday-summary").textContent,/Next holiday: Deepavali/);
  await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
+});
+
+for(const dimensions of [[256,300],[1159,1358]])test(`calendar-aspect ${dimensions} resets stale transforms and fills the prepared left image`,async()=>{
+ const u=ui();await u.click('tab-image');
+ for(const [id,value] of [['image-angle','90'],['image-zoom','0.6'],['image-x','20'],['image-y','-30']])await u.input(id,value);
+ await u.file('image-file',{name:'calendar.png',size:100,type:'image/png',width:dimensions[0],height:dimensions[1]});
+ assert.equal(u.get('image-target').value,'calendar');assert.equal(u.get('photo-fit').value,'prepared');
+ const call=u.rendered.filter(r=>r.kind==='image').at(-1),options=call.args[2];assert.equal(options.target,'calendar');assert.equal(options.zoom,1);assert.equal(options.angle,0);assert.equal(options.x,0);assert.equal(options.y,0);
+ await u.click('download');assert.match(u.downloads.at(-1).name,/256x300/);
 });

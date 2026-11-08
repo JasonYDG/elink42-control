@@ -43,6 +43,13 @@ const OMRender = (() => {
     ctx.drawImage(bitmap, -bitmap.width * scale / 2, -bitmap.height * scale / 2, bitmap.width * scale, bitmap.height * scale); ctx.restore();
   }
   const COLORS = {black: "#000", white: "#fff", red: "#b81928", yellow: "#ffd200"};
+  function lcdDate(ctx,day){
+    const rects=[[4,0,30,4],[34,4,4,24],[34,30,4,24],[4,52,30,4],[0,30,4,24],[0,4,4,24],[4,26,30,4]],bits=[63,6,91,79,102,109,125,7,127,111];
+    const digits=[...String(day)].map(Number),width=d=>d===1?4:38;
+    let x=328-(digits.reduce((sum,d)=>sum+width(d),0)+(digits.length-1)*8)/2;
+    ctx.fillStyle=COLORS.red;
+    for(const d of digits){for(let i=0;i<7;i++)if(bits[d]&(1<<i)){const [dx,dy,w,h]=rects[i];ctx.fillRect(x+dx-(d===1?34:0),54+dy,w,h);}x+=width(d)+8;}
+  }
   function calendar(canvas,{code,date,language="zh",photo=false,bitmap=null,slot="",model=5}){
     const block=(...args)=>textBlock(...args,14);
     const ctx=start(canvas), C=OMCalendar, region=C.region(code), zh=language==="zh", left=photo?266:12, width=photo?124:376;
@@ -67,9 +74,7 @@ const OMRender = (() => {
     if(!photo && zh && C.hasAlmanac(code)){const a=C.almanac(date);if(a)block(ctx,a.lunarFull,195,1,90,12,10);}
     const weeks=C.weekdays(code,language);
     if(photo){
-      ctx.fillStyle=COLORS.red;ctx.font='500 52px "Bahnschrift", "Arial", sans-serif';
-      ctx.textBaseline="alphabetic";ctx.textAlign="center";ctx.fillText(String(date.getDate()),328,104,92);
-      ctx.textAlign="left";
+      lcdDate(ctx,date.getDate());
     }
     const cells=C.month(code,date.getFullYear(),date.getMonth()),first=cells.findIndex(d=>d.current),length=cells.filter(d=>d.current).length;
     const cell=photo?17:54,top=photo?146:34,startX=photo?left:10,rowH=photo?13:first+length>35?34:38;
@@ -101,8 +106,11 @@ const OMRender = (() => {
       ctx.fillStyle=COLORS.red;ctx.font=`${size}px ${FONT}`;
       ctx.fillText(solar&&!zh?name.toUpperCase():name,328,272+(24-size)/2,width);ctx.textAlign="left";
     }else{
-      block(ctx,label,left,271,220,28,12);
-      if(almanac&&almanac.distance!==null){ctx.fillStyle=COLORS.red;block(ctx,solarToday?(zh?`今天是${almanac.solar[1]}`:`Today: ${almanac.solar[0]}`):`${almanac.solar[zh?1:0]} +${almanac.distance}`,292,276,100,14,10);}
+      block(ctx,label,left,271,180,28,12);
+      if(almanac&&almanac.distance!==null){
+        const label=solarToday?(zh?`今天是${almanac.solar[1]}`:`Today: ${almanac.solar[0]}`):zh?`${almanac.distance}天后${almanac.solar[1]}`:`${almanac.solar[0]} in ${almanac.distance} days`;
+        ctx.fillStyle=COLORS.red;ctx.textBaseline="top";ctx.textAlign="center";ctx.font=`24px ${FONT}`;ctx.fillText(label,307,272,166);ctx.textAlign="left";
+      }
     }
   }
   function textBlock(ctx, text, x, y, width, height, size, lineHeight=size*1.35) {

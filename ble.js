@@ -298,7 +298,7 @@ class OMClient {
     const initialized = this.wait(b => OMProtocol.text(b).startsWith("t="), OMI18n.t("初始化屏幕"));
     const mtu = this.wait(b => /^mtu=\d+$/.test(OMProtocol.text(b)), OMI18n.t("读取传输大小"));
     try {
-      if(this.firmwareRevision===18) { const error=Error(OMI18n.t("v18 过渡接收器只用于继续升级，请留在 OTA 页面"));error.code="DISPLAY_NOT_READY";throw error; }
+      if(this.firmwareRevision===18 || this.firmwareRevision===20) { const error=Error(OMI18n.t("过渡接收器只用于继续升级，请留在 OTA 页面"));error.code="DISPLAY_NOT_READY";throw error; }
       if(this.firmwareRevision>=19) await this.command(Uint8Array.of(0x25));
       else await this.write(Uint8Array.of(1));
       const size = Number(OMProtocol.text(await mtu.promise).slice(4));
