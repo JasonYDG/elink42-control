@@ -169,6 +169,8 @@ footer { text-align: center; font-size: 11px; color: var(--muted); max-width: 11
 .wallpaper-card[aria-pressed=true] { border:2px solid var(--accent); padding:5px; background:var(--soft); }
 .save-actions { margin-top:12px; }
 .device-details { margin:8px 0 0; }
+.device-details dd { overflow-wrap:anywhere; }
+.device-details .low-voltage { color:var(--red, #a82932); font-weight:700; }
 .device-name { margin-bottom:12px; }
 #auto-rotation-panel { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:0 16px; align-items:end; }
 #auto-rotation-panel h2, #auto-state { grid-column:1/-1; }
