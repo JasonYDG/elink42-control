@@ -43,6 +43,10 @@
     const div = document.createElement("div"), label = document.createElement("span"); div.className = "list-row";
     label.textContent = text; div.append(label, ...buttons); $(container).append(div);
   }
+  function bundledFirmware() {
+    const revision=client.firmwareRevision;
+    return revision!==null && (revision<30 || revision===31) ? OMFirmware.legacy : OMFirmware;
+  }
   function update() {
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
     $("transfer-status").classList.toggle("busy",busy);
@@ -54,6 +58,8 @@
     $("ota-inspect").disabled = !otaReady;
     $("ota-file").disabled = busy;
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
+    const bundledLabel=bundledFirmware().revision===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
+    $("ota-bundled").setAttribute("data-i18n",bundledLabel);$("ota-bundled").textContent=OMI18n.t(bundledLabel);
     $("ota-consent").disabled = busy;
     const revision=client.firmwareRevision;
     const needsTransition=!!otaPackage && (otaPackage.bundleVersion===7 ? !OMOTA.bundleRoute(revision) :
@@ -64,7 +70,7 @@
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
     if(otaReady && otaPackage?.bundle)
-      $("ota-capability").textContent=OMI18n.t("支持的旧版经 v31 升至 v32，最多两次刷写；v29 经原配 v30 再升 v32，v30/v31 只需一次。v15/v18/v20/v23/v27 需使用 HEX。最终重启显示设备信息，日历需手动启用。");
+      $("ota-capability").textContent=OMI18n.t(revision===32?"已升级到 v32；再次载入内置 v33 升级包即可完成更新。":"旧版按原路线经配套 v31 或 v30 升至 v32，每次操作最多两次刷写；完成后再次载入内置 v33。锁定旧镜像或启动记录不兼容的版本仍使用对应屏型 HEX。");
     if(otaReady && needsTransition && !otaPackage.bundle)
       $("ota-capability").textContent=OMI18n.t(otaPackage.hardened?"本修复包需要配套过渡接收器；请使用内置整合包，没有发送升级命令":revision>=28?"当前版本不接受旧底层固件回退；没有发送升级命令":otaPackage.lifecycle?"本修复包需要过渡接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
     if(otaReady && otaPackage?.bundle && [15,18,20,23,27].includes(revision))
@@ -271,7 +277,7 @@
   $("calendar-date").addEventListener("input",()=>{calendarInfo();preview();});
   bind("background-clear", () => client.clearBackground(progress));
   bind("led-off", () => client.led(false)); bind("led-on", () => client.led(true));
-  async function loadFirmware(file) {
+  async function loadFirmware(file, expectedArchiveHash) {
     if (client.busy || uiBusy || schedulerRunning) throw Error(OMI18n.t("设备或页面正在操作，请等待后再选择 OTA 包"));
     otaPackage = null; $("ota-consent").checked = false;
     $("ota-package").textContent = OMI18n.t("尚未选择有效的签名 OTA ZIP");
@@ -280,7 +286,12 @@
     if (!/\.zip$/i.test(file.name) || file.size > 2 * 1024 * 1024) throw Error(OMI18n.t("请选择 2 MB 内的签名 OTA ZIP"));
     uiBusy = true; update(); $("ota-package").textContent = OMI18n.t("正在校验 ZIP、签名、固件哈希及保护区…");
     try {
-      otaPackage = await OMOTA.parse(await file.arrayBuffer());
+      const raw=await file.arrayBuffer();
+      if(expectedArchiveHash) {
+        const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",raw)),b=>b.toString(16).padStart(2,"0")).join("");
+        if(digest!==expectedArchiveHash)throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
+      }
+      otaPackage = await OMOTA.parse(raw);
       if(otaPackage.bundle && otaPackage.bundleVersion!==7) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v32 两阶段升级包"));
       $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
       $("ota-kind").textContent = OMI18n.t(otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v32。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
@@ -292,10 +303,11 @@
     if (!client.ready || client.board?.name !== OMProtocol.OTA_MARKER || !client.firmwareRevision)
       throw Error(OMI18n.t("请先连接屏幕并核对固件版本"));
     if (client.firmwareRevision >= OMFirmware.revision) throw Error(OMI18n.t("没有更高版本的内置升级包"));
-    const pack = OMFirmware.packages[client.config.model];
+    const catalog = bundledFirmware(), pack = catalog.packages[client.config.model];
     const bytes = Uint8Array.from(atob(pack.data), c => c.charCodeAt(0));
-    await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer});
-    if (!otaPackage?.bundle || otaPackage.revision !== OMFirmware.revision || !otaPackage.models[client.config.model] || otaPackage.sha256!==pack.sha256) {
+    await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer},pack.sha256);
+    if (!otaPackage || otaPackage.revision !== catalog.revision ||
+        (otaPackage.bundle ? !otaPackage.models[client.config.model] : otaPackage.model !== client.config.model)) {
       otaPackage = null; update(); throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
     }
   }
