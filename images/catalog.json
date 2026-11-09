@@ -1,6 +1,72 @@
 {
   "images": [
     {
+      "path": "full-screen/yellow/yellow-crane-moon.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "af4ffc69b70d92c5a114fd93c41080657192e5f2a1555d59b9fa82ca9f602112",
+      "size": 1468028,
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "id": "full-60"
+    },
+    {
+      "path": "full-screen/yellow/yellow-cat-camellia.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "fde0b7e5b6f201078ee80ff2740a94367274786960413bcac4aa16f0308060f8",
+      "size": 1364753,
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "id": "full-61"
+    },
+    {
+      "path": "full-screen/yellow/yellow-koi-ripples.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "460c9cf4968ce92fa16a8bac3713b166bd4a86cc3945a0837d952107144ae4ed",
+      "size": 1493312,
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "id": "full-62"
+    },
+    {
+      "path": "full-screen/yellow/yellow-mountain-river.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "2e67aa1bf4b81d8fbbe7a86482849ecf364a24f561ce14f3307ac7145e6a1dbf",
+      "size": 1499555,
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "id": "full-63"
+    },
+    {
+      "path": "full-screen/yellow/yellow-ginkgo-bird.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "066e7a1e87b47975ddc5e41ebabe727f9de12f02a7308e422279d69b65fcd8ff",
+      "size": 1385779,
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "id": "full-64"
+    },
+    {
+      "path": "full-screen/yellow/yellow-red-sail.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "34069b67b6a3f611cdc3dc7c48911f833f05181de9c07d683c0fc528778352b9",
+      "size": 1239142,
+      "dimensions": [
+        1448,
+        1086
+      ],
+      "id": "full-65"
+    },
+    {
       "path": "full-screen/001.png",
       "origin": "existing Image folder",
       "sha256": "c8365c856c8119b83e14774cb516a205da99acc09ac8f32b06256c13a94b709d",
@@ -441,6 +507,162 @@
       "id": "full-41"
     },
     {
+      "path": "calendar-wallpapers/yellow/01-winter-plum.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "4f4ecaba0b06fd2244fcbe2d5e5083281ecea9404cdc41086234fdd2bd6f8d4f",
+      "size": 1338745,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-48",
+      "month": 1,
+      "solar_terms": "小寒 / 大寒"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/02-spring-rain.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "0f0ad1d2406ddc56e2b8ec771b6f47a043ac86e534278527ddad598571c5b2e1",
+      "size": 1468711,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-49",
+      "month": 2,
+      "solar_terms": "立春 / 雨水"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/03-spring-awakening.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "9bc219dcb73dd30afade65282d87896fa6f564eeda2dd76757709c288ab177d7",
+      "size": 1464623,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-50",
+      "month": 3,
+      "solar_terms": "惊蛰 / 春分"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/04-tea-rain.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "c3b16d049b8253fa5ed7b7563073e43cd9d2b70f3f5cdd69bd04d5dd61a1b329",
+      "size": 1472687,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-51",
+      "month": 4,
+      "solar_terms": "清明 / 谷雨"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/05-early-summer.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "b438b16bbfc67706c446a0a6adbece0755f5cf7ce75bae66f0f3927af63ef283",
+      "size": 1471636,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-52",
+      "month": 5,
+      "solar_terms": "立夏 / 小满"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/06-summer-harvest.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "75096d0c4f4a3163f3daeff7234ca3bb7591def599b5e2003bbfc66951fc956f",
+      "size": 1490134,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-53",
+      "month": 6,
+      "solar_terms": "芒种 / 夏至"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/07-midsummer-lotus.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "af90bc6ac680b5923f5780d7993941fb6876ee01605642e6679d5d3620d6ada3",
+      "size": 1476525,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-54",
+      "month": 7,
+      "solar_terms": "小暑 / 大暑"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/08-early-autumn.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "9bbb31aeae2fa9c589c99f33acbaa63a34ca000e0ce7c4258363e756b4b76199",
+      "size": 1389711,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-55",
+      "month": 8,
+      "solar_terms": "立秋 / 处暑"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/09-autumn-reeds.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "dd9f11ad8a3c6a175bd844dd3ed4fc20c94f4ee777de114dff3c608a35baf18a",
+      "size": 1442035,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-56",
+      "month": 9,
+      "solar_terms": "白露 / 秋分"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/10-frost-maple.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "5430430cfbd95fda7918cd76fc94c51200892b9cd2a0cf0e616fd7f4003fa696",
+      "size": 1354191,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-57",
+      "month": 10,
+      "solar_terms": "寒露 / 霜降"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/11-winter-persimmon.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "71204847bb295aaefc9e916fb15217c6f8eb842562f9397602aa6d25dcd3ca1b",
+      "size": 1516893,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-58",
+      "month": 11,
+      "solar_terms": "立冬 / 小雪"
+    },
+    {
+      "path": "calendar-wallpapers/yellow/12-winter-snow.png",
+      "origin": "built-in imagegen; original output bytes",
+      "sha256": "3e3203e52075d0a2b87a43b02fba6f5f35251bed4fefc69d981fa3569be84d25",
+      "size": 1392396,
+      "dimensions": [
+        1159,
+        1358
+      ],
+      "id": "calendar-59",
+      "month": 12,
+      "solar_terms": "大雪 / 冬至"
+    },
+    {
       "path": "calendar-wallpapers/originals/C00.png",
       "origin": "existing Image folder",
       "sha256": "323fb41b44e46eb071f606a3f4242b50fd3131f8f1353a4458ee11ab50ec98bd",
@@ -505,167 +727,12 @@
         1358
       ],
       "id": "calendar-47"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/01-winter-plum.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 1,
-      "solar_terms": "小寒 / 大寒",
-      "sha256": "10ca219bd8c0f12899d0d850357fc7c83643fc4350a6d9b848d07784a37b0a4e",
-      "size": 1610969,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-48"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/02-spring-rain.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 2,
-      "solar_terms": "立春 / 雨水",
-      "sha256": "3a529da5be72f165f68563954bbc7764c6efb7e25039fe63358d7aeb9a7df625",
-      "size": 1852477,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-49"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/03-spring-awakening.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 3,
-      "solar_terms": "惊蛰 / 春分",
-      "sha256": "793771c495a1c27d7ed599eec31af61eeef8576dbfe6a3b32f1594ebd638aa9b",
-      "size": 1918614,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-50"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/04-tea-rain.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 4,
-      "solar_terms": "清明 / 谷雨",
-      "sha256": "31345a317208fe300fe8ab0f2738f649fc2c2681477aea0811809e88b7f1b454",
-      "size": 2043174,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-51"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/05-early-summer.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 5,
-      "solar_terms": "立夏 / 小满",
-      "sha256": "8f2e5d24d286ec86bcd9cba3ebc2fe3f1431f19838a08e16babd3e369bb76e50",
-      "size": 1594681,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-52"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/06-summer-harvest.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 6,
-      "solar_terms": "芒种 / 夏至",
-      "sha256": "c3c1bfd3c0d48e4cf91eb62a1516c6c8c3a7539f1fc54b7cd5771f1aeb7c2be0",
-      "size": 1734545,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-53"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/07-midsummer-lotus.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 7,
-      "solar_terms": "小暑 / 大暑",
-      "sha256": "ade724f6fe2a199840dcb40d5f90a033e5dacab1863b0de84388e16bae7be726",
-      "size": 1783038,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-54"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/08-early-autumn.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 8,
-      "solar_terms": "立秋 / 处暑",
-      "sha256": "0c5fbde9819fa065722cef86fdb9aa71a26111804651e17d7919244a965a1e71",
-      "size": 1857687,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-55"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/09-autumn-reeds.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 9,
-      "solar_terms": "白露 / 秋分",
-      "sha256": "a53e8f33ab28b063c587b9612b13ef8ef202a397ee12a8545646e19c8f560c93",
-      "size": 1827937,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-56"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/10-frost-maple.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 10,
-      "solar_terms": "寒露 / 霜降",
-      "sha256": "c7a8beb6952d8656ebec509e3a934a2f829db4850da46306fec877c7949a1539",
-      "size": 2051940,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-57"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/11-winter-persimmon.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 11,
-      "solar_terms": "立冬 / 小雪",
-      "sha256": "c49168873492e761986f458fd320b8931b124f2c158659401d8c4732a04399b3",
-      "size": 1899337,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-58"
-    },
-    {
-      "path": "calendar-wallpapers/monthly/12-winter-snow.png",
-      "origin": "built-in imagegen; original output bytes",
-      "month": 12,
-      "solar_terms": "大雪 / 冬至",
-      "sha256": "cd742dc75515313ece6dde91feab5c2b6e894ab81fd59a38f3850dae7410bbe1",
-      "size": 1952790,
-      "dimensions": [
-        1159,
-        1358
-      ],
-      "id": "calendar-59"
     }
   ],
   "originals_modified": false,
   "native_calendar_target": [
     256,
     300
-  ]
+  ],
+  "active_monthly_collection": "yellow"
 }

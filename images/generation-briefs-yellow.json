@@ -1,0 +1,205 @@
+{
+  "mode": "built-in imagegen",
+  "collection": "yellow",
+  "web_version": "0.6.21",
+  "prompts": [
+    {
+      "id": "calendar-48",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. A single sculptural black plum bough enters from lower left and arcs toward upper right, carrying a few oversized brilliant red blossoms with warm-white centers and small caps of white snow. One tiny black bird rests quietly near the arc. Most of the yellow sky is empty; low white snowbank at the bottom. Spare, exquisite early-winter botanical print.",
+      "path": "calendar-wallpapers/yellow/01-winter-plum.png",
+      "sha256": "4f4ecaba0b06fd2244fcbe2d5e5083281ecea9404cdc41086234fdd2bd6f8d4f",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-49",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. Two graceful black swallows fly diagonally through a broad open yellow sky; long slender black willow fronds drape from the upper left, a few fine clean white spring rain strokes. A low arched black stone bridge and warm-white water occupy only the lower quarter, one restrained red flowering twig accents the right foreground. Poetic early spring with generous breathing room.",
+      "path": "calendar-wallpapers/yellow/02-spring-rain.png",
+      "sha256": "0f0ad1d2406ddc56e2b8ec771b6f47a043ac86e534278527ddad598571c5b2e1",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-50",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. A beautifully composed single dark peach branch extends from the right, with five large sculptural red blossoms and warm-white buds. One bold black-and-white swallowtail butterfly hovers in the open yellow field to the left. A thin crescent of white ground anchors the bottom. Crisp botanical elegance, waking spring, sparse exquisite composition.",
+      "path": "calendar-wallpapers/yellow/03-spring-awakening.png",
+      "sha256": "9bc219dcb73dd30afade65282d87896fa6f564eeda2dd76757709c288ab177d7",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-51",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. A refined landscape of broad sweeping tea terraces, black calligraphic contour bands separated by yellow fields and white paths, occupying the bottom half. One small red open paper umbrella on a terrace path gives a clear focal point. Two graceful black bamboo stems frame the left edge; broad uninterrupted yellow sky above. Quiet rain-season tea country, no people.",
+      "path": "calendar-wallpapers/yellow/04-tea-rain.png",
+      "sha256": "c3b16d049b8253fa5ed7b7563073e43cd9d2b70f3f5cdd69bd04d5dd61a1b329",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-52",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. One large perfectly formed red pomegranate flower on a sinuous black branch in the foreground, with two bold black leaves accented by white veins. A graceful black dragonfly hovers over a warm-white curved pond occupying the lower quarter. Open yellow space dominates. Early summer botanical art, carefully balanced and uncluttered.",
+      "path": "calendar-wallpapers/yellow/05-early-summer.png",
+      "sha256": "b438b16bbfc67706c446a0a6adbece0755f5cf7ce75bae66f0f3927af63ef283",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-53",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. Three tall elegant wheat heads drawn as bold black silhouettes with warm-white kernels sweep diagonally from the lower left. One striking white egret with black wing details and a tiny red crown stands in a curving white irrigation stream at the lower right. Expansive yellow field and sky merge into one serene solid ground. Refined harvest season print, broad simple rhythm.",
+      "path": "calendar-wallpapers/yellow/06-summer-harvest.png",
+      "sha256": "75096d0c4f4a3163f3daeff7234ca3bb7591def599b5e2003bbfc66951fc956f",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-54",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. One magnificent large red lotus blossom on an elegant black stem, two sculptural black lotus leaves with white cutout veins in the lower half, a small warm-white dragonfly above. Two broad white pond ripples at the bottom. Yellow background dominates the entire upper half. Calm midsummer botanical print, dramatic large shapes and airy asymmetric composition.",
+      "path": "calendar-wallpapers/yellow/07-midsummer-lotus.png",
+      "sha256": "af90bc6ac680b5923f5780d7993941fb6876ee01605642e6679d5d3620d6ada3",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-55",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. A sculptural pair of black lotus seedpods on long curving stems, their seed openings warm white, balanced with one broad curling black leaf and a single poised red dragonfly in the open yellow sky. Sparse white ripple arcs along the bottom edge. Elegant late-summer to autumn transition, organic rhythm and bold readable silhouettes.",
+      "path": "calendar-wallpapers/yellow/08-early-autumn.png",
+      "sha256": "9bbb31aeae2fa9c589c99f33acbaa63a34ca000e0ce7c4258363e756b4b76199",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-56",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. Two elegant white cranes with refined black wings and tiny red crowns stand among a handful of sweeping black reed stems. Place the birds mostly in the lower half, with long curved necks, generous luminous yellow sky above and a few large white dew beads on the reeds. Broad black-and-white water ribbon at the bottom. Museum-quality cool autumn bird print, avoid dense reed texture.",
+      "path": "calendar-wallpapers/yellow/09-autumn-reeds.png",
+      "sha256": "dd9f11ad8a3c6a175bd844dd3ed4fc20c94f4ee777de114dff3c608a35baf18a",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-57",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. One magnificent cinnabar-red maple bough with five large sculptural leaves descends diagonally from upper right across expansive solid yellow sky. A distant low black mountain ridge and winding warm-white river occupy the lower quarter; two restrained black grasses at left foreground. Clear late autumn, striking negative space and exquisite leaf silhouettes, no intricate forest.",
+      "path": "calendar-wallpapers/yellow/10-frost-maple.png",
+      "sha256": "5430430cfbd95fda7918cd76fc94c51200892b9cd2a0cf0e616fd7f4003fa696",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-58",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. An expressive single black persimmon branch curves from the upper left across a luminous yellow field, carrying exactly three large beautiful red persimmons, each with a small warm-white snow cap and crisp black sepals. A tiny white-breasted black songbird rests on a lower twig. One low white snowbank across the bottom; no village or clutter. Exquisite spare winter botanical composition.",
+      "path": "calendar-wallpapers/yellow/11-winter-persimmon.png",
+      "sha256": "71204847bb295aaefc9e916fb15217c6f8eb842562f9397602aa6d25dcd3ca1b",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-59",
+      "kind": "calendar",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: portrait image, exact aspect ratio 64:75 (1024x1200 if possible), designed for 256x300 pixels. One dramatic sculptural black pine branch with broad warm-white snow pillows enters from upper right; a single beautiful red hanging lantern with black ribs and a minimal white tassel hangs toward the left. A gently curved white snowbank at bottom and large open yellow sky. Poetic winter solstice art, quiet luxurious composition, no dense mountain village.",
+      "path": "calendar-wallpapers/yellow/12-winter-snow.png",
+      "sha256": "3e3203e52075d0a2b87a43b02fba6f5f35251bed4fefc69d981fa3569be84d25",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "full-60",
+      "kind": "full",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: landscape image, exact 4:3 aspect ratio (1600x1200 if possible), designed for a 400x300 display. Two graceful white red-crowned cranes, beautifully accurate anatomy and sculptural black wings, stand in an elegant shallow black-and-white water ribbon along the bottom. Sweeping black reed stems frame only the lower left; one big warm-white moon sits high on the right in an uninterrupted yellow sky. Serene contemporary East Asian art print.",
+      "path": "full-screen/yellow/yellow-crane-moon.png",
+      "sha256": "af4ffc69b70d92c5a114fd93c41080657192e5f2a1555d59b9fa82ca9f602112",
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "id": "full-61",
+      "kind": "full",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: landscape image, exact 4:3 aspect ratio (1600x1200 if possible), designed for a 400x300 display. A striking elegant black cat with white chest sits in profile at the lower right, gazing at a single large red camellia blossom on a graceful black branch entering from upper left. The cat has natural feline anatomy, a long curled tail, one crisp white eye highlight. Lots of yellow breathing space, sophisticated playful composition, no human features.",
+      "path": "full-screen/yellow/yellow-cat-camellia.png",
+      "sha256": "fde0b7e5b6f201078ee80ff2740a94367274786960413bcac4aa16f0308060f8",
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "id": "full-62",
+      "kind": "full",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: landscape image, exact 4:3 aspect ratio (1600x1200 if possible), designed for a 400x300 display. Two beautifully formed koi fish, one red-and-white and one black-and-white, circle through a broad warm-white crescent of water across the lower left to upper right. Bold restrained black ripple arcs echo their motion; a single cropped black lotus leaf anchors one corner. Yellow ground remains dominant. Elegant dynamic composition, no tiny scales.",
+      "path": "full-screen/yellow/yellow-koi-ripples.png",
+      "sha256": "460c9cf4968ce92fa16a8bac3713b166bd4a86cc3945a0837d952107144ae4ed",
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "id": "full-63",
+      "kind": "full",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: landscape image, exact 4:3 aspect ratio (1600x1200 if possible), designed for a 400x300 display. A cinematic expansive Chinese mountain landscape constructed from three beautifully balanced black and warm-white mountain silhouettes, a bold winding white river creating an S curve from foreground to distance. A single red-leaved tree frames the left foreground, a small warm-white sun above the distant peaks. Golden-yellow sky and valleys, calm sophisticated woodblock print, no buildings or lettering.",
+      "path": "full-screen/yellow/yellow-mountain-river.png",
+      "sha256": "2e67aa1bf4b81d8fbbe7a86482849ecf364a24f561ce14f3307ac7145e6a1dbf",
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "id": "full-64",
+      "kind": "full",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: landscape image, exact 4:3 aspect ratio (1600x1200 if possible), designed for a 400x300 display. One dramatic black ginkgo branch arcs from upper left over the yellow field, carrying large graphic warm-white and black fan-shaped ginkgo leaves. A beautifully drawn red-and-black songbird perches near the lower right on the branch. Only a handful of leaves, exquisite spacing, bold organic shapes. Museum-quality elegant botanical art.",
+      "path": "full-screen/yellow/yellow-ginkgo-bird.png",
+      "sha256": "066e7a1e87b47975ddc5e41ebabe727f9de12f02a7308e422279d69b65fcd8ff",
+      "dimensions": [
+        1448,
+        1086
+      ]
+    },
+    {
+      "id": "full-65",
+      "kind": "full",
+      "prompt": "Use case: stylized-concept. Create ONE finished, exceptionally refined Chinese seasonal art print for a small four-color e-paper display. Art direction: contemporary museum-quality Japanese woodblock meets Chinese gongbi botanical composition, restrained and sophisticated. A luminous SOLID SUNFLOWER YELLOW background occupies at least 55% of the canvas; sophisticated asymmetric balance, generous uninterrupted yellow negative space, expressive sweeping shapes and perfectly deliberate composition. Palette restricted to yellow, deep black ink, cinnabar red, and warm white; use flat solid ink regions, confident clean edges, no gradients, no gray, no photographic shading, no grain, no halftone, no miniature busy detail. Fine elegance must come from rhythm and shape rather than clutter. Major details must remain readable at device size. Flat artwork fills entire canvas to all edges. No frame, no mat, no text, no Chinese characters, no letters, no date, no logo, no watermark, no collage or multiple panels. Composition: landscape image, exact 4:3 aspect ratio (1600x1200 if possible), designed for a 400x300 display. A single elegant black wooden sailing boat with one large striking cinnabar red triangular sail glides on two broad white and black water curves along the lower third. One low distant black island at left and a warm-white sun high right. Most of canvas is open luminous yellow sky. Refined coastal woodblock print with a sense of stillness and perfect proportion.",
+      "path": "full-screen/yellow/yellow-red-sail.png",
+      "sha256": "34069b67b6a3f611cdc3dc7c48911f833f05181de9c07d683c0fc528778352b9",
+      "dimensions": [
+        1448,
+        1086
+      ]
+    }
+  ]
+}
