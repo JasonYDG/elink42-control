@@ -16,9 +16,11 @@ class OMClient {
     this.timingSupported = false;
     this.otaActive = false;
     this.firmwareRevision = null;
+    this.deviceInfo = null;
     this.idleTimer = null;
   }
   get canPublish() { return [2, 5].includes(this.config?.model); }
+  get deviceInfoSupported() { return this.firmwareRevision >= 32 && this.board?.name === OMProtocol.OTA_MARKER; }
   setTransfer(payload, delay) {
     OMProtocol.integer(payload, 20, 180, OMI18n.t("传输上限")); OMProtocol.integer(delay, 0, 100, OMI18n.t("包间隔"));
     if (this.busy) throw Error(OMI18n.t("传输中无法修改包设置"));
@@ -42,6 +44,7 @@ class OMClient {
     this.refreshStatus = false;
     this.lifecycleSupported = false;
     this.timingSupported = false;
+    this.deviceInfo = null;
     this.control?.removeEventListener("characteristicvaluechanged", this.notify);
     for (const waiter of [...this.pending]) waiter.reject(Error(OMI18n.t("蓝牙已断开；已提交的刷新结果需要查看屏幕确认")));
     this.log(OMI18n.t("蓝牙已断开"));
@@ -120,7 +123,7 @@ class OMClient {
   }
   async openConnection() {
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
-    this.config = null; this.board = null; this.control = null; this.firmwareRevision = null;
+    this.config = null; this.board = null; this.control = null; this.firmwareRevision = null; this.deviceInfo = null;
     this.device.addEventListener("gattserverdisconnected", this.disconnected, {once: true});
     const server = await this.bounded(this.device.gatt.connect(), OMI18n.t("蓝牙连接"), 15000);
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
@@ -170,6 +173,7 @@ class OMClient {
     clearTimeout(this.idleTimer);
     this.connectCancelled = true;
     this.ready = false;
+    this.deviceInfo = null;
     this.device?.gatt.disconnect();
     this.update();
   }
@@ -190,6 +194,34 @@ class OMClient {
     }
   }
   nextSequence() { return this.commandSequence = this.commandSequence % 255 + 1; }
+  async readDeviceInfo() {
+    this.deviceInfo = null;
+    if (!this.deviceInfoSupported) return null;
+    const sequence = this.nextSequence();
+    const reply = await this.request(Uint8Array.of(0x24, 0x44, sequence),
+      b => b[0] === 0x59 && b[1] === sequence, OMI18n.t("读取电压和 MAC 地址"), 65000);
+    if (reply.length !== 12 || reply[2] !== this.config.model || reply[3] > 8)
+      throw Error(OMI18n.t("设备信息回执无效"));
+    const mv = reply[4] | reply[5] << 8;
+    const macBytes = reply.slice(6).reverse();
+    const mac = macBytes.every(b => b === 0) || macBytes.every(b => b === 255) ? null :
+      [...macBytes].map(b => b.toString(16).padStart(2, "0")).join(":").toUpperCase();
+    this.deviceInfo = {mac, millivolts: !reply[3] && mv >= 1000 && mv <= 5000 ? mv : null, status: reply[3]};
+    this.update();
+    return this.deviceInfo;
+  }
+  async home(progress) {
+    return this.operation(async () => {
+      if (!this.deviceInfoSupported) { const error = Error(OMI18n.t("设备信息与初始页需要 v32 或更新固件")); error.code = "DISPLAY_NOT_READY"; throw error; }
+      await this.waitForDisplay();
+      await this.command(OMProtocol.time(new Date(), 0));
+      await this.initialize();
+      await this.command(Uint8Array.of(0x27), progress);
+      await this.readCalendar();
+      if (this.config.mode !== 0 || this.config.photoSlot !== 255) throw Error(OMI18n.t("初始页状态未确认，请查看屏幕"));
+      this.offlineRotation = null;
+    });
+  }
   requireRefreshStatus() {
     if (!this.refreshStatus) throw Error(OMI18n.t("当前固件不能报告刷新完成，请先升级 refresh-state 配套固件；没有发送刷新命令"));
   }
@@ -212,6 +244,7 @@ class OMClient {
       if (reply[3] & 4) {
         if (reply.length !== 6 || reply[3] !== 0xA4) throw Error(OMI18n.t("设备就绪状态回执无效"));
         const mv = reply[4] | (reply[5] << 8);
+        if (this.deviceInfo) this.deviceInfo.millivolts = mv;
         const error = Error(OMI18n.t("供电不足，未开始刷新；实测电压 ") + (Math.round(mv/10)/100).toFixed(2) + OMI18n.t(" V。请更换电池或改用稳定供电。"));
         error.code = "DISPLAY_NOT_READY";
         error.millivolts = mv;

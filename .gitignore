@@ -19,8 +19,8 @@ runtime/
 # Only the explicitly released, signed OTA and application HEX downloads are public.
 !firmware/
 firmware/*
-!firmware/elink42-ota-v30.zip
-!firmware/elink42-tricolor-ssd1619-v30.hex
-!firmware/elink42-fourcolor-jd79668-v30.hex
+!firmware/elink42-ota-v32.zip
+!firmware/elink42-tricolor-ssd1619-v32.hex
+!firmware/elink42-fourcolor-jd79668-v32.hex
 !firmware/README.md
 !firmware/LICENSES.txt
