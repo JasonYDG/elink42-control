@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'build' / 'elink42-control'
 ASSETS = ['index.html', 'style.css', 'i18n.js', 'holidays.js', 'calendar.js', 'charset.js', 'protocol.js',
           'ble.js', 'features.js', 'archive.js', 'ota.js', 'firmware.js', 'render.js', 'wallpapers.js', 'rotation.js', 'app.js', '.nojekyll']
-ASSETS += ['firmware/'+n for n in ['elink42-ota-v32.zip','elink42-tricolor-ssd1619-v32.hex','elink42-fourcolor-jd79668-v32.hex','README.md','LICENSES.txt']]
+ASSETS += ['firmware/'+n for n in ['elink42-ota-v32.zip','elink42-tricolor-ssd1619-v33-ota.zip','elink42-fourcolor-jd79668-v33-ota.zip','elink42-tricolor-ssd1619-v33.hex','elink42-fourcolor-jd79668-v33.hex','README.md','LICENSES.txt']]
 
 def firmware_images():
     bundle=(ROOT/'firmware/elink42-ota-v32.zip').read_bytes()
@@ -19,15 +19,22 @@ def firmware_images():
     embedded=json.loads(re.search(r'const pack=(\{.*?\});return', (ROOT/'firmware.js').read_text('ascii')).group(1))
     assert base64.b64decode(embedded['data'],validate=True)==bundle
     assert hashlib.sha256(bundle).hexdigest()==embedded['sha256']
+    packs=json.loads(re.search(r'const packs=(\{.*?\});const pack=', (ROOT/'firmware.js').read_text('ascii')).group(1))
+    assert set(packs)=={'2','5'}
     result={}
-    with zipfile.ZipFile(io.BytesIO(bundle))as outer:
-        manifest=json.loads(outer.read('manifest.json'));assert manifest['version']==7 and manifest['target_revision']==32
-        for model,name in [(2,'tricolor-ssd1619'),(5,'fourcolor-jd79668')]:
-            with zipfile.ZipFile(io.BytesIO(outer.read(f'model{model}-v32.zip')))as inner:
+    for model,name in [(2,'tricolor-ssd1619'),(5,'fourcolor-jd79668')]:
+            pack=packs[str(model)]
+            assert pack['name']==f'elink42-{name}-v33-ota.zip'
+            encoded=base64.b64decode(pack['data'],validate=True)
+            assert encoded==(ROOT/'firmware'/pack['name']).read_bytes()
+            assert hashlib.sha256(encoded).hexdigest()==pack['sha256']
+            with zipfile.ZipFile(io.BytesIO(encoded))as inner:
+                assert inner.testzip()is None and set(inner.namelist())=={'manifest.json','firmware.dat','firmware.bin'}
                 image,dat=inner.read('firmware.bin'),inner.read('firmware.dat')
             assert len(image)==238532 and len(dat)==104 and hashlib.sha256(image).digest()[::-1]==dat[24:56]
-            assert struct.unpack_from('<I',image,0x417870-0x404000)[0]==32
-            memory={};upper=0;filename=f'firmware/elink42-{name}-v32.hex'
+            assert struct.unpack_from('<I',image,0x417870-0x404000)[0]==33
+            assert struct.unpack_from('<III',dat,12)==(0x5A4B0000|model<<8,33,238532)
+            memory={};upper=0;filename=f'firmware/elink42-{name}-v33.hex'
             for line in (ROOT/filename).read_text('ascii').splitlines():
                 r=bytes.fromhex(line[1:]);assert line.startswith(':') and sum(r)%256==0 and len(r)==r[0]+5
                 if r[3]==4:upper=int.from_bytes(r[4:6],'big')<<16
@@ -45,7 +52,7 @@ def build():
     import re
     assert len(images)==116 and all(re.fullmatch(r'assets/wallpapers/(thumbs/[a-z0-9-]+\.webp|display/[a-z0-9-]+\.png)',p) for p in images)
     files = ASSETS+images
-    assert len(files) == len(set(files)) == 138
+    assert len(files) == len(set(files)) == 140
     firmware=firmware_images()
     OUT.mkdir(parents=True, exist_ok=True)
     assert OUT.resolve().is_relative_to((ROOT / 'build').resolve())
@@ -58,9 +65,9 @@ def build():
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, dest)
         hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
-    manifest = {'version': '0.6.19', 'repository': 'JasonYDG/elink42-control',
+    manifest = {'version': '0.6.20', 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
-                'content': 'web-control-with-bundled-signed-ota', 'firmware_revision': 32, 'firmware_images':firmware,'assets': hashes}
+                'content': 'web-control-with-bundled-signed-ota', 'firmware_revision': 33, 'firmware_images':firmware,'assets': hashes}
     (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
     print(json.dumps({'directory': str(OUT), 'files': len(hashes) + 1}))
 

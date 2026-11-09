@@ -5,7 +5,7 @@ const code=['i18n.js','holidays.js','calendar.js','charset.js','protocol.js','bl
 const {OTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh");({OTA:OMOTA,Client:OMClient,P:OMProtocol,A:OMArchive,F:OMFirmware})',{
  TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,crypto:require('node:crypto').webcrypto,
  setTimeout:(f,ms)=>setTimeout(f,ms===2000?0:ms),clearTimeout,console,navigator:{}});
-const bytes=Buffer.from(F.packages[2].data,'base64'),parsed=OTA.parse(bytes);
+const bytes=Buffer.from(F.legacy.packages[2].data,'base64'),parsed=OTA.parse(bytes);
 
 function storedZip(files){
  const local=[],central=[];let offset=0;
@@ -54,9 +54,22 @@ function peripheral(model,current,options={}){
 const consent={deviceId:'bundle-target',eraseImages:true};
 
 test('public v32 bundle verifies all twelve signed images and exact five-family pairings',async()=>{
- const b=await parsed;assert.equal(F.revision,32);assert.equal(F.packages[2],F.packages[5]);assert.equal(b.bundleVersion,7);assert.equal(b.sha256,F.packages[2].sha256);
+ const b=await parsed;assert.equal(F.revision,33);assert.equal(F.legacy.revision,32);assert.equal(F.legacy.packages[2],F.legacy.packages[5]);assert.equal(b.bundleVersion,7);assert.equal(b.sha256,F.legacy.packages[2].sha256);
  for(const model of [2,5])for(const family of ['legacy','repaired','stable','hardened'])assert.deepEqual(Array.from(b.models[model][family],p=>[p.model,p.revision]),[[model,31],[model,32]]);
  for(const model of [2,5])assert.deepEqual(Array.from(b.models[model].boot,p=>[p.model,p.revision]),[[model,30],[model,32]]);
+});
+for(const model of [2,5])for(const revision of [30,32])test(`model ${model}: v${revision} selects its signed v33 image and transfers once`,async()=>{
+ const embedded=F.packages[model],p=await OTA.parse(Buffer.from(embedded.data,'base64'));
+ assert.equal(F.revision,33);assert.equal(p.model,model);assert.equal(p.revision,33);assert.equal(p.bundle,undefined);
+ assert.equal(require('node:crypto').createHash('sha256').update(Buffer.from(embedded.data,'base64')).digest('hex'),embedded.sha256);
+ assert.equal(require('node:crypto').createHash('sha256').update(p.bin).digest('hex'),p.sha256);
+ const r=peripheral(model,revision);await r.client.ota(p,consent,()=>{});
+ assert.deepEqual(r.installed,[33]);assert.equal(r.received.length,1);assert.deepEqual(r.received[0].image,p.bin);
+ assert.equal(r.client.firmwareRevision,33);assert.equal(r.client.pending.size,0);
+});
+for(const model of [2,5])test(`model ${model}: the other panel's embedded v33 is rejected before writes`,async()=>{
+ const r=peripheral(model,32),p=await OTA.parse(Buffer.from(F.packages[model===2?5:2].data,'base64'));
+ await assert.rejects(r.client.ota(p,consent),/屏型不匹配/);assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
 });
 test('bundle rejects extra entries, incomplete stages, swapped panels and wrong receiver foundations',async()=>{
  for(const mutate of [f=>f.set('extra',Uint8Array.of(1)),f=>f.delete('model2-legacy-v31.zip'),f=>f.set('model2-legacy-v31.zip',f.get('model5-legacy-v31.zip')),f=>f.set('model2-legacy-v31.zip',f.get('model2-repaired-v31.zip')),f=>f.set('model2-stable-v31.zip',f.get('model2-repaired-v31.zip'))]){

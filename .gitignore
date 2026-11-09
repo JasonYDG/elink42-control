@@ -20,7 +20,9 @@ runtime/
 !firmware/
 firmware/*
 !firmware/elink42-ota-v32.zip
-!firmware/elink42-tricolor-ssd1619-v32.hex
-!firmware/elink42-fourcolor-jd79668-v32.hex
+!firmware/elink42-tricolor-ssd1619-v33.hex
+!firmware/elink42-fourcolor-jd79668-v33.hex
 !firmware/README.md
 !firmware/LICENSES.txt
+!firmware/elink42-tricolor-ssd1619-v33-ota.zip
+!firmware/elink42-fourcolor-jd79668-v33-ota.zip

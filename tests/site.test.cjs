@@ -1,11 +1,11 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto");
 const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-control");
-const firmwareFiles=new Set(['elink42-ota-v32.zip','elink42-tricolor-ssd1619-v32.hex','elink42-fourcolor-jd79668-v32.hex','README.md','LICENSES.txt'].map(n=>'firmware/'+n));
+const firmwareFiles=new Set(['elink42-ota-v32.zip','elink42-tricolor-ssd1619-v33-ota.zip','elink42-fourcolor-jd79668-v33-ota.zip','elink42-tricolor-ssd1619-v33.hex','elink42-fourcolor-jd79668-v33.hex','README.md','LICENSES.txt'].map(n=>'firmware/'+n));
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.19');assert.equal(manifest.firmware_revision,32);assert.equal(Object.keys(manifest.assets).length,138);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.20');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,140);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.ok(firmwareFiles.has(row.hex));assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
