@@ -3,8 +3,9 @@
   const $ = id => document.getElementById(id), F = OMFeatures, C = OMCalendar;
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
-  let otaPackage = null;
-  let libraryKind="full",libraryCategory="month",selectedWallpaper=null;
+  let otaPackage = null,firmwareRequest=null;
+  let libraryKind="full",libraryCategory="month",selectedWallpaper=null,libraryObserver=null;
+  const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",image:"image",gallery:"gallery",more:"settings"};
   let draft = F.defaultTemplates()[0], editingTodo = null, courseDay = 1, store;
   const lines = [], drawable = new Set(["image", "todo", "template", "course", "weather"]);
@@ -43,9 +44,9 @@
     const div = document.createElement("div"), label = document.createElement("span"); div.className = "list-row";
     label.textContent = text; div.append(label, ...buttons); $(container).append(div);
   }
-  function bundledFirmware() {
+  function bundledRevision() {
     const revision=client.firmwareRevision;
-    return revision!==null && (revision<30 || revision===31) ? OMFirmware.legacy : OMFirmware;
+    return revision!==null && (revision<30 || revision===31) ? 32 : bundledFirmwareRevision;
   }
   function update() {
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
@@ -57,8 +58,8 @@
     const otaReady = ready && client.board?.name === OMProtocol.OTA_MARKER;
     $("ota-inspect").disabled = !otaReady;
     $("ota-file").disabled = busy;
-    $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= OMFirmware.revision;
-    const bundledLabel=bundledFirmware().revision===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
+    $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= bundledFirmwareRevision;
+    const bundledLabel=bundledRevision()===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
     $("ota-bundled").setAttribute("data-i18n",bundledLabel);$("ota-bundled").textContent=OMI18n.t(bundledLabel);
     $("ota-consent").disabled = busy;
     const revision=client.firmwareRevision;
@@ -120,7 +121,7 @@
       info.millivolts < 2800 ? "电池电量低，仍可刷屏；请准备更换电池。" : "电压为最近一次采样，点击刷新可重新读取。");
     for (const id of ["device-info-refresh", "device-home"]) $(id).disabled = !ready || !client.deviceInfoSupported || client.otaActive;
     $("firmware-state").textContent = client.ready && client.firmwareRevision ? `v${client.firmwareRevision}` +
-      OMI18n.t(" · 网页内置 v") + OMFirmware.revision + (client.firmwareRevision < OMFirmware.revision ? OMI18n.t(" · 发现内置更新") : "") : OMI18n.t("待核对");
+      OMI18n.t(" · 网页内置 v") + bundledFirmwareRevision + (client.firmwareRevision < bundledFirmwareRevision ? OMI18n.t(" · 发现内置更新") : "") : OMI18n.t("待核对");
     $("screen-model").textContent = client.ready ? client.config.model === 5 ? OMI18n.t("JD79668 · 四色") : OMI18n.t("SSD1619 · 黑白红") : OMI18n.t("三色 / 四色 · 连接后识别");
     $("mtu-state").textContent = OMI18n.msg`${client.reportedPayload || 20} B ATT / ${client.payload} B 当前发送`;
     $("clock-capability").textContent = client.ready ? client.config.model === 5 ?
@@ -194,6 +195,7 @@
     for(const b of tabs)b.hidden=sectionOf(b.dataset.tab)!==section;
     $("feature-tabs").hidden=section==="image" || section==="gallery";
     for(const name of Object.keys(sectionViews))$("nav-"+name).setAttribute("aria-pressed",String(name===section));
+    renderLibrary();
     client.armIdleDisconnect();
     preview();
   }
@@ -229,8 +231,8 @@
       catch (error) { log(error.message); throw Error(OMI18n.t("无法核对固件版本，请重新连接后重试；没有发送升级命令。")); }
       if(client.deviceInfoSupported) await client.operation(() => client.readDeviceInfo());
       if(OMRotation.supported(client)){await OMRotation.read(client);if(client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
-      if (client.firmwareRevision < OMFirmware.revision && window.confirm(
-        OMI18n.msg`当前固件 v${client.firmwareRevision}，网页内置升级包 v${OMFirmware.revision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
+      if (client.firmwareRevision < bundledFirmwareRevision && window.confirm(
+        OMI18n.msg`当前固件 v${client.firmwareRevision}，网页内置升级包 v${bundledFirmwareRevision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
         selectTab($("tab-ota")); await loadBundledFirmware();
       }
     }
@@ -300,10 +302,25 @@
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
   }
   async function loadBundledFirmware() {
+    if(client.busy || uiBusy || schedulerRunning)throw Error(OMI18n.t("设备或页面正在操作，请等待后再选择 OTA 包"));
     if (!client.ready || client.board?.name !== OMProtocol.OTA_MARKER || !client.firmwareRevision)
       throw Error(OMI18n.t("请先连接屏幕并核对固件版本"));
-    if (client.firmwareRevision >= OMFirmware.revision) throw Error(OMI18n.t("没有更高版本的内置升级包"));
-    const catalog = bundledFirmware(), pack = catalog.packages[client.config.model];
+    if (client.firmwareRevision >= bundledFirmwareRevision) throw Error(OMI18n.t("没有更高版本的内置升级包"));
+    if(typeof OMFirmware==="undefined"){
+      otaPackage=null;$("ota-consent").checked=false;uiBusy=true;$("ota-package").textContent=OMI18n.t("正在载入内置升级包，请稍候…");update();
+      let timer;
+      try{
+        if(!firmwareRequest)firmwareRequest=new Promise((resolve,reject)=>{
+          const script=document.createElement("script");
+          script.onload=resolve;
+          script.onerror=()=>{script.remove();firmwareRequest=null;reject(Error(OMI18n.t("载入内置升级包失败，请检查网络后重试")));};
+          script.src=$("ota-bundled").dataset.firmwareSrc;document.head.append(script);
+        });
+        await Promise.race([firmwareRequest,new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error(OMI18n.t("载入内置升级包超时，请检查网络后重试"))),60000);})]);
+      }catch(error){$("ota-package").textContent=error.message;throw error;}finally{clearTimeout(timer);uiBusy=false;update();}
+    }
+    if(typeof OMFirmware==="undefined" || OMFirmware.revision!==bundledFirmwareRevision)throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
+    const catalog = bundledRevision()===32?OMFirmware.legacy:OMFirmware, pack = catalog.packages[client.config.model];
     const bytes = Uint8Array.from(atob(pack.data), c => c.charCodeAt(0));
     await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer},pack.sha256);
     if (!otaPackage || otaPackage.revision !== catalog.revision ||
@@ -402,13 +419,19 @@
   $("image-file").addEventListener("change",event=>action(async()=>{selectedWallpaper=null;await loadImage(event.target.files[0]);renderLibrary();},OMI18n.t("图片已载入，可调整裁切、旋转和抖动。")));
   function wallpaperLabel(item){return OMI18n.language==="en"?item.title_en:OMI18n.label(item.title);}
   function renderLibrary(){
+    libraryObserver?.disconnect();
     $("library-grid").replaceChildren();
+    if(tab!=="image" || !$("wallpaper-library").open)return;
+    if(!libraryObserver && typeof IntersectionObserver!=="undefined")libraryObserver=new IntersectionObserver(entries=>{
+      for(const entry of entries)if(entry.isIntersecting){const img=entry.target;img.src=img.dataset.src;libraryObserver.unobserve(img);}
+    },{root:$("library-grid"),rootMargin:"80px"});
     $("library-category-label").hidden=libraryKind!=="calendar";
     for(const item of OMWallpapers.filter(p=>p.kind===libraryKind && (libraryKind!=="calendar" || libraryCategory==="all" || p.category===libraryCategory))){
       const node=button("",()=>chooseWallpaper(item),OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。"));node.className="wallpaper-card";node.dataset.wallpaper=item.id;
       node.setAttribute("aria-pressed",String(item.id===selectedWallpaper));
-      const img=document.createElement("img");img.src=item.thumbnail;img.alt="";img.loading="lazy";img.decoding="async";img.width=item.kind==="calendar"?128:160;img.height=item.kind==="calendar"?150:120;
+      const img=document.createElement("img");img.alt="";img.loading="lazy";img.decoding="async";img.width=item.kind==="calendar"?128:160;img.height=item.kind==="calendar"?150:120;
       const label=document.createElement("span");label.textContent=wallpaperLabel(item);node.append(img,label);$("library-grid").append(node);
+      if(libraryObserver){img.dataset.src=item.thumbnail;libraryObserver.observe(img);}else img.src=item.thumbnail;
     }
     for(const kind of ["full","calendar"])$("library-"+kind).setAttribute("aria-pressed",String(kind===libraryKind));
     $("library-state").textContent=OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。");update();
@@ -423,6 +446,7 @@
   }
   for(const kind of ["full","calendar"])bind("library-"+kind,()=>{libraryKind=kind;renderLibrary();},"");
   $("library-category").addEventListener("change",()=>{libraryCategory=$("library-category").value;renderLibrary();});
+  $("wallpaper-library").addEventListener("toggle",renderLibrary);
   bind("photo-choose-new",()=>{selectTab($("tab-image"));libraryKind="calendar";$("wallpaper-library").open=true;renderLibrary();},"");
   bind("quick-change",()=>locked(async()=>{
     const purpose=OMRotation.presentation(client);if(!purpose)throw Error(OMI18n.t("请先启用图片日历或全屏图片"));

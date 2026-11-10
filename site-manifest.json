@@ -1,5 +1,5 @@
 {
-  "version": "0.6.22",
+  "version": "0.6.23",
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-with-bundled-signed-ota",
@@ -17,9 +17,9 @@
     }
   },
   "assets": {
-    "index.html": "1e029ded73b398f747e14e52b072ecff36658915926a1b2adf2c3b0b0eadf2ee",
+    "index.html": "02bb845b64bc03e1b13fa07b009f6df337bd0168d659db8a90e15d841b541530",
     "style.css": "57759812eab85f72587695edd902236a286dad9f4b57c48bcffdfb88e79cd8c4",
-    "i18n.js": "51c2a201df6d82150ce5f1c73a5a018e8fcf176189248cf5c9b41e73d9de9262",
+    "i18n.js": "3cbe1b434425d7afc8e9d5bbf2f6422024f9a68d8f99a69572fd8dbf9a751e09",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
     "calendar.js": "9f6dfff5a27332d6f3c6a6930a72f94549704bdc24321870e1c599e5960caf20",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
@@ -32,7 +32,7 @@
     "render.js": "2ea71d0376a40def7139b290039e24cc89ee6709b53b9fc3d361925b38b744cc",
     "wallpapers.js": "5a732dcd5432443b2eebec46bc1474b8e4c181bd3f75b7ac83b8f7aa34dff807",
     "rotation.js": "41df5cc9b1eb55d2fa0ff5765fca44cd23c08eec0006f31aa479f36104947fb8",
-    "app.js": "23a61d48bc1692eee0b11f36fa8c59c19d83b497d8998b0c624adb33228d0205",
+    "app.js": "3800ca600d965d162f5efe6b001576e2ad2ed0df7193c9870cf8d7bac6d32af4",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "firmware/LICENSES.txt": "9c8757ecc5763ca5fcebbe62068c7043478fd13878ac4aba2479e98cf8bffcbb",
     "assets/wallpapers/display/calendar-100.png": "1289640c877d7c286ccc6f09c1934a2554d76c39a3db42a95ec4648752db5298",
