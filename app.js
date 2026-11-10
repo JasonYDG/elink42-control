@@ -4,7 +4,7 @@
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
   let otaPackage = null;
-  let libraryKind="full",selectedWallpaper=null;
+  let libraryKind="full",libraryCategory="month",selectedWallpaper=null;
   const sectionViews={calendar:"calendar",image:"image",gallery:"gallery",more:"settings"};
   let draft = F.defaultTemplates()[0], editingTodo = null, courseDay = 1, store;
   const lines = [], drawable = new Set(["image", "todo", "template", "course", "weather"]);
@@ -400,10 +400,11 @@
     } finally { if (token === imageToken) { loading = false; await preview(); } }
   }
   $("image-file").addEventListener("change",event=>action(async()=>{selectedWallpaper=null;await loadImage(event.target.files[0]);renderLibrary();},OMI18n.t("图片已载入，可调整裁切、旋转和抖动。")));
-  function wallpaperLabel(item){return item.month?OMI18n.t("月份 ")+item.month+" · "+OMI18n.label(item.terms):item.code+(item.reference?" · "+OMI18n.t("参考图"):"");}
+  function wallpaperLabel(item){return OMI18n.language==="en"?item.title_en:OMI18n.label(item.title);}
   function renderLibrary(){
     $("library-grid").replaceChildren();
-    for(const item of OMWallpapers.filter(p=>p.kind===libraryKind)){
+    $("library-category-label").hidden=libraryKind!=="calendar";
+    for(const item of OMWallpapers.filter(p=>p.kind===libraryKind && (libraryKind!=="calendar" || libraryCategory==="all" || p.category===libraryCategory))){
       const node=button("",()=>chooseWallpaper(item),OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。"));node.className="wallpaper-card";node.dataset.wallpaper=item.id;
       node.setAttribute("aria-pressed",String(item.id===selectedWallpaper));
       const img=document.createElement("img");img.src=item.thumbnail;img.alt="";img.loading="lazy";img.decoding="async";img.width=item.kind==="calendar"?128:160;img.height=item.kind==="calendar"?150:120;
@@ -421,6 +422,7 @@
     }finally{loading=false;update();}
   }
   for(const kind of ["full","calendar"])bind("library-"+kind,()=>{libraryKind=kind;renderLibrary();},"");
+  $("library-category").addEventListener("change",()=>{libraryCategory=$("library-category").value;renderLibrary();});
   bind("photo-choose-new",()=>{selectTab($("tab-image"));libraryKind="calendar";$("wallpaper-library").open=true;renderLibrary();},"");
   bind("quick-change",()=>locked(async()=>{
     const purpose=OMRotation.presentation(client);if(!purpose)throw Error(OMI18n.t("请先启用图片日历或全屏图片"));

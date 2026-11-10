@@ -5,7 +5,7 @@ const firmwareFiles=new Set(['firmware/LICENSES.txt']);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.21');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,146);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.22');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,230);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);

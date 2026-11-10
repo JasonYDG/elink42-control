@@ -1,0 +1,534 @@
+{
+  "mode": "built-in imagegen",
+  "web_version": "0.6.22",
+  "prompts": [
+    {
+      "id": "calendar-66",
+      "title": "小寒",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite portrait wallpaper for a 256x300 four-color e-paper calendar sidebar, exact 64:75 aspect ratio (1159x1358 is suitable). Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Minor Cold. A small white-breasted black sparrow on a low red-berried holly bough, clean white snow caps and a broad yellow winter sky. Three large red berries and sculptural black leaves, gentle white snow at the lower edge. Quiet early January, sophisticated botanical print.",
+      "path": "calendar-wallpapers/solar-terms/solar-minor-cold.png",
+      "sha256": "3cc6710ed05f58f17c6ed129b10c51debb6db0db36ab5b7dd77ffd3dab6bfdd1",
+      "dimensions": [
+        1089,
+        1444
+      ]
+    },
+    {
+      "id": "calendar-67",
+      "title": "大寒",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Major Cold. An expressive black pine trunk rooted on a white snowy cliff, a single magnificent white crane in elegant flight across a spacious golden-yellow sky. A few broad black ice-crack lines on a white lake below. Powerful deep-winter composition, sparse and dramatic.",
+      "path": "calendar-wallpapers/solar-terms/solar-major-cold.png",
+      "sha256": "c9f73d80722b5f2a3f6467034074e74e1da0f7ba8c9bf842178d43dade135ce4",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-68",
+      "title": "立春",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite portrait wallpaper for a 256x300 four-color e-paper calendar sidebar, exact 64:75 aspect ratio (1159x1358 is suitable). Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Spring Begins. A graceful white magnolia branch with four large sculptural blossoms and two small red buds extends diagonally across luminous yellow air. A single black swallow approaches from the upper left. Airy awakening spring, no snow.",
+      "path": "calendar-wallpapers/solar-terms/solar-spring-begins.png",
+      "sha256": "9d3725d74592c4b725a757032e85c22f48db532452f79c142a9f9f1c464a16a3",
+      "dimensions": [
+        1089,
+        1444
+      ]
+    },
+    {
+      "id": "calendar-69",
+      "title": "雨水",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite portrait wallpaper for a 256x300 four-color e-paper calendar sidebar, exact 64:75 aspect ratio (1159x1358 is suitable). Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Rain Water. A broad red oil-paper umbrella beneath drooping black willow fronds, crisp white raindrops against solid yellow. Below, a low black stone bridge crosses one curved white river band. Beautiful calm spring-rain composition, no people.",
+      "path": "calendar-wallpapers/solar-terms/solar-rain-water.png",
+      "sha256": "36967434e295fc04a4276141e14004c84c3d1d703f2d36007394d9ecd1a55b29",
+      "dimensions": [
+        1089,
+        1444
+      ]
+    },
+    {
+      "id": "calendar-70",
+      "title": "惊蛰",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Awakening of Insects. One beautifully formed large black-and-white swallowtail butterfly emerging above bold black seedling leaves, two red peach blossoms to the side. A clean sinuous white lightning-like cloud opening high in the yellow sky evokes the first spring thunder, restrained not dramatic disaster.",
+      "path": "calendar-wallpapers/solar-terms/solar-awakening.png",
+      "sha256": "8b0be517b3d069643e65b53e94401332aa6a6a13383cecbc819e708b4b69a43c",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-71",
+      "title": "春分",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Spring Equinox. Two elegant black swallows with white breasts in balanced opposite flight over a broad white S-shaped river and distant black low hills. One red flowering branch at bottom left. Equilibrium, open yellow sky, serene balanced spring geometry.",
+      "path": "calendar-wallpapers/solar-terms/solar-spring-equinox.png",
+      "sha256": "5bef09b4bab96e42bbdacd6cce80cf356baba1ce9bf9d27b5432045d748bec65",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-72",
+      "title": "清明",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Clear Bright. A tranquil black stone arch bridge reflected in a wide curved white river, a graceful black willow branch framing the right, one single red wildflower by the water. Golden-yellow sky, quiet clear spring morning, no graves or human figures.",
+      "path": "calendar-wallpapers/solar-terms/solar-clear-bright.png",
+      "sha256": "2c4d6ac5621dcefc0e9d8fac5a0751d5daf09a6ad3c9c992cc6f31f3a2b47d04",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-73",
+      "title": "谷雨",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Grain Rain. One sculptural red peony in full bloom dominates the lower left, black leaves with white veins and three large white raindrops. A distant low black band of tea terraces curves along the bottom. Most of the upper right remains yellow, lush refined late spring.",
+      "path": "calendar-wallpapers/solar-terms/solar-grain-rain.png",
+      "sha256": "8020851168a0b0f83d242186d486dbb984f4e62baef29a6d0c77261d82a6d365",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-74",
+      "title": "立夏",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Summer Begins. A large red pomegranate flower, a black-and-white dragonfly perched on one unfurling lotus leaf, a white water curve along the lower edge. Contrasting open yellow sky and sweeping black stems, fresh early-summer energy.",
+      "path": "calendar-wallpapers/solar-terms/solar-summer-begins.png",
+      "sha256": "6f24b14c943ed7630d65230935c8072c1b1631a5139b556893b57a660850fda5",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-75",
+      "title": "小满",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Grain Buds. Three gracefully bending heads of ripening wheat, their large white kernels edged in black, a red ladybird on one broad black blade, and a curved white field path. Spacious yellow field and sky merge, elegant grain-filled late spring, no bird.",
+      "path": "calendar-wallpapers/solar-terms/solar-grain-buds.png",
+      "sha256": "8838890a39fc43385577f074c2fe946f52ff1ca7ff9d166aee77af3bbb371360",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-76",
+      "title": "芒种",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Grain in Ear. A graceful black-and-white egret strides between bold black rice seedling clumps in a shallow white paddy, two sweeping wheat stalks in the near foreground, a restrained red sun-disc low near the horizon. Yellow sky dominant, beautifully rhythmic early harvest composition.",
+      "path": "calendar-wallpapers/solar-terms/solar-grain-in-ear.png",
+      "sha256": "861c642e99851d4f15e69326d6febf96d2b2d16d9c7a349e87b97ce8271444bb",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-77",
+      "title": "夏至",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Summer Solstice. One magnificent red lotus flower is seen beside its tall black stem and large sculptural lotus leaf, a warm-white circular sun high in a vast yellow sky. White ripples at the bottom and one poised black dragonfly. Strong vertical summer light, spare and elegant.",
+      "path": "calendar-wallpapers/solar-terms/solar-summer-solstice.png",
+      "sha256": "43d4e9cff3d82edc231765901e7acfccd8ed57b11ec82c7e769cc830172afc15",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-78",
+      "title": "小暑",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Minor Heat. A beautifully shaped black cicada with warm-white wings rests on a gently arched black willow bough, three large red summer blossoms at one edge. Vast golden-yellow sky, a white ribbon of pond water below. Summer heat suggested through stillness, not busy texture.",
+      "path": "calendar-wallpapers/solar-terms/solar-minor-heat.png",
+      "sha256": "07451f55a67462d1378415f804ae7006a73b29da44c7844be4dc09207b6e07d9",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-79",
+      "title": "大暑",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Major Heat. One inviting cut watermelon wedge with a bold red face, clean white rind and a handful of large black seeds, alongside a broad black lotus leaf and tiny white dragonfly. Expansive yellow ground, playful refined summer still life, no utensils or text.",
+      "path": "calendar-wallpapers/solar-terms/solar-major-heat.png",
+      "sha256": "62a402ea12e36958fc763d5d69e1b993438030c6169d59c76fe2cc3f2b8c7956",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-80",
+      "title": "立秋",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Autumn Begins. Three large beautiful red maple leaves on one sinuous black twig over a low white river curve, one black dragonfly in open yellow air. First leaves turn while the landscape remains open and warm. Sparse and refined composition.",
+      "path": "calendar-wallpapers/solar-terms/solar-autumn-begins.png",
+      "sha256": "91b9de288be371ec88a655b3f328a483f78a7c715ca3d17cf22530d87dcdc80a",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-81",
+      "title": "处暑",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Heat Ends. Two elegant black swallows fly away diagonally above a mature black lotus seedpod and one curled white-edged lotus leaf in the lower corner. A single small red leaf drifts through the open yellow sky. Graceful departure of summer.",
+      "path": "calendar-wallpapers/solar-terms/solar-heat-ends.png",
+      "sha256": "c2528ff7a06c628ded7cbe4c5f7c854ac219af10aa7895f430d3e82fb54659bf",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-82",
+      "title": "白露",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term White Dew. One elegant white egret stands among a few broad black reed stems, each bearing one large white dew bead. A distant red sun near the horizon and three broad white water ripples. Clear airy yellow background and exquisite cool morning stillness.",
+      "path": "calendar-wallpapers/solar-terms/solar-white-dew.png",
+      "sha256": "c512fd42d717418be7c6a6afa0700890be3fdc49aa6d3a9816dd89d8e4624a23",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-83",
+      "title": "秋分",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Autumn Equinox. A flowing arc of black rice stalks with warm-white ripe grains balances one large red maple leaf across an open yellow center. Below, a small broad black-and-white field contour. Elegant harvest balance and autumn rhythm, no bird or moon.",
+      "path": "calendar-wallpapers/solar-terms/solar-autumn-equinox.png",
+      "sha256": "8a23ecff6c0cd3c7dd70bec53c51c718180e2d61ea2d564738314f7974d0c8b2",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-84",
+      "title": "寒露",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Cold Dew. Three magnificent white chrysanthemum blossoms on sculptural black stems, two large crystalline white dew drops on black leaves, a small red autumn butterfly near the top. Most of the background is open yellow. Botanical precision with bold readable petals.",
+      "path": "calendar-wallpapers/solar-terms/solar-cold-dew.png",
+      "sha256": "6dc085ad27e8e0977f1ac72f6cfd70ee5cfd9869a7b00e74a29f1f11dbfd052e",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-85",
+      "title": "霜降",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Frost Falls. One beautiful black persimmon bough carrying two large brilliant red persimmons, black leaves edged with a thin warm-white frost. A low distant black mountain and a curved white stream occupy the bottom. Strong spare late-autumn composition, no snow caps.",
+      "path": "calendar-wallpapers/solar-terms/solar-frost-falls.png",
+      "sha256": "0253a6cc94b052ed718fc97cdaf76d4501e6592d4ae77f512ea6e0f9bd8f8cc6",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-86",
+      "title": "立冬",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Winter Begins. A sturdy sculptural black pine bough and a single white camellia with a red center, one broad white snowbank on the lower edge, a tiny red winter berry cluster. Vast yellow sky, quiet beginning of winter, elegant restrained botanical composition.",
+      "path": "calendar-wallpapers/solar-terms/solar-winter-begins.png",
+      "sha256": "03047c864dd00225087eacaa1a40be7f8d4ce065891fb361ae5229d86e2d7d05",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-87",
+      "title": "小雪",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Minor Snow. A sinuous black branch carrying three plump red winter berries and one small black-and-white songbird, a few large sparse white snowflakes drift through a broad yellow field. A white snow cap sits on the branch, light first snow, uncluttered.",
+      "path": "calendar-wallpapers/solar-terms/solar-minor-snow.png",
+      "sha256": "326d5fde41d8948cc42548941865a72cc5b2103a114e19798f62115ebf366ad8",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-88",
+      "title": "大雪",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for the solar term Major Snow. Dramatic black bamboo bends under broad soft pillows of white snow, a small red-breasted black bird nestles between the stems. A white hill across the lower edge; generous yellow winter sky. Beautiful crisp contrast and deep winter serenity.",
+      "path": "calendar-wallpapers/solar-terms/solar-major-snow.png",
+      "sha256": "775993c50cfc9091a8c0d7480428e14fa29e75e70a8a586ad38ec51e451df530",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-89",
+      "title": "冬至",
+      "category": "term",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: Winter Solstice. A shallow black plate with FIVE LARGE BOILED JIAOZI DUMPLINGS, each unmistakably shaped like a LONG CRESCENT or HALF MOON, with a smooth white semicircular belly and a narrow pleated seam running along the curved top edge. Side-oblique view emphasizes their elongated half-moon silhouettes. One pair of elegant black chopsticks and three restrained red plum blossoms in the corner. Most of the background remains open yellow. Dumplings must have crescent silhouettes, never round steamed buns or bao, no tall mounds or circular rosette tops. Refined spare festive still life.",
+      "path": "calendar-wallpapers/solar-terms/solar-winter-solstice.png",
+      "sha256": "433985f0635a46ffd26ae80229b25a64a8b1e29e237fd74c923102dbf2863c34",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-90",
+      "title": "元旦",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for New Year's Day. A single elegant red ribbon curls around a warm-white rising sun over a broad black-and-white horizon, three large simple white firework blooms in the golden-yellow sky. Joyful new beginnings, refined celebratory woodblock, no year numerals.",
+      "path": "calendar-wallpapers/holidays/holiday-newyear.png",
+      "sha256": "67b5aceaf008c9a2ead19f21685924a1ffc7695218999fc7ab7cd1e22c5adbeb",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-91",
+      "title": "春节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Lunar New Year. One beautifully designed Chinese lion-dance head in bold red, white and black, elegantly perched in the lower half; two large red hanging lanterns frame one upper corner. Solid yellow background and restrained black cloud curls. Festive exquisite cultural illustration, no lettering or characters.",
+      "path": "calendar-wallpapers/holidays/holiday-lunar.png",
+      "sha256": "d6488952f82ec087cd3383c50eb948c37c1601769d52bc8c99d147d0eca62daf",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-92",
+      "title": "清明节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Qingming Festival. A quiet black-and-white riverside pavilion framed by one willow branch, three large white chrysanthemums in the foreground and a single red flower bud. Vast soft yellow sky and tranquil curving white water. Respectful remembrance and spring outing, no graves or lettering.",
+      "path": "calendar-wallpapers/holidays/holiday-qingming.png",
+      "sha256": "a24ecbf89088d422ad9d43d9b42a77e88199010c645439658bddcfabe41d9b9b",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-93",
+      "title": "劳动节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Labour Day. A refined celebratory still life of black-and-white craft tools: a beautifully shaped hammer, a simple spanner and three ripe wheat heads, bound by one flowing red ribbon. Bold sculptural balance on a large open yellow ground, respectful craftsmanship, no slogans or text.",
+      "path": "calendar-wallpapers/holidays/holiday-labour.png",
+      "sha256": "96278e5bcbed0e84de96f5580e987981919e890c6323ffab8b01e3fc2c9ea001",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-94",
+      "title": "端午节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Dragon Boat Festival. A magnificent black dragon boat with a bold red dragon head glides through broad white water curves across the lower half. Two large white triangular zongzi tied with black bands and one black reed leaf accent the foreground. Golden-yellow sky, elegant festive composition, no people or text.",
+      "path": "calendar-wallpapers/holidays/holiday-dragon.png",
+      "sha256": "d1bcfbbf3b1705f0778eb107ce840107726df78f1fb45ee3a18d9dd034818f8d",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-95",
+      "title": "中秋节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Mid-Autumn Festival. One large warm-white full moon hangs above an elegant white rabbit with black ear details, one red-and-black round mooncake and a sparse black osmanthus branch below. Spacious yellow night rendered as flat ink, gentle festive harmony, no writing on the cake.",
+      "path": "calendar-wallpapers/holidays/holiday-midautumn.png",
+      "sha256": "df6d716e9b538523e1ddb595d46a22d6e6ed47896d12ed1342ea23ee3fb0e38f",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-96",
+      "title": "国庆节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for National Day. A refined festive Chinese garden composition: a large sculptural red peony, one black-and-white traditional roofline low at the bottom, two red lanterns and a flowing white ribbon in expansive golden-yellow space. Celebration through botanical and architectural forms, no flags, map, numerals or political portraits.",
+      "path": "calendar-wallpapers/holidays/holiday-national.png",
+      "sha256": "c0c32734ff554da378f227383fcbbe03218e80510bd70471eed6512b5e38c319",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-97",
+      "title": "耶稣受难日",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Good Friday. A single plain black wooden cross stands quietly to one side, three large warm-white lilies with black leaves near the base, a restrained red ribbon draped across the lower ground. Spacious solid yellow backdrop. Respectful contemplative Christian still life, no figures or text.",
+      "path": "calendar-wallpapers/holidays/holiday-good.png",
+      "sha256": "87624b45663548eaf6a7c94bd72c0d406ef17c238d328a169b05f2c46ceee46e",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-98",
+      "title": "圣诞节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Christmas Day. A single sculptural black fir tree with broad white snow on its boughs, three large red ornaments and one white star above, a simple red gift box at the lower edge. Golden-yellow background, refined festive woodblock, no writing.",
+      "path": "calendar-wallpapers/holidays/holiday-christmas.png",
+      "sha256": "98c954d6be9f665fdc658d311eec18f9d715eb1b1b43304e3802bb0129bf9cbc",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-99",
+      "title": "开斋节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Hari Raya Puasa. Two beautifully formed white-and-black woven ketupat rice parcels hang beside a graceful warm-white crescent moon and one red hibiscus flower. A distant simple black mosque roof silhouette along the lower edge. Expansive golden-yellow background, elegant Southeast Asian Eid celebration, no calligraphy.",
+      "path": "calendar-wallpapers/holidays/holiday-puasa.png",
+      "sha256": "7ffef1628b59e9ec0f8b515b650061caeb005596f9dcdc8c5fb76d20ba10f508",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-100",
+      "title": "哈芝节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Hari Raya Haji. A restrained respectful view of the Kaaba as a simple black cube with a broad unlettered yellow band, low in the composition, a warm-white crescent above and one red hibiscus with black leaves at the lower corner. Spacious solid yellow background, no figures, no animals, no sacred writing or invented calligraphy.",
+      "path": "calendar-wallpapers/holidays/holiday-haji.png",
+      "sha256": "1cec7e99e141a3c3d70ccd98f02b6f8b06ff9b0c68a299d8426fe9f31867d0e6",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-101",
+      "title": "卫塞节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Vesak Day. One magnificent warm-white lotus blossom with a tiny red center rests above broad black lotus leaves and three white water ripples, an elegant black bodhi leaf hangs near one upper corner. Golden-yellow luminous empty background. Quiet respectful Vesak floral art, no deities or writing.",
+      "path": "calendar-wallpapers/holidays/holiday-vesak.png",
+      "sha256": "469becd50c96a52c2e799c86c0050bd8f21beef46239f56826e8f95f9c7287ef",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-102",
+      "title": "屠妖节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Deepavali. One beautifully shaped black traditional diya oil lamp holds a large warm-white flame, surrounded by a bold red-and-white rangoli floral arc and three sculptural black leaves. Spacious golden-yellow backdrop, luminous elegant festival-of-lights still life, no tiny repeated pattern or text.",
+      "path": "calendar-wallpapers/holidays/holiday-deepavali.png",
+      "sha256": "96242e2f4da24a3f0eced40751ab1c601467357f2d8ff4621921ad58f5a509b6",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-103",
+      "title": "宪法纪念日",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Constitution Day. An elegant open warm-white book with crisp black outlines, a broad flowing red bookmark ribbon and one black olive branch alongside, all placed low against a spacious yellow background. Dignified civic holiday still life, completely blank pages, no writing, seals or emblems.",
+      "path": "calendar-wallpapers/holidays/holiday-constitution.png",
+      "sha256": "d348c63e05114563b2fc2de039388c1ef8016a3cadbafb9c456bae5b06af88fc",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-104",
+      "title": "儿童节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Children's Day. A beautifully balanced red-and-white pinwheel on a thin black stem, one large red kite with a graceful black tail above two warm-white clouds. Playful sculptural shapes on expansive yellow ground, refined cheerful illustration, no children or text.",
+      "path": "calendar-wallpapers/holidays/holiday-children.png",
+      "sha256": "2ebe246f070bd975afe96cf7d7a0e4469d94691366321abd8722f7c9473d6fd5",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-105",
+      "title": "除夕",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: Lunar New Year Eve. Two exquisite large cinnabar-red Chinese lanterns hang from a graceful sculptural black plum branch, five bold white plum blossoms with red centers, a beautiful red Chinese knot hangs lower at one side. A low warm-white silhouette of a traditional family courtyard roof at the bottom; warm yellow light and broad empty yellow sky. Theme of family reunion, serene festive evening. No food, no dumplings, no writing or characters, no people.",
+      "path": "calendar-wallpapers/holidays/holiday-eve.png",
+      "sha256": "6b0241c4ccd7f15a44e32c012fa6ccc2a6323af0f0f015134d57476e002412f4",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-106",
+      "title": "和平纪念日",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Peace Memorial Day. A single graceful white dove with crisp black wing contours carries a simple black olive twig above a calm broad white water curve; one small red flower rests at the lower left. Spacious luminous yellow backdrop, respectful quiet remembrance and peace, no flags or text.",
+      "path": "calendar-wallpapers/holidays/holiday-peace.png",
+      "sha256": "e44461c5c86b1b28c2278d0cf55f9f70fec1e9877f9a773eeb6d20d9d87b39ed",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-107",
+      "title": "教师节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Teachers' Day. One beautifully formed red carnation on a graceful black stem lies diagonally over an open warm-white book with a simple black pencil. Large open yellow background. Elegant grateful botanical still life, blank book pages and no lettering.",
+      "path": "calendar-wallpapers/holidays/holiday-teacher.png",
+      "sha256": "2724e72e1961252495e51c8b7653b8811e488e80cc6b15151c648372a30cb75d",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-108",
+      "title": "光复节",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Retrocession Day. An elegant black-and-white traditional East Asian pavilion roof by a low curved white river, a single brilliant red camellia and black foliage in the foreground, a warm-white sun in the spacious yellow sky. Dignified quiet commemorative landscape, no flags, maps, numerals or political symbols.",
+      "path": "calendar-wallpapers/holidays/holiday-retrocession.png",
+      "sha256": "4869b0458f03876cccfa403d1c6c49d1e1e9a499875f4bbf98156a43afdbdbc4",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    },
+    {
+      "id": "calendar-109",
+      "title": "小年夜",
+      "category": "holiday",
+      "prompt": "Use case: stylized-concept. Create ONE exquisite calendar-sidebar wallpaper. Output canvas 1024x1200 pixels, WIDTH:HEIGHT=64:75, only slightly taller than wide. This artwork will fill a 256x300 four-color e-paper calendar sidebar. Keep the entire main subject inside the center 80% so that a slight crop cannot cut it. Sophisticated Chinese botanical woodblock art with elegant asymmetrical composition and generous SOLID SUNFLOWER YELLOW background, approximately 55% yellow. Restricted flat ink palette: yellow, deep black, cinnabar red, warm white. Large expressive silhouettes and meticulously balanced shapes; refined details readable when reduced to 256x300. No gradients, no dense texture, no tiny stippling. Full bleed, no border or margins. NO text, letters, dates, numbers, calendars, logo or watermark. A single coherent composition, no panels. Subject: a dedicated illustration for Lunar New Year Eve Eve. A sculptural black-and-white basket of round red tangerines with bold black leaves, a single red paper lantern and warm-white ribbon nearby. Most of the composition is open golden-yellow ground. Refined festive preparation still life, no writing or human figures.",
+      "path": "calendar-wallpapers/holidays/holiday-eve2.png",
+      "sha256": "f6ceec9035c5813dbd3c36012f78a9e8f078781a195761898b7d6a4597d3632f",
+      "dimensions": [
+        1159,
+        1358
+      ]
+    }
+  ]
+}

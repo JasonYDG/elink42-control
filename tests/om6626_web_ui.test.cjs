@@ -409,6 +409,21 @@ test("country holiday summaries show local upcoming holidays and China overrides
  await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
 });
 
+test('wallpaper categories separate months, individual solar terms, holidays and original art',async()=>{
+ const u=ui();await u.click('nav-image');assert.equal(u.get('library-category-label').hidden,true);
+ await u.click('library-calendar');assert.equal(u.get('library-category-label').hidden,false);
+ assert.equal(u.get('library-grid').children.length,12);
+ for(const [category,count]of [['term',24],['holiday',20],['art',6],['all',62]]){
+  await u.input('library-category',category,'change');assert.equal(u.get('library-grid').children.length,count);
+ }
+ await u.click('library-full');assert.equal(u.get('library-grid').children.length,44);
+ assert.equal(u.get('library-category-label').hidden,true);
+ await u.input('ui-language','zh-Hant','change');
+ const cards=u.get('library-grid').children;
+ assert.equal(cards.find(c=>c.dataset.wallpaper==='full-01').children.at(-1).textContent,'招財貓');
+ assert.equal(cards.find(c=>c.dataset.wallpaper==='full-60').children.at(-1).textContent,'月下雙鶴');
+});
+
 for(const dimensions of [[256,300],[1159,1358]])test(`calendar-aspect ${dimensions} resets stale transforms and fills the prepared left image`,async()=>{
  const u=ui();await u.click('tab-image');
  for(const [id,value] of [['image-angle','90'],['image-zoom','0.6'],['image-x','20'],['image-y','-30']])await u.input(id,value);
