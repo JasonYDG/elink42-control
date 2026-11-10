@@ -8,7 +8,7 @@ function firmwareZip(model=5){const info=firmwareMetadata.variants[model===5?"fo
 const transitionFixture=process.env.OM6626_TRANSITION_BUILD;
 const repairFixture=process.env.OM6626_REPAIR_ROOT;
 function ui(model=5,ota=false,language="zh",international=true,initial={}){
-  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map();
+  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map();let scriptRequests=0,pendingScript;
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
   function element(tag="div",id=""){
@@ -17,11 +17,12 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       classList:{contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},setAttribute(k,v){attrs[k]=v;},getAttribute:k=>attrs[k],
       addEventListener(k,f){this.listeners[k]=f;},append(...nodes){this.children.push(...nodes);if(tag==="select"&&!this.value&&nodes.length)this.value=nodes[0].value;},
       replaceChildren(...nodes){this.children=[];if(tag==="select")this.value="";this.append(...nodes);},getContext:()=>ctx,focus(){},
-      click(){if(this.download)downloads.push({name:this.download,url:this.href});return this.listeners.click?.();},
+      click(){if(this.download)downloads.push({name:this.download,url:this.href});return this.listeners.click?.();},remove(){},
       toBlob(callback){callback(new Blob(["PNG"]));},getBoundingClientRect:()=>({width:400}),setPointerCapture(){}};
   }
   for(const match of html.matchAll(/<(\w+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)){
     const [whole,tag,attrs,id]=match,e=element(tag,id);e.value=(attrs.match(/\bvalue="([^"]*)"/)||[])[1]||"";e.checked=/\bchecked\b/.test(attrs);
+    e.open=/\bopen\b/.test(attrs);e.dataset.firmwareSrc=(attrs.match(/data-firmware-src="([^"]*)"/)||[])[1];
     if(tag==="select")e.value=(html.slice(match.index+whole.length).split("</select>")[0].match(/<option value="([^"]*)"/)||[])[1]||"";
     if(tag==="textarea")e.value=html.slice(match.index+whole.length).split("</textarea>")[0];
     elements.set(id,e);
@@ -79,16 +80,20 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
     fetch:url=>String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
-    Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
+    Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
-    document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}}},
+    document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}},head:{append(script){
+      scriptRequests++;assert.match(script.src,/^firmware\.js(?:\?|$)/);
+      if(scriptRequests===1 && initial.firmwareFailure==='timeout'){pendingScript=script;return;}
+      setImmediate(()=>{if(scriptRequests===1 && initial.firmwareFailure==='error')script.onerror();else{vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);script.onload();}});
+    }}},
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js","wallpapers.js","rotation.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js","wallpapers.js","rotation.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
-  const api=vm.runInNewContext(code,sandbox);
-  return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
+  const context=vm.createContext(sandbox),api=vm.runInContext(code,context);
+  return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
@@ -407,6 +412,42 @@ test("country holiday summaries show local upcoming holidays and China overrides
  assert.match(u.get("holiday-summary").textContent,/Taiwan: government-office calendar/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
  await u.input("calendar-layout","2","change");assert.match(u.get("holiday-summary").textContent,/Next holiday: Deepavali/);
  await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
+});
+
+test('homepage works without the firmware payload and creates wallpaper cards only after opening the library',async()=>{
+ const u=ui(5,true,'zh',true,{revision:33,noBuiltin:true});
+ assert.equal(u.get('library-grid').children.length,0);assert.equal(u.scriptRequests(),0);
+ await u.click('connect');assert.match(u.get('firmware-state').textContent,/v33/);assert.equal(u.scriptRequests(),0);
+ await u.click('nav-image');assert.equal(u.get('library-grid').children.length,44);
+ u.get('wallpaper-library').open=false;await u.get('wallpaper-library').listeners.toggle();assert.equal(u.get('library-grid').children.length,0);
+ u.get('wallpaper-library').open=true;await u.get('wallpaper-library').listeners.toggle();assert.equal(u.get('library-grid').children.length,44);
+ await u.click('nav-calendar');assert.equal(u.get('library-grid').children.length,0);assert.equal(u.scriptRequests(),0);
+});
+
+test('the signed built-in is fetched only on demand and reused after successful verification',async()=>{
+ const u=ui(5,true,'zh',true,{revision:32,noBuiltin:true,confirm:false});await u.click('connect');assert.equal(u.scriptRequests(),0);
+ const before=u.packets.length;await u.click('ota-bundled');assert.equal(u.scriptRequests(),1);
+ assert.match(u.get('ota-package').textContent,/版本 33/);assert.equal(u.get('ota-start').disabled,true);assert.equal(u.packets.length,before);
+ await u.click('ota-bundled');assert.equal(u.scriptRequests(),1);assert.equal(u.packets.length,before);
+});
+
+test('a failed built-in download invalidates prior consent and can be retried without device writes',async()=>{
+ const u=ui(5,true,'zh',true,{revision:32,noBuiltin:true,confirm:false,firmwareFailure:'error'});await u.click('connect');
+ const pack=vm.runInNewContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8')+';OMFirmware').packages[5],bytes=Buffer.from(pack.data,'base64');
+ await u.file('ota-file',{name:'current.zip',size:bytes.length,arrayBuffer:async()=>bytes});
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
+ const before=u.packets.length;await u.click('ota-bundled');assert.match(u.get('result').textContent,/载入内置升级包失败/);
+ assert.equal(u.get('ota-start').disabled,true);assert.equal(u.get('ota-consent').checked,false);assert.equal(u.device.gatt.connected,true);assert.equal(u.packets.length,before);
+ await u.click('ota-bundled');assert.equal(u.scriptRequests(),2);assert.match(u.get('ota-package').textContent,/版本 33/);assert.equal(u.packets.length,before);
+});
+
+test('a timed-out built-in download releases the UI and late success does not start an upgrade',async()=>{
+ const u=ui(5,true,'zh',true,{revision:32,noBuiltin:true,confirm:false,firmwareFailure:'timeout'});await u.click('connect');
+ const before=u.packets.length;await u.click('ota-bundled');assert.match(u.get('result').textContent,/载入内置升级包超时/);
+ assert.equal(u.get('ota-bundled').disabled,false);assert.equal(u.get('ota-start').disabled,true);
+ await u.click('ota-bundled');assert.equal(u.scriptRequests(),1);assert.equal(u.packets.length,before);
+ u.finishFirmware();await new Promise(setImmediate);assert.equal(u.get('ota-start').disabled,true);assert.equal(u.packets.length,before);
+ await u.click('ota-bundled');assert.equal(u.scriptRequests(),1);assert.match(u.get('ota-package').textContent,/版本 33/);assert.equal(u.packets.length,before);
 });
 
 test('wallpaper categories separate months, individual solar terms, holidays and original art',async()=>{

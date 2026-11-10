@@ -908,6 +908,11 @@ Object.assign(OMTranslations, {
   "主题插画": "Art wallpapers",
   "全部日历壁纸": "All calendar wallpapers"
 });
+Object.assign(OMTranslations, {
+  "正在载入内置升级包，请稍候…": "Loading the bundled update, please wait…",
+  "载入内置升级包超时，请检查网络后重试": "Loading the bundled update timed out. Check your network and try again.",
+  "载入内置升级包失败，请检查网络后重试": "Could not load the bundled update. Check your network and try again."
+});
 const OMI18n = (() => {
   const characters = Object.fromEntries("财財猫貓鲤鯉纳納达達侠俠鹤鶴风風宝寶剑劍烟煙云雲见見游遊桥橋飞飛鸿鴻狮獅远遠宁寧壮壯丽麗乐樂鹰鷹银銀栖棲鸟鳥叶葉听聽麦麥鹭鷺莲蓮枫楓采採万萬与與专專两兩个個临臨为為亚亞产產仅僅从從价價会會传傳体體侧側储儲儿兒关關内內册冊写寫况況准準减減击擊划劃删刪别別办辦务務动動劳勞区區协協单單卫衛历歷压壓双雙发發变變台臺号號启啟响響唤喚围圍国國图圖坏壞处處备備复復学學实實宪憲宽寬对對导導将將尔爾层層属屬师師带帶庆慶库庫应應开開强強当當录錄径徑态態惊驚户戶执執护護报報择擇损損换換据據数數斋齋断斷无無旧舊时時显顯暂暫机機权權条條来來构構标標样樣检檢横橫气氣汉漢没沒浅淺测測浏瀏温溫湾灣满滿灯燈点點状狀独獨现現电電画畫盖蓋码碼确確离離种種称稱稣穌稳穩笺箋签簽简簡类類紧緊红紅约約级級纪紀纵縱线線细細终終绑綁结結给給络絡绝絕统統继繼绪緒续續编編缩縮网網联聯脑腦脚腳节節获獲蓝藍蛰蟄补補装裝观觀览覽计計认認议議记記许許设設证證识識诊診试試话話诞誕询詢详詳语語说說请請读讀课課调調败敗资資转轉轮輪载載较較辑輯输輸边邊迁遷过過运運这這进進连連适適选選释釋钟鐘钥鑰销銷锁鎖错錯镜鏡长長闭閉闲閒间間阈閾队隊际際随隨难難静靜页頁项項顺順须須预預频頻题題颜顏马馬驱驅验驗黄黃".match(/../gu).map(pair=>[...pair]));
   const traditional = text => text.replace(/[\u3400-\u9fff]/gu, char=>characters[char] ?? char);

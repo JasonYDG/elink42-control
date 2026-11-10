@@ -5,7 +5,7 @@ const firmwareFiles=new Set(['firmware/LICENSES.txt']);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.22');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,230);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.23');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,230);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -20,6 +20,8 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
     assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
     assert.ok(!html.includes("downloads.html")&&!/href="firmware\//.test(html));
     assert.ok(html.includes('id="ota-bundled"')&&html.includes('id="ota-file"'));
+    assert.ok(!/<script[^>]+src="firmware\.js/.test(html));
+    assert.match(html,/data-firmware-src="firmware\.js\?v=0\.6\.23&h=[0-9a-f]{12}"/);
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(url.startsWith("https://")){assert.equal(new URL(url).hostname,"github.com");continue;}
       const [file,query]=url.split("?");
@@ -29,6 +31,12 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
       assert.ok(fs.existsSync(path.join(site,file)),url);
     }
   }
+});
+
+test('startup keeps the firmware revision metadata consistent with the on-demand signed payload',()=>{
+  const vm=require('node:vm'),firmware=vm.runInNewContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8')+';OMFirmware');
+  const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+  assert.equal(Number(app.match(/const bundledFirmwareRevision=(\d+);/)[1]),firmware.revision);
 });
 
 test('standalone firmware is absent from the public source and deployment',()=>{
