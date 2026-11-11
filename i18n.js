@@ -2,8 +2,10 @@
 const OMTranslations = {
   "全屏样式":"Month style",
   "原版全屏":"Original month",
-  "A · 月历全览":"A · Month grid",
-  "B · 今日侧栏":"B · Today sidebar",
+  "单日极简":"Single day",
+  "单日极简需要 SDK 8。":"Single day requires SDK 8.",
+  "月历全览":"Month grid",
+  "今日侧栏":"Today sidebar",
   "全屏极简":"Minimal month",
   "新全屏样式需要 SDK 7 和中文。":"The new month styles require SDK 7 and Chinese display text.",
 
@@ -928,6 +930,7 @@ const OMI18n = (() => {
   const traditional = text => text.replace(/[\u3400-\u9fff]/gu, char=>characters[char] ?? char);
   // Translate built-in labels only; user content and device payloads keep their original text.
   const labels = Object.fromEntries(Object.keys(OMTranslations).map(zh=>[zh,traditional(zh)]));
+  labels["今日侧栏"]="今日側欄";
   const reverse = Object.fromEntries([...Object.entries(OMTranslations).map(([zh,en])=>[en,zh]), ...Object.entries(labels).map(([zh,hant])=>[hant,zh])]);
   let language="en";
   try { const saved=globalThis.localStorage?.getItem("elink42-ui-language"); if (["zh","zh-Hant"].includes(saved)) language=saved; } catch {}

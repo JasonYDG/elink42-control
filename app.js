@@ -92,6 +92,7 @@
     if(otaReady && otaPackage?.bundle && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
     $("sdk-month-style-field").hidden=client.ready && !(client.sdkRevision>=7);
+    $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
@@ -169,12 +170,12 @@
         const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
         const style=tab==="calendar"?Number($("sdk-month-style").value)||0:0;
-        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly || style>0;
+        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly || style>0 || (tab==="calendar" && [0,2,3].includes(region.id));
         if(sdkLayout){
           const photo=tab==="photo-calendar", info=client.ready?client.deviceInfo:null;
           const name=info?.mac ? "ELINK42-"+info.mac.replaceAll(":","").slice(-6) : client.ready?client.device.name:"";
           await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
-            revision:client.ready?client.sdkRevision:7,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
+            revision:client.ready?client.sdkRevision:8,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
           if(token!==previewToken)return;
         }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
         $("preview").getContext("2d").drawImage(canvas,0,0);
