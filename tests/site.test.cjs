@@ -6,7 +6,7 @@ for(const revision of [6,8])for(const panel of ['tricolor-ssd1619','fourcolor-jd
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.7.3');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,8);assert.equal(Object.keys(manifest.assets).length,241);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.7.4');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,8);assert.equal(Object.keys(manifest.assets).length,241);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -22,7 +22,7 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
     assert.ok(!html.includes("downloads.html")&&html.includes("sdk-ota-file"));
     assert.ok(html.includes('id="ota-bundled"')&&html.includes('id="ota-file"'));
     assert.ok(!/<script[^>]+src="firmware\.js/.test(html));
-    assert.match(html,/data-firmware-src="firmware\.js\?v=0\.7\.3&h=[0-9a-f]{12}"/);
+    assert.match(html,/data-firmware-src="firmware\.js\?v=0\.7\.4&h=[0-9a-f]{12}"/);
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(url.startsWith("https://")){assert.equal(new URL(url).hostname,"github.com");continue;}
       const [file,query]=url.split("?");
@@ -31,6 +31,22 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
       assert.equal(new URLSearchParams(query).get("h"),manifest.assets[file].slice(0,12),url);
       assert.ok(fs.existsSync(path.join(site,file)),url);
     }
+  }
+});
+
+test('the one-click SDK update pins the published package for each connected panel',()=>{
+  const html=fs.readFileSync(path.join(site,'index.html'),'utf8');
+  const manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
+  assert.ok(html.includes('id="sdk-ota-panel" data-revision="'+manifest.sdk_revision+'"'));
+  assert.ok(html.includes('id="sdk-ota-bundled"'));
+  for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']]){
+    const link=html.match(new RegExp('<a id="sdk-ota-model-'+model+'"[^>]+>'))[0];
+    const file=link.match(/href="([^"?]+)/)[1];
+    assert.equal(file,'firmware/elink42-sdk-v'+manifest.sdk_revision+'-'+panel+'.e42ota');
+    const bytes=fs.readFileSync(path.join(site,file));
+    assert.equal(bytes.readUInt32LE(8),model);
+    assert.equal(bytes.readUInt32LE(12),manifest.sdk_revision);
+    assert.equal(link.match(/data-integrity="([^"]+)"/)[1],'sha256-'+crypto.createHash('sha256').update(bytes).digest('base64'));
   }
 });
 

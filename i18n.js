@@ -1,5 +1,15 @@
 "use strict";
 const OMTranslations = {
+  "SDK 固件升级":"SDK firmware update",
+  "刷入内置":"Install bundled",
+  "重新刷入内置":"Reinstall bundled",
+  "设备版本高于内置包":"Device is newer than bundled",
+  "已连接的屏幕会自动匹配升级包。点击刷入即确认供电稳定，请保持蓝牙连接和本页开启。":"The update matches the connected panel automatically. By starting, you confirm stable power. Keep Bluetooth connected and this page open.",
+  "需要 SDK 2 或更新固件，电压至少 2.90 V。重启后会核对屏型、版本和运行镜像。":"Requires SDK 2 or later and at least 2.90 V. After reboot the panel, revision and running image are checked.",
+  "取消未提交的升级":"Cancel uncommitted update",
+  "本地升级包与下载":"Local package and downloads",
+  "刷入所选文件":"Install selected file",
+  "无法读取或校验内置 SDK 包，请刷新页面后重试。":"Could not load or verify the bundled SDK package. Refresh the page and try again.",
   "全屏样式":"Month style",
   "原版全屏":"Original month",
   "单日极简":"Single day",

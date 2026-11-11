@@ -55,7 +55,7 @@ def build():
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, dest)
         hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
-    manifest = {'version': '0.7.3', 'sdk_revision': SDK_REVISION, 'repository': 'JasonYDG/elink42-control',
+    manifest = {'version': '0.7.4', 'sdk_revision': SDK_REVISION, 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
                 'content': 'web-control-with-bundled-signed-ota', 'firmware_revision': 33, 'firmware_images':firmware,'assets': hashes}
     (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
