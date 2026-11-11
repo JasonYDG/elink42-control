@@ -1,5 +1,5 @@
 {
-  "version": "0.7.3",
+  "version": "0.7.4",
   "sdk_revision": 8,
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
@@ -18,9 +18,9 @@
     }
   },
   "assets": {
-    "index.html": "d2f40e3d2d4270be733c99abf7bd374e0823e053fffc4e0a8f9e76cdbe0f7223",
+    "index.html": "10ea3622d9269b7d23bc92012f6a09cd557b52bc32dc07a436c1207f847dc0c8",
     "style.css": "57759812eab85f72587695edd902236a286dad9f4b57c48bcffdfb88e79cd8c4",
-    "i18n.js": "0e88f20b40bbdb2830147180dcae68694f9c583de6a0bd7a4ec65aea49c38cdb",
+    "i18n.js": "52b4b89ee541be481a08ba527623a9cf52d5cd5f6fbf4ce97b98e932887027a1",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
     "calendar.js": "9f6dfff5a27332d6f3c6a6930a72f94549704bdc24321870e1c599e5960caf20",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
@@ -38,7 +38,7 @@
     "render.js": "2ea71d0376a40def7139b290039e24cc89ee6709b53b9fc3d361925b38b744cc",
     "wallpapers.js": "5a732dcd5432443b2eebec46bc1474b8e4c181bd3f75b7ac83b8f7aa34dff807",
     "rotation.js": "0a2e67f995a0bec8578f73b338e1c782e8bdbc3b86e5b0a0f66d2005402444a8",
-    "app.js": "e12b4e46757b243e5727409ce3b72ade713e0c21e813d9499cb48d09b6b26709",
+    "app.js": "d33eb06e603c608230e9a11d82a457f2f3687d9b687accb88fa450e79a4fe149",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "firmware/LICENSES.txt": "9c8757ecc5763ca5fcebbe62068c7043478fd13878ac4aba2479e98cf8bffcbb",
     "firmware/elink42-sdk-v8-tricolor-ssd1619.e42ota": "4cbda605aaa6caeccb5a31861d7b2adb217beaf8fc74124606b84b40abc8fba6",

@@ -58,9 +58,17 @@
     }
     if($("sdk-ota-panel")){
       const sdkSupported=typeof OMSdkOTA!=="undefined" && OMSdkOTA.supported(client);
+      const ready=client.ready && sdkSupported && !client.busy && !uiBusy && !schedulerRunning;
+      const revision=Number($("sdk-ota-panel").dataset.revision);
+      const model=client.ready && client.config?.model;
+      const panel=model===2?"SSD1619":model===5?"JD79668":"";
       $("sdk-ota-panel").hidden=!sdkView;$("legacy-ota-content").hidden=sdkView;
-      $("sdk-ota-start").disabled=!client.ready || client.busy || uiBusy || !sdkPackage || !$("sdk-ota-consent").checked || !sdkSupported;
-      $("sdk-ota-abort").disabled=!client.ready || client.busy || uiBusy || !sdkSupported;
+      $("sdk-ota-bundled").disabled=!ready || !panel || !Number.isInteger(client.sdkRevision) || client.sdkRevision>revision;
+      const label=client.ready && client.sdkRevision>revision?"设备版本高于内置包":client.ready && client.sdkRevision===revision?"重新刷入内置":"刷入内置";
+      $("sdk-ota-bundled").textContent=OMI18n.t(label)+" SDK "+revision+(panel?" · "+panel:"");
+      $("sdk-ota-start").disabled=!ready || !sdkPackage || !$("sdk-ota-consent").checked;
+      $("sdk-ota-abort").disabled=!ready;
+      $("sdk-ota-file").disabled=$("sdk-ota-consent").disabled=uiBusy || client.busy || schedulerRunning;
     }
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
     $("transfer-status").classList.toggle("busy",busy);
@@ -288,21 +296,44 @@
   if($("sdk-ota-panel")){
     $("sdk-ota-file").addEventListener("change",()=>action(async()=>{
       sdkPackage=null;const file=$("sdk-ota-file").files[0];
+      $("sdk-ota-consent").checked=false;update();
       if(!file)return;
       sdkPackage=await OMSdkOTA.parse(await file.arrayBuffer());
       $("sdk-ota-state").textContent=file.name+" · SDK "+sdkPackage.revision+" · "+(sdkPackage.model===2?"SSD1619":"JD79668")+" · "+sdkPackage.size+" B";
-      $("sdk-ota-consent").checked=false;
     },""));
     $("sdk-ota-consent").addEventListener("change",update);
-    bind("sdk-ota-start",async()=>{
-      if(!sdkPackage || !$("sdk-ota-consent").checked)throw Error(OMI18n.t("请先选择 SDK 升级包并确认供电稳定。"));
+    async function flashSdk(bundled){
+      const device=client.device, model=client.config?.model;
+      if(uiBusy || client.busy || schedulerRunning || !client.ready || !OMSdkOTA.supported(client))return;
+      if(!bundled && (!sdkPackage || !$("sdk-ota-consent").checked))throw Error(OMI18n.t("请先选择 SDK 升级包并确认供电稳定。"));
       uiBusy=true;update();
       try{
-        const receipt=await OMSdkOTA.transfer(client,sdkPackage,progress);
+        let pkg=sdkPackage;
+        if(bundled){
+          const link=$("sdk-ota-model-"+model), revision=Number($("sdk-ota-panel").dataset.revision);
+          if(!link || !link.dataset.integrity || !Number.isInteger(client.sdkRevision) || client.sdkRevision>revision)throw Error(OMI18n.t("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。"));
+          $("sdk-ota-state").textContent=OMI18n.t("正在载入内置升级包，请稍候…");
+          let data;
+          try{
+            const response=await fetch(link.href,{mode:"same-origin",redirect:"error",integrity:link.dataset.integrity,signal:AbortSignal.timeout(30000)});
+            if(!response.ok)throw Error(String(response.status));
+            data=await response.arrayBuffer();
+          }catch{throw Error(OMI18n.t("无法读取或校验内置 SDK 包，请刷新页面后重试。"));}
+          pkg=await OMSdkOTA.parse(data);
+          if(pkg.model!==model || pkg.revision!==revision)throw Error(OMI18n.t("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。"));
+        }
+        if(!client.ready || client.device!==device || client.config?.model!==model)throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
+        $("sdk-ota-state").textContent="SDK "+pkg.revision+" · "+(model===2?"SSD1619":"JD79668");
+        const receipt=await OMSdkOTA.transfer(client,pkg,progress);
         await OMSdkOTA.confirmBoot(client,receipt,progress);restoreDevicePresentation();
         $("sdk-ota-state").textContent=OMI18n.t("升级完成，已核对设备版本和应用 CRC。");
+        $("sdk-ota-consent").checked=false;
+      }catch(error){
+        $("sdk-ota-state").textContent=error.message;throw error;
       }finally{uiBusy=false;update();}
-    },"");
+    }
+    bind("sdk-ota-bundled",()=>flashSdk(true),"");
+    bind("sdk-ota-start",()=>flashSdk(false),"");
     bind("sdk-ota-abort",async()=>{await OMSdkOTA.abort(client);$("sdk-ota-state").textContent=OMI18n.t("未提交的升级已取消，原应用和图库仍保留。");});
   }
   bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared",client.config.alternate===26?0:client.config.alternate>>3); });
