@@ -44,6 +44,7 @@ const OMSdkOTA=(()=>{
     throw failure("设备准备或校验超时；原应用仍保留，请重新连接核对。");
   }
   async function transfer(client,pkg,progress){
+    const device=client.device;
     if(!supported(client) || pkg.model!==client.config?.model || pkg.revision<client.sdkRevision)
       throw failure("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。");
     return client.operation(async()=>{
@@ -66,16 +67,20 @@ const OMSdkOTA=(()=>{
         await request(client,0x63);await wait(client,5,progress);
         const committed=await request(client,0x64);
         if(committed.state!==6)throw failure("升级提交未确认，请核对设备状态，不要重复提交。");
-        return {device:client.device,model:pkg.model,revision:pkg.revision,crc:pkg.crc};
+        return {device,model:pkg.model,revision:pkg.revision,crc:pkg.crc};
       }finally{client.otaActive=false;client.update();}
     });
   }
   async function confirmBoot(client,receipt,progress){
+    if(client.device!==receipt.device)throw failure("升级期间目标设备发生变化，已停止");
     client.disconnect();progress?.(99,OMI18n.t("已提交，正在等待设备重启并核对版本…"));
     await new Promise(resolve=>setTimeout(resolve,2500));
     await client.connect(receipt.device);
+    if(client.device!==receipt.device || !supported(client) || client.config?.model!==receipt.model)
+      throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     const state=await client.operation(async()=>{await client.initialize();return request(client,0x60);});
-    if(state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
+    if(client.device!==receipt.device || !client.ready || !receipt.device.gatt.connected ||
+       state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     progress?.(100,OMI18n.t("升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
