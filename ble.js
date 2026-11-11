@@ -381,19 +381,23 @@ class OMClient {
       (b.length===4 && b[0]===0x51 && b[1]===0x24 && b[2]===sequence),OMI18n.t("Read calendar settings"));
     this.calendarProtocol=reply.length===7 ? 2 : 0;
     if(this.calendarProtocol){
-      if(reply[1]>7 || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
+      const style=reply[1]>>3;
+      const validFlags=reply[1]<=7 || (this.sdkRevision>=7 && style<=4 && (reply[1]&7)===2);
+      if(!validFlags || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
       Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
       this.log(OMI18n.msg`日历读回：国家=${reply[3]}，模式=${reply[4]}，标志=${reply[1]}，槽位=${reply[5]}`);
     }
     return this.calendarProtocol===2;
   }
-  async internationalCalendar(country, language, photo, slot, external, progress, date = new Date(), fit="contain") {
+  async internationalCalendar(country, language, photo, slot, external, progress, date = new Date(), fit="contain", style=0) {
     OMProtocol.integer(country,0,5,OMI18n.t("Country"));
     if (!["en","zh"].includes(language) || typeof photo!=="boolean" || typeof external!=="boolean") throw Error(OMI18n.t("Invalid calendar settings"));
     if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
-    const code=region.code, option=(photo?1:0) | (this.sdkRevision>=6 && language==="en"?0:2) | (photo && fit==="contain"?4:0);
+    if (![0,1,2,4].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if(style && (!(this.sdkRevision>=7) || photo || language!=="zh"))throw Error(OMI18n.t("新全屏样式需要 SDK 7 和中文。"));
+    const code=region.code, option=(style<<3) | (photo?1:0) | (this.sdkRevision>=6 && language==="en"?0:2) | (photo && fit==="contain"?4:0);
     const time=OMProtocol.time(date,1,OMCalendar.zone(code,date));
     return this.operation(async()=>{
       this.requireRefreshStatus();
@@ -418,7 +422,8 @@ class OMClient {
       await this.command(time,progress);
       this.config.layout=country;this.config.alternate=option;this.config.mode=1;
       if(photo){this.config.photoSlot=slot;this.config.photoSource=Number(external);}
-      await this.readCalendar();
+      if(!await this.readCalendar() || this.config.alternate!==option || this.config.layout!==country || this.config.mode!==1)
+        throw Error(OMI18n.t("Calendar presentation readback mismatch"));
       await this.checkBoard();
     });
   }

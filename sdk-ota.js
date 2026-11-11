@@ -19,17 +19,29 @@ const OMSdkOTA=(()=>{
   }
   function supported(client){return OMProtocol.sdkBoard(client.board) && !!(client.sdkCapabilities&8);}
   async function request(client,op,data=[]){
+    const device=client.device;
     const seq=client.nextSequence(),bytes=Uint8Array.of(op,seq,...data);
     const reply=await client.request(bytes,b=>b[0]===0x70 && b[1]===seq,OMI18n.t("读取 SDK 升级回执"),15000);
     if(reply.length!==28 || reply[2]!==1 || reply[5]!==client.config.model || reply[3]>7)throw failure("升级回执格式不正确，已停止。");
     const view=new DataView(reply.buffer,reply.byteOffset,reply.byteLength);
     const value={state:reply[3],error:reply[4],model:reply[5],millivolts:view.getUint16(6,true),revision:view.getUint32(8,true),
       received:view.getUint32(12,true),crc:view.getUint32(16,true),size:view.getUint32(20,true),runningCrc:view.getUint32(24,true)};
-    if(value.state===7)throw failure(({1:"电压不足 2.90 V，升级已停止。请更换电池或稳定供电后重试。",
+    if(value.state===7){
+      let reason=value.error;
+      if(reason===3 && op===0x61 && client.ready && client.device===device && device?.gatt.connected){
+        // Older receivers checked the gallery before the boot record and shared one error code.
+        try{await client.storageState(false);reason=10;}
+        catch(error){if(error.code==="DISPLAY_NOT_READY")reason=9;}
+      }
+      const message=({1:"电压不足 2.90 V，升级已停止。请更换电池或稳定供电后重试。",
       2:"升级包或当前状态不匹配，已停止。",3:"暂存区或启动记录不兼容，旧数据已保留。请先备份并核对布局。",
       4:"升级数据位置不一致，已停止发送；不会自动重传。",5:"闪存写入或读回失败，升级已停止。",
       6:"设备核对镜像失败，原应用仍保留。",7:"升级提交未确认，请核对设备状态，不要重复提交。",
-      8:"升级等待超时，已停止。请重新连接并核对状态。"}[value.error]||"设备升级出错，操作已停止。"));
+      8:"升级等待超时，已停止。请重新连接并核对状态。",9:"设备无法挂载内部图库，升级已停止。请保留已有图片和操作记录。",
+      10:"设备未确认可用的升级分区或启动记录，已在擦除前停止。",
+      11:"升级暂存区已有数据，已在擦除前停止。请先备份设备数据。"}[reason]||"设备升级出错，操作已停止。");
+      throw failure(`SDK ${value.revision} · ${value.model===2?"SSD1619":"JD79668"} · ${OMI18n.t(message)}`);
+    }
     return value;
   }
   async function wait(client,wanted,progress){
@@ -76,11 +88,12 @@ const OMSdkOTA=(()=>{
     client.disconnect();progress?.(99,OMI18n.t("已提交，正在等待设备重启并核对版本…"));
     await new Promise(resolve=>setTimeout(resolve,2500));
     await client.connect(receipt.device);
-    if(client.device!==receipt.device || !supported(client) || client.config?.model!==receipt.model)
+    // The identity notification carries one revision byte; the OTA receipt below carries the full value.
+    if(client.device!==receipt.device || !supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==(receipt.revision & 0xFF))
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     const state=await client.operation(async()=>{await client.initialize();return request(client,0x60);});
     if(client.device!==receipt.device || !client.ready || !receipt.device.gatt.connected ||
-       state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
+       state.state!==0 || state.error!==0 || state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     progress?.(100,OMI18n.t("升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
