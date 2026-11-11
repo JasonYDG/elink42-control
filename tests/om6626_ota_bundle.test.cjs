@@ -151,3 +151,39 @@ test('a confirmed Flash rejection keeps Bluetooth connected and never retries th
  control.writeValueWithResponse=async b=>{if(b[0]===1){r.commands.push([...b]);const reply=Uint8Array.of(0x60,1,132);control.value=new DataView(reply.buffer);for(const waiter of [...r.client.pending])if(waiter.match(reply))waiter.resolve(reply);}else await original(b);};
  await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.filter(b=>b[0]===1).length,1);assert.equal(r.device.gatt.connected,true);assert.equal(r.client.pending.size,0);assert.equal(r.received.length,0);
 });
+
+for(const [identity,state,error] of [[5,0,0],[6,6,0],[6,0,3],[6,0,0]])test(`SDK 6 boot receipt: identity ${identity}, OTA state ${state}, error ${error}`,async()=>{
+ const device={gatt:{connected:true}}, receipt={device,model:5,revision:6,crc:123};
+ const client=new Client();client.device=device;client.disconnect=()=>{};
+ client.connect=async()=>Object.assign(client,{device,ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:8,sdkRevision:identity,config:{model:5}});
+ const calls=[];client.operation=async fn=>fn();client.initialize=async()=>{};
+ client.request=async(bytes,match)=>{calls.push(bytes[0]);const reply=Uint8Array.of(0x70,bytes[1],1,state,error,5,...new Uint8Array(22));
+   const v=new DataView(reply.buffer);v.setUint32(8,6,true);v.setUint32(24,123,true);assert.ok(match(reply));return reply;};
+ const progress=[],result=SdkOTA.confirmBoot(client,receipt,n=>progress.push(n));
+ if(identity===6 && state===0 && error===0){assert.equal((await result).revision,6);assert.ok(progress.includes(100));}
+ else{await assert.rejects(result,/重启后的固件内容尚未确认/);assert.ok(!progress.includes(100));}
+ assert.deepEqual(calls,identity===6?[0x60]:[]);
+});
+test('SDK layout refusals identify the reporting firmware and only probe old BEGIN failures',async()=>{
+ for(const [reason,op,gallery,expected] of [
+   [3,0x61,'mounted',/升级分区或启动记录/],
+   [3,0x61,'unmounted',/无法挂载内部图库/],
+   [3,0x61,'disconnected',/暂存区或启动记录不兼容/],
+   [3,0x60,null,/暂存区或启动记录不兼容/],
+   [9,0x61,null,/无法挂载内部图库/],[10,0x61,null,/升级分区或启动记录/],
+   [11,0x60,null,/暂存区已有数据/]
+ ]){
+   const calls=[],revision=reason===3?5:6;
+   const client={ready:true,device:{gatt:{connected:true}},config:{model:5},nextSequence:()=>19,
+     async request(bytes,match){calls.push(bytes[0]);const reply=new Uint8Array(28);
+       reply.set([0x70,19,1,7,reason,5]);new DataView(reply.buffer).setUint32(8,revision,true);
+       assert.ok(match(reply));return reply;},
+     async storageState(external){calls.push('gallery');assert.equal(external,false);
+       if(gallery==='unmounted')throw Object.assign(Error(),{code:'DISPLAY_NOT_READY'});
+       if(gallery==='disconnected')throw Error('disconnected');}
+   };
+   await assert.rejects(SdkOTA.request(client,op),error=>error.code==='OTA_PRECHECK' &&
+     error.message.startsWith('SDK '+revision+' · JD79668') && expected.test(error.message));
+   assert.deepEqual(calls,gallery?[op,'gallery']:[op]);
+ }
+});

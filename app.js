@@ -91,6 +91,7 @@
       $("ota-capability").textContent=OMI18n.t("此旧接收器锁定原配镜像，不能在两次刷写内升级到 v30；请使用对应屏型 HEX，未发送升级命令");
     if(otaReady && otaPackage?.bundle && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
+    $("sdk-month-style-field").hidden=client.ready && !(client.sdkRevision>=7);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
@@ -167,12 +168,13 @@
       if(calendarTab){
         const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
-        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly;
+        const style=tab==="calendar"?Number($("sdk-month-style").value)||0:0;
+        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly || style>0;
         if(sdkLayout){
           const photo=tab==="photo-calendar", info=client.ready?client.deviceInfo:null;
           const name=info?.mac ? "ELINK42-"+info.mac.replaceAll(":","").slice(-6) : client.ready?client.device.name:"";
           await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
-            flags:(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
+            revision:client.ready?client.sdkRevision:7,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
           if(token!==previewToken)return;
         }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
         $("preview").getContext("2d").drawImage(canvas,0,0);
@@ -234,6 +236,7 @@
     });
   });
   function restoreDevicePresentation() {
+    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26?client.config.alternate>>3:0);
     $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(C.byId(client.config.layout)?client.config.layout:0);
     $("calendar-language").value = client.sdkRevision>=6 && !(client.config.alternate&2) ? "en" : "zh"; syncCalendar();
@@ -277,7 +280,7 @@
   bind("disconnect", () => { client.disconnect(); gallery = null; }, OMI18n.t("已断开，已提交的刷新可能仍在继续。"));
   bind("device-info-refresh", async () => {await client.operation(() => client.readDeviceInfo());await preview();}, "");
   bind("device-home", () => client.home(progress), OMI18n.t("已回到设备初始页；保存的图片仍保留。"));
-  const startCalendar=(photo=false,date=new Date())=>{client.offlineRotation=null;return client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value);};
+  const startCalendar=(photo=false,date=new Date())=>{client.offlineRotation=null;return client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value,photo?0:Number($("sdk-month-style").value)||0);};
   bind("native-calendar", () => startCalendar());
   bind("native-clock", () => client.mode(2, progress, new Date(), $("clock-full").checked));
   $("clock-full").addEventListener("change", update);
@@ -301,12 +304,17 @@
     },"");
     bind("sdk-ota-abort",async()=>{await OMSdkOTA.abort(client);$("sdk-ota-state").textContent=OMI18n.t("未提交的升级已取消，原应用和图库仍保留。");});
   }
-  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
+  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared",client.config.alternate===26?0:client.config.alternate>>3); });
   bind("calendar-style", () => startCalendar());
   bind("photo-calendar-start",()=>locked(async()=>{await startCalendar(true);await defaultRotation(Number($("photo-slot").value),$("photo-source").value==="1",true);}));
+  $("sdk-month-style").addEventListener("change",()=>{
+    if(Number($("sdk-month-style").value))$("calendar-language").value="zh";
+    syncCalendar();
+  });
   function syncCalendar(fromPhoto=false,persist=true){
     if(fromPhoto){$("calendar-layout").value=$("photo-country").value;$("calendar-language").value=$("photo-language").value;}
     else {$("photo-country").value=$("calendar-layout").value;$("photo-language").value=$("calendar-language").value;}
+    if($("calendar-language").value!=="zh")$("sdk-month-style").value="0";
     if(persist)store.change(data=>{data.settings.calendarCountry=Number($("calendar-layout").value);data.settings.calendarLanguage=$("calendar-language").value;});
     calendarInfo();preview();
   }

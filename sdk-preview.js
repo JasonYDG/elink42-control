@@ -2,20 +2,21 @@
 
 const OMSdkPreview = (() => {
   const script = new URL(document.currentScript.src);
-  const asset = new URL("sdk-preview.wasm", script);
-  asset.search = script.search;
-  let loading;
+  const engines = new Map();
 
-  async function load() {
+  async function load(revision) {
+    const asset = new URL(revision === 6 ? "sdk6-preview.wasm" : "sdk-preview.wasm", script);
+    asset.search = script.search || "?calendar=7b";
     const response = await fetch(asset);
     if (!response.ok) throw Error(OMI18n.t("无法加载日历预览"));
     const {instance} = await WebAssembly.instantiate(await response.arrayBuffer(), {});
     return instance.exports;
   }
 
-  async function frame({date, country, flags, model, millivolts = 0, deviceName = ""}) {
-    if (!loading) loading = load().catch(error => { loading = null; throw error; });
-    const engine = await loading;
+  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 7}) {
+    const version = revision === 6 ? 6 : 7;
+    if (!engines.has(version)) engines.set(version, load(version).catch(error => { engines.delete(version); throw error; }));
+    const engine = await engines.get(version);
     const name = new Uint8Array(engine.memory.buffer, engine.preview_name(), 20);
     name.fill(0);
     new TextEncoder().encodeInto(deviceName || "--", name.subarray(0, 19));
