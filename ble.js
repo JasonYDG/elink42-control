@@ -382,7 +382,7 @@ class OMClient {
     this.calendarProtocol=reply.length===7 ? 2 : 0;
     if(this.calendarProtocol){
       const style=reply[1]>>3;
-      const validFlags=reply[1]<=7 || (this.sdkRevision>=7 && style<=4 && (reply[1]&7)===2);
+      const validFlags=reply[1]<=7 || (this.sdkRevision>=7 && (style<=4 || (this.sdkRevision>=8 && style===5)) && (reply[1]&7)===2);
       if(!validFlags || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
       Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
       this.log(OMI18n.msg`日历读回：国家=${reply[3]}，模式=${reply[4]}，标志=${reply[1]}，槽位=${reply[5]}`);
@@ -395,7 +395,8 @@ class OMClient {
     if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
-    if (![0,1,2,4].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if (style===5 && !(this.sdkRevision>=8)) throw Error(OMI18n.t("单日极简需要 SDK 8。"));
+    if (![0,1,2,4,5].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
     if(style && (!(this.sdkRevision>=7) || photo || language!=="zh"))throw Error(OMI18n.t("新全屏样式需要 SDK 7 和中文。"));
     const code=region.code, option=(style<<3) | (photo?1:0) | (this.sdkRevision>=6 && language==="en"?0:2) | (photo && fit==="contain"?4:0);
     const time=OMProtocol.time(date,1,OMCalendar.zone(code,date));
