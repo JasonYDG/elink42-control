@@ -16,11 +16,13 @@ class OMClient {
     this.timingSupported = false;
     this.otaActive = false;
     this.firmwareRevision = null;
+    this.sdkRevision = null;
+    this.sdkCapabilities = 0;
     this.deviceInfo = null;
     this.idleTimer = null;
   }
   get canPublish() { return [2, 5].includes(this.config?.model); }
-  get deviceInfoSupported() { return this.firmwareRevision >= 32 && this.board?.name === OMProtocol.OTA_MARKER; }
+  get deviceInfoSupported() { return OMProtocol.sdkBoard(this.board) ? !!(this.sdkCapabilities & 1) : this.firmwareRevision >= 32 && this.board?.name === OMProtocol.OTA_MARKER; }
   setTransfer(payload, delay) {
     OMProtocol.integer(payload, 20, 180, OMI18n.t("传输上限")); OMProtocol.integer(delay, 0, 100, OMI18n.t("包间隔"));
     if (this.busy) throw Error(OMI18n.t("传输中无法修改包设置"));
@@ -124,6 +126,7 @@ class OMClient {
   async openConnection() {
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
     this.config = null; this.board = null; this.control = null; this.firmwareRevision = null; this.deviceInfo = null;
+    this.sdkRevision = null; this.sdkCapabilities = 0;
     this.device.addEventListener("gattserverdisconnected", this.disconnected, {once: true});
     const server = await this.bounded(this.device.gatt.connect(), OMI18n.t("蓝牙连接"), 15000);
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
@@ -137,8 +140,14 @@ class OMClient {
     if (!OMProtocol.independentBoard(this.board))
       throw Error(OMI18n.t("这台设备未运行配套 Web 测试固件，请先刷入交付包中的 HEX"));
     if (![2, 5].includes(this.config.model)) throw Error(OMI18n.t("仅支持 SSD1619 三色编号 2 和 JD79668 四色编号 5"));
+    if (OMProtocol.sdkBoard(this.board)) {
+      const sequence = this.nextSequence();
+      const info = await this.request(Uint8Array.of(0x24, 0x53, sequence), b => b[0] === 0x5B && b[1] === sequence, OMI18n.t("读取独立固件版本"));
+      if (info.length !== 8 || info[2] !== 1 || !info[3] || info[6] !== this.config.model || info[7]) throw Error(OMI18n.t("独立固件版本回执无效"));
+      this.sdkRevision = info[3]; this.sdkCapabilities = info[4] | info[5] << 8;
+    }
     const sequence = this.nextSequence();
-    const probe = this.wait(b => (b.length === 4 && b[0] === 0x51 && b[1] === 0x24 && b[2] === sequence) ||
+    const probe = this.wait(b => ((b.length === 4 || (OMProtocol.sdkBoard(this.board) && b.length === 6)) && b[0] === 0x51 && b[1] === 0x24 && b[2] === sequence) ||
       (b.length === 2 && b[0] === 0x55), OMI18n.t("检测刷新回执（等待设备命令队列）"), 65000);
     try { await this.write(Uint8Array.of(0x24, sequence)); }
     catch (error) { probe.cancel(error); throw error; }
@@ -238,7 +247,7 @@ class OMClient {
       this.log(OMI18n.msg`已提交命令 0x${bytes[0].toString(16)}，序号=${sequence}`);
       const reply = await done.promise;
       if(reply[3]===0xA8 && reply.length===6 && reply[5]===0 && ((reply[4]>=1 && reply[4]<=5) || reply[4]===8)) {
-        const message={1:"SPI 传输失败，已停止刷新，蓝牙连接已保留",2:"刷新计时器未运行，已停止刷新，蓝牙连接已保留",3:"屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留",4:"电压采样超时，已停止刷新，蓝牙连接已保留",5:"屏幕初始化失败，已停止刷新，蓝牙连接已保留",8:"Flash 就绪或校验失败，已停止保存，蓝牙连接已保留"}[reply[4]];
+        const message=OMProtocol.sdkBoard(this.board) ? ({1:"屏幕刷新未完成，请检查屏幕连接和供电后重试。",2:"设备时间未确认，请重新校时后重试。",3:"设备正在刷新，请等待结束后重试。",5:"无法读取电池电压，已停止刷新。请检查供电后重新连接。",8:"存储未就绪或校验失败，已停止保存。请核对图库布局和供电。"}[reply[4]] || "设备报告错误，操作已停止，请核对设备状态。") : {1:"SPI 传输失败，已停止刷新，蓝牙连接已保留",2:"刷新计时器未运行，已停止刷新，蓝牙连接已保留",3:"屏幕 BUSY 超时，刷新未确认，蓝牙连接已保留",4:"电压采样超时，已停止刷新，蓝牙连接已保留",5:"屏幕初始化失败，已停止刷新，蓝牙连接已保留",8:"Flash 就绪或校验失败，已停止保存，蓝牙连接已保留"}[reply[4]];
         const error=Error(OMI18n.t(message));error.code="DISPLAY_NOT_READY";throw error;
       }
       if (reply[3] & 4) {
@@ -263,8 +272,8 @@ class OMClient {
   }
   async mode(mode, progress, date = new Date(), allowFullClock = false) {
     const packet = OMProtocol.time(date, mode);
-    if (mode === 2 && this.config?.model === 5 && allowFullClock !== true)
-      throw Error(OMI18n.t("JD79668 原驱动没有局刷；须明确选择允许原版全刷时钟"));
+    if (mode === 2 && (this.config?.model === 5 || OMProtocol.sdkBoard(this.board)) && allowFullClock !== true)
+      throw Error(OMI18n.t(OMProtocol.sdkBoard(this.board) ? "独立固件时钟使用全刷，须先确认接受频繁刷新。" : "JD79668 原驱动没有局刷；须明确选择允许原版全刷时钟"));
     return this.operation(async () => {
       this.requireRefreshStatus();
       await this.waitForDisplay();
@@ -310,7 +319,11 @@ class OMClient {
     const deadline=Date.now()+65000;let previous;
     for (;;) {
       const sequence=this.nextSequence();
-      const state=await this.request(Uint8Array.of(0x24,sequence),b=>b.length===4 && b[0]===0x51 && b[1]===0x24 && b[2]===sequence,OMI18n.t("等待屏幕完成上次工作"),65000);
+      const state=await this.request(Uint8Array.of(0x24,sequence),b=>(b.length===4 || (OMProtocol.sdkBoard(this.board) && b.length===6)) && b[0]===0x51 && b[1]===0x24 && b[2]===sequence,OMI18n.t("等待屏幕完成上次工作"),65000);
+      if(OMProtocol.sdkBoard(this.board) && state.length===6 && state[3]===0xA8 && !state[5] && [1,2,3,5,8].includes(state[4])){
+        if(panelReady){const error=Error(OMI18n.t("上次设备操作未完成，请重新初始化后重试。"));error.code="DISPLAY_NOT_READY";throw error;}
+        this.lifecycleSupported=true;this.timingSupported=true;this.log(OMI18n.t("上次操作已停止，允许本次显式重新初始化。"));return;
+      }
       const flags=state[3];
       if ((flags & 0x5C) || (!(flags & 0x80) && flags > 1)) throw Error(OMI18n.t("设备就绪状态回执无效"));
       if (flags!==previous) { this.log(OMI18n.t("屏幕就绪状态")+" 0x"+flags.toString(16));previous=flags; }
@@ -332,7 +345,7 @@ class OMClient {
     const mtu = this.wait(b => /^mtu=\d+$/.test(OMProtocol.text(b)), OMI18n.t("读取传输大小"));
     try {
       if(this.firmwareRevision===18 || this.firmwareRevision===20) { const error=Error(OMI18n.t("过渡接收器只用于继续升级，请留在 OTA 页面"));error.code="DISPLAY_NOT_READY";throw error; }
-      if(this.firmwareRevision>=19) await this.command(Uint8Array.of(0x25));
+      if(this.firmwareRevision>=19 || OMProtocol.sdkBoard(this.board)) await this.command(Uint8Array.of(0x25));
       else await this.write(Uint8Array.of(1));
       const size = Number(OMProtocol.text(await mtu.promise).slice(4));
       if (!Number.isInteger(size) || size < 20 || size > 512) throw Error(OMI18n.t("设备返回的传输大小无效"));
@@ -380,7 +393,7 @@ class OMClient {
     if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
-    const code=region.code, option=(photo?1:0) | 2 | (photo && fit==="contain"?4:0);
+    const code=region.code, option=(photo?1:0) | (this.sdkRevision>=6 && language==="en"?0:2) | (photo && fit==="contain"?4:0);
     const time=OMProtocol.time(date,1,OMCalendar.zone(code,date));
     return this.operation(async()=>{
       this.requireRefreshStatus();
@@ -395,8 +408,10 @@ class OMClient {
         this.storedFormat(await this.slotMetadata(slot,external));
       }
       if(photo)await this.write(Uint8Array.of(0x56,slot,external?1:0));
-      const presentation=await this.request(Uint8Array.of(0x24,0x4A,country,option,this.nextSequence()),
-        b=>b.length===7 && b[0]===0x55 && b[2]===0x4A,OMI18n.t("Read calendar presentation"));
+      const presentationSequence=this.nextSequence();
+      const presentation=await this.request(Uint8Array.of(0x24,0x4A,country,option,presentationSequence),
+        b=>(b.length===7 && b[0]===0x55 && b[2]===0x4A) || (OMProtocol.sdkBoard(this.board) && b[0]===0x51 && b[1]===0x24 && b[2]===presentationSequence),OMI18n.t("Read calendar presentation"));
+      if(presentation[0]===0x51){const error=Error(OMI18n.t("日历设置未保存，原有存储数据已保留。请核对图库布局后重试。"));error.code="DISPLAY_NOT_READY";throw error;}
       if(presentation[1]!==option || presentation[3]!==country || (photo && (presentation[5]!==slot || presentation[6]!==Number(external))))throw Error(OMI18n.t("Calendar presentation readback mismatch"));
       this.log(OMI18n.t("日历样式已读回，开始刷新"));
       await this.waitForDisplay(true);
@@ -408,9 +423,16 @@ class OMClient {
     });
   }
   async storageState(external) {
+    if (OMProtocol.sdkBoard(this.board) && external && !(this.sdkCapabilities&16)) {
+      const error = Error(OMI18n.t("当前 SDK 版本未启用外置图库，请先升级固件。")); error.code = "DISPLAY_NOT_READY"; throw error;
+    }
     if (this.reportedPayload < 44) throw Error(OMI18n.t("图库状态需要至少 44 字节通知容量，请使用支持 MTU 协商的连接"));
     const opcode = external ? 0x51 : 0x46, marker = external ? 0x73 : 0x53;
-    return OMProtocol.storage(await this.request(Uint8Array.of(opcode), b => b[0] === marker, OMI18n.t("读取图库")), external);
+    const reply = await this.request(Uint8Array.of(opcode), b => b[0] === marker, OMI18n.t("读取图库"));
+    if (OMProtocol.sdkBoard(this.board) && reply[20] === 0) {
+      const error = Error(OMI18n.t(external?"外置 Flash 未检测到或布局不兼容，原数据已保留。请核对硬件和图库布局。":"图库未挂载，原有数据已保留。请先备份并核对存储布局；不要直接擦除设备。")); error.code = "DISPLAY_NOT_READY"; throw error;
+    }
+    return OMProtocol.storage(reply, external);
   }
   async slotMetadata(slot, external) {
     const marker = external ? 0x74 : 0x49;

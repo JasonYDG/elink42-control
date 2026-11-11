@@ -1,11 +1,13 @@
 "use strict";
-// OM6626Full-261008 with the hash-pinned Web 0.1.0 firmware patch.
+// Shared ELINK42 control protocol for the legacy and independent SDK firmware.
 const OMProtocol = (() => {
   const SERVICE = "eccb3c47-dafc-3296-ba96-605efd44e4ac";
   const CONTROL = "6bc61b23-f80f-3979-b2b1-a6f823bc8064";
   const MARKER = "BOARD_ZKWEB";
   const OTA_MARKER = "BOARD_ELINK";
-  const independentBoard = board => board?.id === 1 && [MARKER, "BOARD_ZKOTA", OTA_MARKER].includes(board.name);
+  const SDK_MARKER = "BOARD_ELSDK";
+  const sdkBoard = board => board?.id === 1 && board.name === SDK_MARKER;
+  const independentBoard = board => board?.id === 1 && [MARKER, "BOARD_ZKOTA", OTA_MARKER, SDK_MARKER].includes(board.name);
   const WIDTH = 400, HEIGHT = 300, PLANE_BYTES = 15000;
   const FOUR_COLORS = [[0, 0, 0], [255, 255, 255], [255, 210, 0], [184, 25, 40]];
   const text = bytes => new TextDecoder().decode(bytes).replace(/\0.*$/s, "");
@@ -174,6 +176,6 @@ const OMProtocol = (() => {
     });
     return bytes;
   }
-  return {SERVICE, CONTROL, MARKER, OTA_MARKER, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
+  return {SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
     planes, rgba, integer, crc16, remarkBytes, remarkText, storage, metadata, imageBytes, rotation, holidays};
 })();
