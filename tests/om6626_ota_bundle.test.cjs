@@ -1,10 +1,10 @@
 "use strict";
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,'..');
-const code=['i18n.js','holidays.js','calendar.js','charset.js','protocol.js','ble.js','features.js','archive.js','ota.js','firmware.js'].map(n=>fs.readFileSync(path.join(root,n),'utf8')).join('\n');
-const {OTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh");({OTA:OMOTA,Client:OMClient,P:OMProtocol,A:OMArchive,F:OMFirmware})',{
+const code=['i18n.js','holidays.js','calendar.js','charset.js','protocol.js','ble.js','features.js','archive.js','ota.js','sdk-ota.js','firmware.js'].map(n=>fs.readFileSync(path.join(root,n),'utf8')).join('\n');
+const {OTA,SdkOTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh");({OTA:OMOTA,SdkOTA:OMSdkOTA,Client:OMClient,P:OMProtocol,A:OMArchive,F:OMFirmware})',{
  TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,crypto:require('node:crypto').webcrypto,
- setTimeout:(f,ms)=>setTimeout(f,ms===2000?0:ms),clearTimeout,console,navigator:{}});
+ setTimeout:(f,ms)=>setTimeout(f,ms===2000||ms===2500?0:ms),clearTimeout,console,navigator:{}});
 const bytes=Buffer.from(F.legacy.packages[2].data,'base64'),parsed=OTA.parse(bytes);
 
 function storedZip(files){
@@ -110,6 +110,22 @@ test('unverified first reboot stops without installing v32',async()=>{
 });
 test('changed device after first reboot stops before the next stage',async()=>{
  const r=peripheral(5,14,{changeTarget:31});await assert.rejects(r.client.ota(await parsed,consent),/目标设备发生变化/);assert.deepEqual(r.received.map(p=>p.revision),[31]);
+});
+test('a matching version from a different device cannot confirm the last reboot',async()=>{
+ const r=peripheral(5,5,{changeTarget:32});
+ await assert.rejects(r.client.ota(await parsed,consent),/目标设备发生变化/);
+ assert.deepEqual(r.received.map(p=>p.revision),[31,32]);
+});
+test('SDK reboot confirmation stops before initializing a different device or firmware family',async()=>{
+ const device={gatt:{connected:true}},receipt={device,model:5,revision:6,crc:123};
+ for(const [connectedDevice,marker] of [[{gatt:{connected:true}},P.SDK_MARKER],[device,P.OTA_MARKER]]){
+   const client=new Client();
+   client.device=device;
+   client.disconnect=()=>{};
+   client.connect=async()=>{client.device=connectedDevice;client.board={id:1,name:marker};client.sdkCapabilities=8;client.config={model:5};};
+   client.operation=async()=>assert.fail('must stop before screen initialization');
+   await assert.rejects(SdkOTA.confirmBoot(client,receipt),/重启后的固件内容尚未确认/);
+ }
 });
 test('missing consent and already-current v32 never send DFU control/data',async()=>{
  const a=peripheral(5,14);await assert.rejects(a.client.ota(await parsed,{}),/确认目标/);assert.equal(a.commands.length,0);

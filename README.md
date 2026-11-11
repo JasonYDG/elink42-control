@@ -1,6 +1,6 @@
-# ELINK42 Web 0.7.0
+# ELINK42 Web 0.7.1
 
-[打开在线控制台](https://jasonydg.github.io/elink42-control/?v=0.7.0)
+[打开在线控制台](https://jasonydg.github.io/elink42-control/?v=0.7.1)
 
 内置图库现有 106 张壁纸，统一显示主题名称，移除 AAA、BBB 两张总览缩略图。日历壁纸分为 12 张月份图、24 张独立节气图、20 张节日图和 6 张原有主题插画，不再把月份与两个节气合并命名。
 

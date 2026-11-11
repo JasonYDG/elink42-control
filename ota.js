@@ -299,11 +299,12 @@ const OMOTA = (() => {
       }
       progress(99, OMI18n.t("固件已校验并提交，等待重启后核对版本"));
       client.disconnect();
-      return {status: "device-verified-reboot-pending", independent: pack.independent, revision:pack.revision, model:pack.model};
+      return {status: "device-verified-reboot-pending", device, independent: pack.independent, revision:pack.revision, model:pack.model};
     } finally { control.removeEventListener("characteristicvaluechanged", notify); }
   }
   async function confirmBoot(client, pack, progress) {
-    const device = client.device, deadline = Date.now() + 120000;
+    const device = pack.device, deadline = Date.now() + 120000;
+    if (client.device !== device) throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
     client.connectCancelled = false;
     while (Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -317,6 +318,7 @@ const OMOTA = (() => {
         if (client.connectCancelled || !retry) throw error;
         continue;
       }
+      if (client.device !== device) throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
       const revision = await readRevision(client);
       if (Date.now() >= deadline || revision !== pack.revision || client.config.model !== pack.model)
         throw Error(OMI18n.t("重启后的屏型或固件版本不匹配，OTA 结果未确认"));
