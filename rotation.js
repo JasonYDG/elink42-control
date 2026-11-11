@@ -1,6 +1,6 @@
 "use strict";
 const OMRotation=(()=>{
-  const supported=client=>client.firmwareRevision>=24 && client.board?.name===OMProtocol.OTA_MARKER;
+  const supported=client=>OMProtocol.sdkBoard(client.board) ? !!(client.sdkCapabilities&2) : client.firmwareRevision>=24 && client.board?.name===OMProtocol.OTA_MARKER;
   function requireSupport(client){if(!supported(client))throw Error(OMI18n.t("离线日、周、月换图需要 v24 固件，请先升级。"));}
   async function query(client){
     const bytes=await client.request(Uint8Array.of(0x24,0x49,0x52),b=>b[0]===0x58,OMI18n.t("读取自动换图设置"));

@@ -1,9 +1,11 @@
 "use strict";
 (() => {
   const $ = id => document.getElementById(id), F = OMFeatures, C = OMCalendar;
+  const sdkOnly=document.documentElement.dataset?.firmwareFamily==="sdk";
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
   let otaPackage = null,firmwareRequest=null;
+  let sdkPackage=null;
   let libraryKind="full",libraryCategory="month",selectedWallpaper=null,libraryObserver=null;
   const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",image:"image",gallery:"gallery",more:"settings"};
@@ -49,6 +51,17 @@
     return revision!==null && (revision<30 || revision===31) ? 32 : bundledFirmwareRevision;
   }
   function update() {
+    const sdkView=sdkOnly || OMProtocol.sdkBoard(client.board);
+    for(const id of ["calendar-language","photo-language"]){
+      const english=$(id).querySelector?.('option[value="en"]');
+      if(english)english.disabled=client.ready && !(client.sdkRevision>=6);
+    }
+    if($("sdk-ota-panel")){
+      const sdkSupported=typeof OMSdkOTA!=="undefined" && OMSdkOTA.supported(client);
+      $("sdk-ota-panel").hidden=!sdkView;$("legacy-ota-content").hidden=sdkView;
+      $("sdk-ota-start").disabled=!client.ready || client.busy || uiBusy || !sdkPackage || !$("sdk-ota-consent").checked || !sdkSupported;
+      $("sdk-ota-abort").disabled=!client.ready || client.busy || uiBusy || !sdkSupported;
+    }
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
     $("transfer-status").classList.toggle("busy",busy);
     if(!client.ready)client.offlineRotation=null;
@@ -83,7 +96,7 @@
       "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
     for(const id of ["holiday-read","holiday-write"])$(id).disabled=!ready || Number($("calendar-layout").value)!==0;
     $("photo-calendar-start").disabled = !ready || $("photo-slot").value==="" || !gallery || gallery.external!==($("photo-source").value==="1");
-    $("native-clock").disabled = !ready || (client.config?.model === 5 && !$("clock-full").checked);
+    $("native-clock").disabled = !ready || ((client.config?.model === 5 || OMProtocol.sdkBoard(client.board)) && !$("clock-full").checked);
     $("led-off").disabled = $("led-on").disabled = !ready || client.config?.model !== 5;
     $("preview-model").disabled = client.ready || busy;
     $("rotate").disabled=busy || tab==="calendar" || tab==="photo-calendar" || (tab==="image" && $("image-target").value==="calendar");
@@ -108,7 +121,7 @@
     $("rotation-save").disabled = !ready || !gallery || gallery.external !== external();
     $("connection-state").textContent = busy ? OMI18n.t("操作中") : client.ready ? OMI18n.t("已连接") : OMI18n.t("未连接");
     $("connection-state").classList.toggle("online", client.ready);
-    $("device-name").textContent = client.ready ? client.device.name || OMI18n.t("OM6626 屏幕") : OMI18n.t("连接一台屏幕开始");
+    $("device-name").textContent = client.ready ? client.device.name || (OMProtocol.sdkBoard(client.board) && client.deviceInfo?.mac ? "ELINK42-"+client.deviceInfo.mac.replaceAll(":","").slice(-6) : OMI18n.t("OM6626 屏幕")) : OMI18n.t("连接一台屏幕开始");
     $("device-id").textContent = client.ready ? client.device.id : "—";
     const info = client.ready ? client.deviceInfo : null;
     $("device-mac").textContent = info?.mac || "—";
@@ -120,14 +133,18 @@
       info.millivolts < 2700 ? "电量不足：停止新刷新，蓝牙与查询仍可使用。" :
       info.millivolts < 2800 ? "电池电量低，仍可刷屏；请准备更换电池。" : "电压为最近一次采样，点击刷新可重新读取。");
     for (const id of ["device-info-refresh", "device-home"]) $(id).disabled = !ready || !client.deviceInfoSupported || client.otaActive;
-    $("firmware-state").textContent = client.ready && client.firmwareRevision ? `v${client.firmwareRevision}` +
+    $("firmware-state").textContent = client.ready && OMProtocol.sdkBoard(client.board) ? `SDK ${client.sdkRevision}` : client.ready && client.firmwareRevision ? `v${client.firmwareRevision}` +
       OMI18n.t(" · 网页内置 v") + bundledFirmwareRevision + (client.firmwareRevision < bundledFirmwareRevision ? OMI18n.t(" · 发现内置更新") : "") : OMI18n.t("待核对");
     $("screen-model").textContent = client.ready ? client.config.model === 5 ? OMI18n.t("JD79668 · 四色") : OMI18n.t("SSD1619 · 黑白红") : OMI18n.t("三色 / 四色 · 连接后识别");
     $("mtu-state").textContent = OMI18n.msg`${client.reportedPayload || 20} B ATT / ${client.payload} B 当前发送`;
-    $("clock-capability").textContent = client.ready ? client.config.model === 5 ?
+    $("clock-capability").textContent = client.ready && OMProtocol.sdkBoard(client.board) ? OMI18n.t("独立固件的三色和四色时钟均使用全刷，请先确认接受频繁刷新。") : client.ready ? client.config.model === 5 ?
       OMI18n.t("JD79668：原驱动局刷回调为空，只能启用原版全刷时钟；不建议长期开启。") :
       OMI18n.t("SSD1619：原驱动提供局刷。设备每分钟更新，首次、跨日及定期清屏会全刷。") :
       OMI18n.t("SSD1619 原驱动有局刷；JD79668 原驱动没有局刷接口。");
+    const clockConsent=$("clock-full").nextElementSibling;
+    if(clockConsent){const text=OMProtocol.sdkBoard(client.board)?"我接受时钟频繁全刷":"我接受 JD79668 原版频繁全刷时钟";clockConsent.setAttribute("data-i18n",text);clockConsent.textContent=OMI18n.t(text);}
+    const clockHint=$("native-clock").nextElementSibling;
+    if(clockHint && clockHint.classList.contains("hint"))clockHint.textContent=OMI18n.t(OMProtocol.sdkBoard(client.board)?"独立固件每分钟全刷一次；两种屏型均不宣称局刷。":"三色时钟使用原局刷路径，首次及定期清屏仍会全刷。四色不会标为局刷。");
     $("nfc-write").disabled = !ready || !("NDEFReader" in window);
     $("nfc-read").disabled = !("NDEFReader" in window);
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
@@ -150,9 +167,16 @@
       if(calendarTab){
         const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
-        OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
+        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly;
+        if(sdkLayout){
+          const photo=tab==="photo-calendar", info=client.ready?client.deviceInfo:null;
+          const name=info?.mac ? "ELINK42-"+info.mac.replaceAll(":","").slice(-6) : client.ready?client.device.name:"";
+          await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
+            flags:(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
+          if(token!==previewToken)return;
+        }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
         $("preview").getContext("2d").drawImage(canvas,0,0);
-        $("preview-label").textContent=OMI18n.t(tab==="calendar"?"标准日历":"图片日历")+" · "+OMI18n.t(region.zh)+" · 400 × 300";
+        $("preview-label").textContent=OMI18n.t(tab==="calendar"?"标准日历":"图片日历")+" · "+OMI18n.t(region.zh)+" · 400 × 300"+(sdkLayout && tab==="photo-calendar"?" · "+OMI18n.t("设备照片未读回，左侧留白"):"");
         return;
       }
       if (tab === "image") {
@@ -212,7 +236,7 @@
   function restoreDevicePresentation() {
     $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(C.byId(client.config.layout)?client.config.layout:0);
-    $("calendar-language").value = "zh"; syncCalendar();
+    $("calendar-language").value = client.sdkRevision>=6 && !(client.config.alternate&2) ? "en" : "zh"; syncCalendar();
     if(client.calendarProtocol===2){
       $("photo-source").value=String(client.config.photoSource);
       options("photo-slot",client.config.photoSlot===255?[]:[[client.config.photoSlot,OMI18n.t("Device slot")+" "+client.config.photoSlot]]);
@@ -223,10 +247,15 @@
   async function connected(device) {
     const stayOnOTA = tab === "ota";
     gallery = null; await client.connect(device); restoreDevicePresentation();
+    if(sdkOnly && !OMProtocol.sdkBoard(client.board)){client.disconnect();throw Error(OMI18n.t("此控制台仅用于独立 SDK 固件，请为原设备使用原控制台。"));}
     if (stayOnOTA) selectTab($("tab-ota"));
     change(data => { if (!data.devices.some(d => d.id === client.device.id)) data.devices.push({id: client.device.id, name: client.device.name || "OM6626"}); });
     $("saved-device").value = client.device.id; await preview();
-    if (client.board.name === OMProtocol.OTA_MARKER) {
+    if (OMProtocol.sdkBoard(client.board)) {
+      if(client.deviceInfoSupported)await client.operation(()=>client.readDeviceInfo());
+      await preview();
+      if(OMRotation.supported(client)){await OMRotation.read(client);if(client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
+    } else if (client.board.name === OMProtocol.OTA_MARKER) {
       try { await client.operation(() => OMOTA.readRevision(client)); }
       catch (error) { log(error.message); throw Error(OMI18n.t("无法核对固件版本，请重新连接后重试；没有发送升级命令。")); }
       if(client.deviceInfoSupported) await client.operation(() => client.readDeviceInfo());
@@ -246,13 +275,33 @@
   bind("forget-device", () => change(data => { data.devices = data.devices.filter(d => d.id !== $("saved-device").value); }), OMI18n.t("已取消本地记录。系统蓝牙权限可在浏览器站点设置中移除。"));
   $("saved-device").addEventListener("change", update);
   bind("disconnect", () => { client.disconnect(); gallery = null; }, OMI18n.t("已断开，已提交的刷新可能仍在继续。"));
-  bind("device-info-refresh", () => client.operation(() => client.readDeviceInfo()), "");
+  bind("device-info-refresh", async () => {await client.operation(() => client.readDeviceInfo());await preview();}, "");
   bind("device-home", () => client.home(progress), OMI18n.t("已回到设备初始页；保存的图片仍保留。"));
   const startCalendar=(photo=false,date=new Date())=>{client.offlineRotation=null;return client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value);};
   bind("native-calendar", () => startCalendar());
   bind("native-clock", () => client.mode(2, progress, new Date(), $("clock-full").checked));
   $("clock-full").addEventListener("change", update);
-  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,"zh",!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
+  if($("sdk-ota-panel")){
+    $("sdk-ota-file").addEventListener("change",()=>action(async()=>{
+      sdkPackage=null;const file=$("sdk-ota-file").files[0];
+      if(!file)return;
+      sdkPackage=await OMSdkOTA.parse(await file.arrayBuffer());
+      $("sdk-ota-state").textContent=file.name+" · SDK "+sdkPackage.revision+" · "+(sdkPackage.model===2?"SSD1619":"JD79668")+" · "+sdkPackage.size+" B";
+      $("sdk-ota-consent").checked=false;
+    },""));
+    $("sdk-ota-consent").addEventListener("change",update);
+    bind("sdk-ota-start",async()=>{
+      if(!sdkPackage || !$("sdk-ota-consent").checked)throw Error(OMI18n.t("请先选择 SDK 升级包并确认供电稳定。"));
+      uiBusy=true;update();
+      try{
+        const receipt=await OMSdkOTA.transfer(client,sdkPackage,progress);
+        await OMSdkOTA.confirmBoot(client,receipt,progress);restoreDevicePresentation();
+        $("sdk-ota-state").textContent=OMI18n.t("升级完成，已核对设备版本和应用 CRC。");
+      }finally{uiBusy=false;update();}
+    },"");
+    bind("sdk-ota-abort",async()=>{await OMSdkOTA.abort(client);$("sdk-ota-state").textContent=OMI18n.t("未提交的升级已取消，原应用和图库仍保留。");});
+  }
+  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared"); });
   bind("calendar-style", () => startCalendar());
   bind("photo-calendar-start",()=>locked(async()=>{await startCalendar(true);await defaultRotation(Number($("photo-slot").value),$("photo-source").value==="1",true);}));
   function syncCalendar(fromPhoto=false,persist=true){
@@ -390,7 +439,7 @@
     if(prepared)$("photo-fit").value="prepared";
     if(!show){if(prepared)selectTab($("tab-photo-calendar"));result(OMI18n.t("图片已保存到位置 ")+slot);return;}
     try{
-      if(prepared)await client.internationalCalendar(country,"zh",true,slot,source,progress,new Date(),fit);
+      if(prepared)await client.internationalCalendar(country,$("calendar-language").value,true,slot,source,progress,new Date(),fit);
       else {await client.slotAction("display",slot,source,progress);await rememberPicture(slot,source);}
       await defaultRotation(slot,source,prepared);
       result(OMI18n.t("图片已保存并提交显示，位置 ")+slot);

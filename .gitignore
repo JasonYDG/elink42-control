@@ -16,7 +16,9 @@ backup/
 runtime/
 *-signing.json
 
-# Embedded updater assets retain their license; standalone firmware stays local.
+# Publish model-specific SDK update packages alongside the embedded legacy updater.
 !firmware/
 firmware/*
 !firmware/LICENSES.txt
+!firmware/elink42-sdk-v6-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v6-fourcolor-jd79668.e42ota

@@ -1,11 +1,11 @@
 "use strict";
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto");
 const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-control");
-const firmwareFiles=new Set(['firmware/LICENSES.txt']);
+const firmwareFiles=new Set(['firmware/LICENSES.txt',...['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-sdk-v6-'+panel+'.e42ota')]);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.6.23');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,230);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.7.0');assert.equal(manifest.firmware_revision,33);assert.equal(Object.keys(manifest.assets).length,235);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -18,10 +18,10 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
   for(const name of ["index.html"]){
     const html=fs.readFileSync(path.join(site,name),"utf8");
     assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(html));
-    assert.ok(!html.includes("downloads.html")&&!/href="firmware\//.test(html));
+    assert.ok(!html.includes("downloads.html")&&html.includes("sdk-ota-file"));
     assert.ok(html.includes('id="ota-bundled"')&&html.includes('id="ota-file"'));
     assert.ok(!/<script[^>]+src="firmware\.js/.test(html));
-    assert.match(html,/data-firmware-src="firmware\.js\?v=0\.6\.23&h=[0-9a-f]{12}"/);
+    assert.match(html,/data-firmware-src="firmware\.js\?v=0\.7\.0&h=[0-9a-f]{12}"/);
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(url.startsWith("https://")){assert.equal(new URL(url).hostname,"github.com");continue;}
       const [file,query]=url.split("?");
