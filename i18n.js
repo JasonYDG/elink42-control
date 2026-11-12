@@ -1,6 +1,8 @@
 "use strict";
 const OMTranslations = {
   "SDK 固件升级":"SDK firmware update",
+  "三色线刷 HEX（SSD1619）":"Wired HEX for tricolor (SSD1619)",
+  "四色线刷 HEX（JD79668）":"Wired HEX for four-color (JD79668)",
   "刷入内置":"Install bundled",
   "重新刷入内置":"Reinstall bundled",
   "设备版本高于内置包":"Device is newer than bundled",

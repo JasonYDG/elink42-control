@@ -5,16 +5,16 @@ const OMSdkPreview = (() => {
   const engines = new Map();
 
   async function load(revision) {
-    const asset = new URL(revision < 9 ? `sdk${revision}-preview.wasm` : "sdk-preview.wasm", script);
-    asset.search = script.search || "?calendar=9";
+    const asset = new URL(revision < 10 ? `sdk${revision}-preview.wasm` : "sdk-preview.wasm", script);
+    asset.search = script.search || "?calendar=10";
     const response = await fetch(asset);
     if (!response.ok) throw Error(OMI18n.t("无法加载日历预览"));
     const {instance} = await WebAssembly.instantiate(await response.arrayBuffer(), {});
     return instance.exports;
   }
 
-  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 9}) {
-    const version = [6, 7, 8].includes(revision) ? revision : 9;
+  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 10}) {
+    const version = [6, 7, 8, 9].includes(revision) ? revision : 10;
     if (!engines.has(version)) engines.set(version, load(version).catch(error => { engines.delete(version); throw error; }));
     const engine = await engines.get(version);
     const name = new Uint8Array(engine.memory.buffer, engine.preview_name(), 20);
