@@ -351,12 +351,13 @@
       try{
         let pkg=sdkPackage;
         if(bundled){
-          const link=$("sdk-ota-model-"+model), revision=Number($("sdk-ota-panel").dataset.revision);
-          if(!link || !link.dataset.integrity || !Number.isInteger(client.sdkRevision) || client.sdkRevision>revision)throw Error(OMI18n.t("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。"));
+          const button=$("sdk-ota-bundled"), revision=Number($("sdk-ota-panel").dataset.revision);
+          const url=button.getAttribute("data-src-"+model), integrity=button.getAttribute("data-integrity-"+model);
+          if(!url || !integrity || !Number.isInteger(client.sdkRevision) || client.sdkRevision>revision)throw Error(OMI18n.t("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。"));
           $("sdk-ota-state").textContent=OMI18n.t("正在载入内置升级包，请稍候…");
           let data;
           try{
-            const response=await fetch(link.href,{mode:"same-origin",redirect:"error",integrity:link.dataset.integrity,signal:AbortSignal.timeout(30000)});
+            const response=await fetch(url,{mode:"same-origin",redirect:"error",integrity,signal:AbortSignal.timeout(30000)});
             if(!response.ok)throw Error(String(response.status));
             data=await response.arrayBuffer();
           }catch{throw Error(OMI18n.t("无法读取或校验内置 SDK 包，请刷新页面后重试。"));}
