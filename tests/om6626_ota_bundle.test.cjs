@@ -188,11 +188,11 @@ test('SDK layout refusals identify the reporting firmware and only probe old BEG
  }
 });
 
-test('SDK 12 verifies the physical screen MAC before checking a restored identity',async()=>{
- const device={gatt:{connected:true}}, client=new Client();
+test('SDK 12 reads the restored address and verifies the selected screen without asking for a MAC',async()=>{
+ const device={name:"ELINK42-4CD854",gatt:{connected:true}}, client=new Client();
  Object.assign(client,{device,ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:9,sdkRevision:12,config:{model:5}});
  const original={device:{gatt:{connected:false}},identityChange:true,model:5,revision:12,crc:0x12345678};
- const mac="ED:D3:6A:04:D8:54";
+ let mac="01:BF:66:26:A1:00";
  let reads=0;
  client.operation=async fn=>fn();
  client.readDeviceInfo=async()=>({mac});
@@ -202,10 +202,16 @@ test('SDK 12 verifies the physical screen MAC before checking a restored identit
    const result=new Uint8Array(28);result.set([0x70,bytes[1],1,0,0,5]);
    const view=new DataView(result.buffer);view.setUint32(8,12,true);view.setUint32(24,original.crc,true);return result;
  };
- await assert.rejects(SdkOTA.confirmRestoredAddress(client,original,"FA:3F:75:3E:49:22"),/MAC/);
- await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,model:2},mac),/型号/);
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,original),/蓝牙地址/);
+ mac=null;
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,original),/蓝牙地址/);
+ mac="FA:3F:75:3E:49:22";
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,original),/广播名/);
+ mac="ED:D3:6A:04:D8:54";
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,model:2}),/型号/);
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,revision:11}),/版本/);
  assert.equal(reads,0);
- await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,crc:1},mac),/尚未确认/);
- assert.equal((await SdkOTA.confirmRestoredAddress(client,original,mac)).runningCrc,original.crc);
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,crc:1}),/尚未确认/);
+ assert.equal((await SdkOTA.confirmRestoredAddress(client,original)).runningCrc,original.crc);
  assert.equal(reads,2);
 });
