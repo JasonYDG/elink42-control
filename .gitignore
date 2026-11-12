@@ -22,3 +22,5 @@ firmware/*
 !firmware/LICENSES.txt
 !firmware/elink42-sdk-v6-tricolor-ssd1619.e42ota
 !firmware/elink42-sdk-v6-fourcolor-jd79668.e42ota
+!firmware/elink42-sdk-v9-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v9-fourcolor-jd79668.e42ota

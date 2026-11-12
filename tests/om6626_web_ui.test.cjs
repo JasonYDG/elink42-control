@@ -169,6 +169,18 @@ test("the built-in bundle needs one start confirmation and finishes on v32",asyn
  assert.equal(u.confirmations.length,before+1);assert.match(u.confirmations.at(-1),/最多两次刷写.*v31.*v32.*确认开始/s);
  assert.match(u.get('firmware-state').textContent,/v32/);assert.match(u.get('ota-service').textContent,/升级完成/);assert.equal(u.get('ota-start').disabled,true);
 });
+for(const model of [2,5])test(`v33 model ${model} still starts its calendar after an offline SDK theme selection`,async()=>{
+  const u=ui(model,true,"zh",true,{revision:33});
+  u.get("sdk-month-style").value="5";
+  await u.click("connect");
+  assert.equal(u.get("sdk-month-style-field").hidden,true);
+  assert.equal(u.get("sdk-month-style").value,"0");
+  await u.click("native-calendar");
+  const settings=u.packets.filter(p=>p[0]===0x24 && p[1]===0x4A && p.length===5);
+  assert.deepEqual(settings.map(p=>p[3]),[2]);
+  assert.ok(u.packets.some(p=>p[0]===0x20 && p[6]===1));
+  assert.equal(u.confirmations.length,0);
+});
 for(const revision of [33,34])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
