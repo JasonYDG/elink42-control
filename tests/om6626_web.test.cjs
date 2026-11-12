@@ -212,6 +212,23 @@ test("two handshake failures stop, and manual disconnect cancels a pending recon
   }
 });
 
+test("service discovery timeout retries once and its late result leaves the new link connected", async t => {
+  const {client,packets}=connectablePeripheral();
+  const device=client.device,connect=device.gatt.connect;
+  let attempts=0,finishOld;
+  device.gatt.connect=async()=>{
+    const server=await connect(); attempts++;
+    return attempts===1 ? {getPrimaryService:()=>new Promise(resolve=>{finishOld=resolve;})} : server;
+  };
+  const bounded=client.bounded.bind(client);
+  client.bounded=(op,label,ms,discovery)=>bounded(op,label,discovery?10:ms,discovery);
+  t.after(()=>client.disconnect());
+  await client.connect(device);
+  finishOld({});await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(attempts,2);assert.equal(device.gatt.connected,true);assert.equal(client.ready,true);
+  assert.deepEqual(packets.map(b=>b[0]),[0,0x24,0x24]);
+});
+
 test("unknown screen models and original firmware remain rejected without mutating commands", async () => {
   for (const [model, marker] of [[3, P.MARKER], [5, "BOARD_ZKONG"]]) {
     const {client, packets} = connectablePeripheral(model, marker);

@@ -1,5 +1,7 @@
 "use strict";
 const OMTranslations = {
+  "日历设置未保存。请在「设备图片」读取内部图库，查看槽位和状态。":"Calendar settings could not be saved. Read the internal gallery under Device images to check its slots and status.",
+  "未挂载":"Not mounted",
   "升级完成":"Update complete",
   "曾显示同名的屏幕请逐台升级，每次只给目标屏供电。":"For tags that previously shared a name, power only the target tag during each update.",
   "固件已提交。等屏幕显示新名称后，点击「连接屏幕」选择该名称，网页会自动核对升级结果。":"Update submitted. When the screen shows its new name, select that name with Connect screen. The portal will verify the update automatically.",
