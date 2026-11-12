@@ -1,5 +1,5 @@
 {
-  "version": "0.7.7",
+  "version": "0.7.8",
   "sdk_revision": 12,
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
@@ -18,9 +18,9 @@
     }
   },
   "assets": {
-    "index.html": "8316656bb21059c13c841ea45f34ca4cdda15c73b8e43e6dfe45b6d6c8750533",
+    "index.html": "ec2a71eb522afb9ed2e2a351b0789e73010b471096a46f2729941f455b280fea",
     "style.css": "57759812eab85f72587695edd902236a286dad9f4b57c48bcffdfb88e79cd8c4",
-    "i18n.js": "29bd981b14c5afe3e8fd9de371f06b288d8ce7b6c129794a43e9700e5b73bacc",
+    "i18n.js": "c74f822605a23e425bf097e02f882dbf8ebe482dbda6f67f308dc5c13192d87a",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
     "calendar.js": "9f6dfff5a27332d6f3c6a6930a72f94549704bdc24321870e1c599e5960caf20",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
@@ -32,7 +32,7 @@
     "sdk8-preview.wasm": "ae9f983ee531b149a7f67215751a8f99fa1a214125df5b0139015d86e9bc5f1b",
     "sdk9-preview.wasm": "0270014eccf6090085524498ea03fed6e524507ecb73d9aea7c43d0cd1e385c2",
     "sdk10-preview.wasm": "ad09ea6c08234f78e41e6ec6f64ae8004d6925f2188e1e424a53433c4c7c34ac",
-    "sdk-ota.js": "b1edddf7a712009e958d1da4840f860bf99f9f4642ac45cf84b88e8c204cb5be",
+    "sdk-ota.js": "c6dcd8b23865e03442608b2905b2ec5e188b5c3144b6c803b306be7e8fad897a",
     "ble.js": "e33704b14f68199e5f39490d466749b9a9f270ba4c40b119d5adc5c910ff1c4b",
     "features.js": "aab736f8921d5c812f0b9b4c7801502e03ce6d7e966772fead6a8e2c0c5071d3",
     "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
@@ -41,7 +41,7 @@
     "render.js": "2ea71d0376a40def7139b290039e24cc89ee6709b53b9fc3d361925b38b744cc",
     "wallpapers.js": "5a732dcd5432443b2eebec46bc1474b8e4c181bd3f75b7ac83b8f7aa34dff807",
     "rotation.js": "0a2e67f995a0bec8578f73b338e1c782e8bdbc3b86e5b0a0f66d2005402444a8",
-    "app.js": "d26ff257716a3afcbfa6b91cda6196cee34d5869edb017ffebce2a6d7f4711b6",
+    "app.js": "4d70d3a321f08469f066e1fe511442d674cd3ee7b42d3e3dd35c9e250ecc7edb",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "firmware/LICENSES.txt": "7576de5bd652f36a737d4ce6b6897d0faa59f1b3b8d97ca5058eca7c777b5c63",
     "firmware/elink42-sdk-v12-tricolor-ssd1619.e42ota": "4809334f91e20421c293a107350708356ceb3439bb7470b055344d2b4dd45683",

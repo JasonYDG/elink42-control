@@ -276,7 +276,7 @@
   async function finishSdkUpdate(receipt){
     if(receipt.identityChange){
       pendingIdentityReceipt=receipt; client.disconnect();
-      const text=OMI18n.t("固件已提交。等屏幕显示新名称后，点击「连接屏幕」选择它，再核对屏幕首页的完整 MAC。");
+      const text=OMI18n.t("固件已提交。等屏幕显示新名称后，点击「连接屏幕」选择该名称，网页会自动核对升级结果。");
       $("sdk-ota-state").textContent=text; log(text); progress(99,text);
       return;
     }
@@ -289,10 +289,7 @@
     gallery = null; await client.connect(device);
     if(pendingIdentityReceipt){
       try{
-        const entered=window.prompt(OMI18n.t("请输入这块屏幕首页显示的完整蓝牙 MAC 地址。"));
-        const mac=(entered || "").trim().toUpperCase().replace(/[:-]/g,"");
-        const expectedMac=/^[0-9A-F]{12}$/.test(mac) ? mac.match(/../g).join(":") : "";
-        const state=await OMSdkOTA.confirmRestoredAddress(client,pendingIdentityReceipt,expectedMac,progress);
+        const state=await OMSdkOTA.confirmRestoredAddress(client,pendingIdentityReceipt,progress);
         sdkBootComplete(state);
         pendingIdentityReceipt=null;
       }catch(error){client.disconnect();throw error;}
@@ -308,7 +305,7 @@
     });
     $("saved-device").value = client.device.id; await preview();
     if (OMProtocol.sdkBoard(client.board)) {
-      if(client.deviceInfoSupported)await client.operation(()=>client.readDeviceInfo());
+      if(client.deviceInfoSupported && !client.deviceInfo)await client.operation(()=>client.readDeviceInfo());
       await preview();
       if(OMRotation.supported(client)){await OMRotation.read(client);if(client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
     } else if (client.board.name === OMProtocol.OTA_MARKER) {

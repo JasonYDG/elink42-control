@@ -91,15 +91,17 @@ const OMSdkOTA=(()=>{
     await client.connect(receipt.device);
     return verifyBoot(client,receipt,receipt.device,progress);
   }
-  async function confirmRestoredAddress(client,receipt,expectedMac,progress){
-    if(!receipt.identityChange || !expectedMac || !/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(expectedMac))
-      throw failure("请输入屏幕首页显示的完整蓝牙 MAC 地址。");
+  async function confirmRestoredAddress(client,receipt,progress){
     const device=client.device;
-    if(!supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==receipt.revision)
+    if(!receipt.identityChange || !supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==(receipt.revision & 0xFF))
       throw failure("所选屏幕的型号或版本与刚提交的升级不符。");
     const info=await client.operation(()=>client.readDeviceInfo());
-    if(info?.mac!==expectedMac || expectedMac==="01:BF:66:26:A1:00")
-      throw failure("读回的 MAC 与屏幕不符，请重新选择屏幕。");
+    if(!info?.mac || info.mac==="01:BF:66:26:A1:00")
+      throw failure("尚未读到更新后的蓝牙地址，请重新连接屏幕。");
+    const name=device.name;
+    if(/^ELINK42-[34]C[0-9A-F]{4}$/i.test(name) &&
+       name.toUpperCase()!=="ELINK42-"+(receipt.model===5?"4C":"3C")+info.mac.replaceAll(":","").slice(-4))
+      throw failure("设备广播名与读回的地址不符，请重新选择屏幕。");
     return verifyBoot(client,receipt,device,progress);
   }
   async function verifyBoot(client,receipt,device,progress){
