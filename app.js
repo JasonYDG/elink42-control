@@ -5,7 +5,7 @@
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
   let otaPackage = null,firmwareRequest=null;
-  let sdkPackage=null;
+  let sdkPackage=null, pendingIdentityReceipt=null;
   let libraryKind="full",libraryCategory="month",selectedWallpaper=null,libraryObserver=null;
   const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",image:"image",gallery:"gallery",more:"settings"};
@@ -29,6 +29,18 @@
   const external = () => $("gallery-source").value === "1";
   const model = () => Number($("preview-model").value);
   const uid = () => crypto.randomUUID();
+  function connectedName() {
+    if (!client.ready) return "";
+    const mac = client.deviceInfo?.mac;
+    if (mac && OMProtocol.sdkBoard(client.board)) {
+      const hex = mac.replaceAll(":", "").toUpperCase();
+      const panel = client.config?.model;
+      if (client.sdkRevision >= 11 && (panel === 2 || panel === 5))
+        return "ELINK42-" + (panel === 5 ? "4C" : "3C") + hex.slice(-4);
+      return client.device.name || "ELINK42-" + hex.slice(-6);
+    }
+    return client.device.name || "";
+  }
   const settingsMap = {theme: "theme", "font-size": "fontSize", "urgent-hours": "urgentHours", dither: "dither",
     "dither-strength": "strength", brightness: "brightness", contrast: "contrast", gamma: "gamma", "red-threshold": "redThreshold", "packet-bytes": "packetBytes", "packet-delay": "packetDelay"};
   function change(callback) { store.change(callback); refreshLists(); preview(); }
@@ -131,7 +143,7 @@
     $("rotation-save").disabled = !ready || !gallery || gallery.external !== external();
     $("connection-state").textContent = busy ? OMI18n.t("操作中") : client.ready ? OMI18n.t("已连接") : OMI18n.t("未连接");
     $("connection-state").classList.toggle("online", client.ready);
-    $("device-name").textContent = client.ready ? client.device.name || (OMProtocol.sdkBoard(client.board) && client.deviceInfo?.mac ? "ELINK42-"+client.deviceInfo.mac.replaceAll(":","").slice(-6) : OMI18n.t("OM6626 屏幕")) : OMI18n.t("连接一台屏幕开始");
+    $("device-name").textContent = client.ready ? connectedName() || OMI18n.t("OM6626 屏幕") : OMI18n.t("连接一台屏幕开始");
     $("device-id").textContent = client.ready ? client.device.id : "—";
     const info = client.ready ? client.deviceInfo : null;
     $("device-mac").textContent = info?.mac || "—";
@@ -181,9 +193,9 @@
         const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly || style>0 || (tab==="calendar" && [0,2,3].includes(region.id));
         if(sdkLayout){
           const photo=tab==="photo-calendar", info=client.ready?client.deviceInfo:null;
-          const name=info?.mac ? "ELINK42-"+info.mac.replaceAll(":","").slice(-6) : client.ready?client.device.name:"";
+          const name=connectedName();
           await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
-            revision:client.ready?client.sdkRevision:10,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
+            revision:client.ready?client.sdkRevision:12,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
           if(token!==previewToken)return;
         }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
         $("preview").getContext("2d").drawImage(canvas,0,0);
@@ -256,12 +268,44 @@
       selectTab($(client.config.alternate&1?"tab-photo-calendar":"tab-calendar"));
     }
   }
+  function sdkBootComplete(state){
+    const text=OMI18n.t("升级完成")+" · "+(state.model===5?"JD79668":"SSD1619")+" · SDK "+state.revision+
+      " · CRC32 "+state.runningCrc.toString(16).toUpperCase().padStart(8,"0");
+    $("sdk-ota-state").textContent=text; log(text); progress(100,text);
+  }
+  async function finishSdkUpdate(receipt){
+    if(receipt.identityChange){
+      pendingIdentityReceipt=receipt; client.disconnect();
+      const text=OMI18n.t("固件已提交。等屏幕显示新名称后，点击「连接屏幕」选择它，再核对屏幕首页的完整 MAC。");
+      $("sdk-ota-state").textContent=text; log(text); progress(99,text);
+      return;
+    }
+    const state=await OMSdkOTA.confirmBoot(client,receipt,progress);
+    if(client.deviceInfoSupported)await client.operation(()=>client.readDeviceInfo());
+    restoreDevicePresentation(); sdkBootComplete(state);
+  }
   async function connected(device) {
     const stayOnOTA = tab === "ota";
-    gallery = null; await client.connect(device); restoreDevicePresentation();
+    gallery = null; await client.connect(device);
+    if(pendingIdentityReceipt){
+      try{
+        const entered=window.prompt(OMI18n.t("请输入这块屏幕首页显示的完整蓝牙 MAC 地址。"));
+        const mac=(entered || "").trim().toUpperCase().replace(/[:-]/g,"");
+        const expectedMac=/^[0-9A-F]{12}$/.test(mac) ? mac.match(/../g).join(":") : "";
+        const state=await OMSdkOTA.confirmRestoredAddress(client,pendingIdentityReceipt,expectedMac,progress);
+        sdkBootComplete(state);
+        pendingIdentityReceipt=null;
+      }catch(error){client.disconnect();throw error;}
+    }
+    restoreDevicePresentation();
     if(sdkOnly && !OMProtocol.sdkBoard(client.board)){client.disconnect();throw Error(OMI18n.t("此控制台仅用于独立 SDK 固件，请为原设备使用原控制台。"));}
     if (stayOnOTA) selectTab($("tab-ota"));
-    change(data => { if (!data.devices.some(d => d.id === client.device.id)) data.devices.push({id: client.device.id, name: client.device.name || "OM6626"}); });
+    change(data => {
+      const saved = data.devices.find(d => d.id === client.device.id);
+      const name = connectedName() || "OM6626";
+      if (saved) saved.name = name;
+      else data.devices.push({id: client.device.id, name});
+    });
     $("saved-device").value = client.device.id; await preview();
     if (OMProtocol.sdkBoard(client.board)) {
       if(client.deviceInfoSupported)await client.operation(()=>client.readDeviceInfo());
@@ -325,8 +369,7 @@
         if(!client.ready || client.device!==device || client.config?.model!==model)throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
         $("sdk-ota-state").textContent="SDK "+pkg.revision+" · "+(model===2?"SSD1619":"JD79668");
         const receipt=await OMSdkOTA.transfer(client,pkg,progress);
-        await OMSdkOTA.confirmBoot(client,receipt,progress);restoreDevicePresentation();
-        $("sdk-ota-state").textContent=OMI18n.t("升级完成，已核对设备版本和应用 CRC。");
+        await finishSdkUpdate(receipt);
         $("sdk-ota-consent").checked=false;
       }catch(error){
         $("sdk-ota-state").textContent=error.message;throw error;

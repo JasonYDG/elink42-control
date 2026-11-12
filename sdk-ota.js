@@ -79,7 +79,8 @@ const OMSdkOTA=(()=>{
         await request(client,0x63);await wait(client,5,progress);
         const committed=await request(client,0x64);
         if(committed.state!==6)throw failure("升级提交未确认，请核对设备状态，不要重复提交。");
-        return {device,model:pkg.model,revision:pkg.revision,crc:pkg.crc};
+        return {device,model:pkg.model,revision:pkg.revision,crc:pkg.crc,
+          identityChange:before.revision<11 && pkg.revision>=11};
       }finally{client.otaActive=false;client.update();}
     });
   }
@@ -88,15 +89,29 @@ const OMSdkOTA=(()=>{
     client.disconnect();progress?.(99,OMI18n.t("已提交，正在等待设备重启并核对版本…"));
     await new Promise(resolve=>setTimeout(resolve,2500));
     await client.connect(receipt.device);
+    return verifyBoot(client,receipt,receipt.device,progress);
+  }
+  async function confirmRestoredAddress(client,receipt,expectedMac,progress){
+    if(!receipt.identityChange || !expectedMac || !/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(expectedMac))
+      throw failure("请输入屏幕首页显示的完整蓝牙 MAC 地址。");
+    const device=client.device;
+    if(!supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==receipt.revision)
+      throw failure("所选屏幕的型号或版本与刚提交的升级不符。");
+    const info=await client.operation(()=>client.readDeviceInfo());
+    if(info?.mac!==expectedMac || expectedMac==="01:BF:66:26:A1:00")
+      throw failure("读回的 MAC 与屏幕不符，请重新选择屏幕。");
+    return verifyBoot(client,receipt,device,progress);
+  }
+  async function verifyBoot(client,receipt,device,progress){
     // The identity notification carries one revision byte; the OTA receipt below carries the full value.
-    if(client.device!==receipt.device || !supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==(receipt.revision & 0xFF))
+    if(client.device!==device || !supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==(receipt.revision & 0xFF))
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     const state=await client.operation(async()=>{await client.initialize();return request(client,0x60);});
-    if(client.device!==receipt.device || !client.ready || !receipt.device.gatt.connected ||
+    if(client.device!==device || !client.ready || !device.gatt.connected ||
        state.state!==0 || state.error!==0 || state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     progress?.(100,OMI18n.t("升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
   async function abort(client){return client.operation(async()=>{const state=await request(client,0x65);if(state.state!==0)throw failure("升级已经提交，不能取消。请等待重启并核对设备。");return state;});}
-  return {parse,crc32,supported,request,transfer,confirmBoot,abort};
+  return {parse,crc32,supported,request,transfer,confirmBoot,confirmRestoredAddress,abort};
 })();
