@@ -339,6 +339,9 @@ https://github.com/TakWolf/fusion-pixel-font
 
 Copyright (c) 2022, TakWolf (https://takwolf.com).
 
+Noto Sans SC Bold (single-day calendar date glyphs)
+Copyright (c) 2014-2020 Adobe (http://www.adobe.com/).
+
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
 https://openfontlicense.org
