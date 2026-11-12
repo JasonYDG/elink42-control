@@ -1,5 +1,5 @@
 {
-  "version": "0.7.8",
+  "version": "0.7.9",
   "sdk_revision": 12,
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
@@ -18,9 +18,9 @@
     }
   },
   "assets": {
-    "index.html": "ec2a71eb522afb9ed2e2a351b0789e73010b471096a46f2729941f455b280fea",
+    "index.html": "5cd5fead93f7255aa78943154c546a5cc5cbf1986884cc769d5bad7fd08053cb",
     "style.css": "57759812eab85f72587695edd902236a286dad9f4b57c48bcffdfb88e79cd8c4",
-    "i18n.js": "c74f822605a23e425bf097e02f882dbf8ebe482dbda6f67f308dc5c13192d87a",
+    "i18n.js": "760527e4cfc715c47f57a0a151b3040a3c2c8b0bc522ad4b11636d2c5a53279f",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
     "calendar.js": "9f6dfff5a27332d6f3c6a6930a72f94549704bdc24321870e1c599e5960caf20",
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
@@ -33,7 +33,7 @@
     "sdk9-preview.wasm": "0270014eccf6090085524498ea03fed6e524507ecb73d9aea7c43d0cd1e385c2",
     "sdk10-preview.wasm": "ad09ea6c08234f78e41e6ec6f64ae8004d6925f2188e1e424a53433c4c7c34ac",
     "sdk-ota.js": "c6dcd8b23865e03442608b2905b2ec5e188b5c3144b6c803b306be7e8fad897a",
-    "ble.js": "e33704b14f68199e5f39490d466749b9a9f270ba4c40b119d5adc5c910ff1c4b",
+    "ble.js": "43115a3418bcbf7bc9b90aed02638a18f89a2ca9d4a76993a7c8e9a606c807e7",
     "features.js": "aab736f8921d5c812f0b9b4c7801502e03ce6d7e966772fead6a8e2c0c5071d3",
     "archive.js": "d22eefd4e7213d00a56f0c143ee8f92516af6c9ed5c25296ae49334a4056a0ce",
     "ota.js": "938016d2612aa4c28a8fe00671ac847bf30feb03cf637fd42ab4349404fe4ae9",

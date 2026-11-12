@@ -64,13 +64,17 @@ class OMClient {
     promise.catch(() => {});
     return {promise, cancel: error => waiter.reject(error)};
   }
-  async bounded(operation, label, ms = 10000) {
+  async bounded(operation, label, ms = 10000, discovery = false) {
     let timer, expired = false;
     const device = this.device;
     try {
       return await Promise.race([
         operation.then(value => { if (expired) device?.gatt.disconnect(); return value; }),
         new Promise((_, reject) => timer = setTimeout(() => {
+          if (discovery) {
+            const error = Error(label + OMI18n.t("超时")); error.name = "NetworkError";
+            reject(error); return;
+          }
           expired = true; this.disconnect(); reject(Error(label + OMI18n.t("超时，已断开以停止旧命令")));
         }, ms)),
       ]);
@@ -130,8 +134,8 @@ class OMClient {
     this.device.addEventListener("gattserverdisconnected", this.disconnected, {once: true});
     const server = await this.bounded(this.device.gatt.connect(), OMI18n.t("蓝牙连接"), 15000);
     if (this.connectCancelled) throw Error(OMI18n.t("连接已取消"));
-    const service = await this.bounded(server.getPrimaryService(OMProtocol.SERVICE), OMI18n.t("读取服务"));
-    this.control = await this.bounded(service.getCharacteristic(OMProtocol.CONTROL), OMI18n.t("读取控制接口"));
+    const service = await this.bounded(server.getPrimaryService(OMProtocol.SERVICE), OMI18n.t("读取服务"), 10000, true);
+    this.control = await this.bounded(service.getCharacteristic(OMProtocol.CONTROL), OMI18n.t("读取控制接口"), 10000, true);
     this.control.addEventListener("characteristicvaluechanged", this.notify);
     const initial = this.wait(bytes => bytes.length === 15, OMI18n.t("读取配置"));
     try { await this.bounded(this.control.startNotifications(), OMI18n.t("启用通知")); await initial.promise; }
@@ -414,9 +418,14 @@ class OMClient {
       }
       if(photo)await this.write(Uint8Array.of(0x56,slot,external?1:0));
       const presentationSequence=this.nextSequence();
-      const presentation=await this.request(Uint8Array.of(0x24,0x4A,country,option,presentationSequence),
+      const reuse=OMProtocol.sdkBoard(this.board) && !photo && this.config.layout===country && this.config.alternate===option;
+      const packet=reuse ? Uint8Array.of(0x24,0x4A,presentationSequence) : Uint8Array.of(0x24,0x4A,country,option,presentationSequence);
+      const presentation=await this.request(packet,
         b=>(b.length===7 && b[0]===0x55 && b[2]===0x4A) || (OMProtocol.sdkBoard(this.board) && b[0]===0x51 && b[1]===0x24 && b[2]===presentationSequence),OMI18n.t("Read calendar presentation"));
-      if(presentation[0]===0x51){const error=Error(OMI18n.t("日历设置未保存，原有存储数据已保留。请核对图库布局后重试。"));error.code="DISPLAY_NOT_READY";throw error;}
+      if(presentation[0]===0x51){
+        this.log("0x24/0x4A ← "+Array.from(presentation,b=>b.toString(16).padStart(2,"0")).join(" "));
+        const error=Error(OMI18n.t("日历设置未保存。请在「设备图片」读取内部图库，查看槽位和状态。"));error.code="DISPLAY_NOT_READY";throw error;
+      }
       if(presentation[1]!==option || presentation[3]!==country || (photo && (presentation[5]!==slot || presentation[6]!==Number(external))))throw Error(OMI18n.t("Calendar presentation readback mismatch"));
       this.log(OMI18n.t("日历样式已读回，开始刷新"));
       await this.waitForDisplay(true);
@@ -436,6 +445,7 @@ class OMClient {
     const opcode = external ? 0x51 : 0x46, marker = external ? 0x73 : 0x53;
     const reply = await this.request(Uint8Array.of(opcode), b => b[0] === marker, OMI18n.t("读取图库"));
     if (OMProtocol.sdkBoard(this.board) && reply[20] === 0) {
+      this.log(OMI18n.t(external?"外置图库":"内部图库")+" · "+OMI18n.t("槽位数量")+" "+reply[1]+" · "+OMI18n.t("未挂载"));
       const error = Error(OMI18n.t(external?"外置 Flash 未检测到或布局不兼容，原数据已保留。请核对硬件和图库布局。":"图库未挂载，原有数据已保留。请先备份并核对存储布局；不要直接擦除设备。")); error.code = "DISPLAY_NOT_READY"; throw error;
     }
     return OMProtocol.storage(reply, external);
