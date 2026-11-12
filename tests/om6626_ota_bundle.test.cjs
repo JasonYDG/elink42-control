@@ -187,3 +187,25 @@ test('SDK layout refusals identify the reporting firmware and only probe old BEG
    assert.deepEqual(calls,gallery?[op,'gallery']:[op]);
  }
 });
+
+test('SDK 12 verifies the physical screen MAC before checking a restored identity',async()=>{
+ const device={gatt:{connected:true}}, client=new Client();
+ Object.assign(client,{device,ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:9,sdkRevision:12,config:{model:5}});
+ const original={device:{gatt:{connected:false}},identityChange:true,model:5,revision:12,crc:0x12345678};
+ const mac="ED:D3:6A:04:D8:54";
+ let reads=0;
+ client.operation=async fn=>fn();
+ client.readDeviceInfo=async()=>({mac});
+ client.initialize=async()=>{};
+ client.request=async bytes=>{
+   assert.equal(bytes[0],0x60);reads++;
+   const result=new Uint8Array(28);result.set([0x70,bytes[1],1,0,0,5]);
+   const view=new DataView(result.buffer);view.setUint32(8,12,true);view.setUint32(24,original.crc,true);return result;
+ };
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,original,"FA:3F:75:3E:49:22"),/MAC/);
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,model:2},mac),/型号/);
+ assert.equal(reads,0);
+ await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,crc:1},mac),/尚未确认/);
+ assert.equal((await SdkOTA.confirmRestoredAddress(client,original,mac)).runningCrc,original.crc);
+ assert.equal(reads,2);
+});

@@ -1,5 +1,12 @@
 "use strict";
 const OMTranslations = {
+  "升级完成":"Update complete",
+  "曾显示同名的屏幕请逐台升级，每次只给目标屏供电。":"For tags that previously shared a name, power only the target tag during each update.",
+  "固件已提交。等屏幕显示新名称后，点击「连接屏幕」选择它，再核对屏幕首页的完整 MAC。":"Update submitted. When the new name appears on the tag, use Connect screen to select it and verify the full MAC on its home page.",
+  "所选屏幕的型号或版本与刚提交的升级不符。":"The selected screen does not match the submitted panel and revision.",
+  "读回的 MAC 与屏幕不符，请重新选择屏幕。":"The address read back does not match the display. Select the screen again.",
+  "请输入屏幕首页显示的完整蓝牙 MAC 地址。":"Enter the complete Bluetooth MAC printed on the screen.",
+  "请输入这块屏幕首页显示的完整蓝牙 MAC 地址。":"Enter the full Bluetooth MAC shown on this screen’s home page.",
   "SDK 固件升级":"SDK firmware update",
   "三色线刷 HEX（SSD1619）":"Wired HEX for tricolor (SSD1619)",
   "四色线刷 HEX（JD79668）":"Wired HEX for four-color (JD79668)",
@@ -13,7 +20,7 @@ const OMTranslations = {
   "刷入所选文件":"Install selected file",
   "无法读取或校验内置 SDK 包，请刷新页面后重试。":"Could not load or verify the bundled SDK package. Refresh the page and try again.",
   "全屏样式":"Month style",
-  "原版全屏":"Original month",
+  "经典月历":"Classic month",
   "单日极简":"Single day",
   "单日极简需要 SDK 8。":"Single day requires SDK 8.",
   "月历全览":"Month grid",
@@ -942,6 +949,7 @@ const OMI18n = (() => {
   const traditional = text => text.replace(/[\u3400-\u9fff]/gu, char=>characters[char] ?? char);
   // Translate built-in labels only; user content and device payloads keep their original text.
   const labels = Object.fromEntries(Object.keys(OMTranslations).map(zh=>[zh,traditional(zh)]));
+  labels["经典月历"]="經典月曆";
   labels["今日侧栏"]="今日側欄";
   const reverse = Object.fromEntries([...Object.entries(OMTranslations).map(([zh,en])=>[en,zh]), ...Object.entries(labels).map(([zh,hant])=>[hant,zh])]);
   let language="en";
