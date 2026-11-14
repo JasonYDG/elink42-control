@@ -18,7 +18,7 @@ const OMSdkOTA=(()=>{
     return {model,revision,size,crc,header:bytes.slice(0,64),image,sha256:Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("")};
   }
   function supported(client){return OMProtocol.sdkBoard(client.board) && !!(client.sdkCapabilities&8);}
-  async function request(client,op,data=[]){
+  async function request(client,op,data=[],allowFailed=false){
     const device=client.device;
     const seq=client.nextSequence(),bytes=Uint8Array.of(op,seq,...data);
     const reply=await client.request(bytes,b=>b[0]===0x70 && b[1]===seq,OMI18n.t("读取 SDK 升级回执"),15000);
@@ -26,7 +26,10 @@ const OMSdkOTA=(()=>{
     const view=new DataView(reply.buffer,reply.byteOffset,reply.byteLength);
     const value={state:reply[3],error:reply[4],model:reply[5],millivolts:view.getUint16(6,true),revision:view.getUint32(8,true),
       received:view.getUint32(12,true),crc:view.getUint32(16,true),size:view.getUint32(20,true),runningCrc:view.getUint32(24,true)};
+    client.sdkOtaState={...value,command:op,reply:Array.from(reply,b=>b.toString(16).padStart(2,'0')).join('')};
     if(value.state===7){
+      client.log?.(describe(client.sdkOtaState));
+      if(allowFailed)return value;
       let reason=value.error;
       if(reason===3 && op===0x61 && client.ready && client.device===device && device?.gatt.connected){
         // Older receivers checked the gallery before the boot record and shared one error code.
@@ -40,9 +43,14 @@ const OMSdkOTA=(()=>{
       8:"升级等待超时，已停止。请重新连接并核对状态。",9:"设备无法挂载内部图库，升级已停止。请保留已有图片和操作记录。",
       10:"设备未确认可用的升级分区或启动记录，已在擦除前停止。",
       11:"升级暂存区已有数据，已在擦除前停止。请先备份设备数据。"}[reason]||"设备升级出错，操作已停止。");
-      throw failure(`SDK ${value.revision} · ${value.model===2?"SSD1619":"JD79668"} · ${OMI18n.t(message)}`);
+      const error=failure(`SDK ${value.revision} · ${value.model===2?"SSD1619":"JD79668"} · ${OMI18n.t(message)}`);error.otaState=client.sdkOtaState;throw error;
     }
     return value;
+  }
+  function describe(s){return `SDK ${s.revision} · ${s.model===2?'SSD1619':'JD79668'} · 升级状态=${s.state}，错误=${s.error}，已接收=${s.received}/${s.size} B，电压=${s.millivolts?s.millivolts+' mV':'未知'}，查询命令=0x${s.command.toString(16)}，回执=${s.reply}`;}
+  async function inspect(client){
+    if(!client.ready || !supported(client))throw failure('请先连接支持独立 OTA 的 SDK 设备。');
+    return client.operation(async()=>{await request(client,0x60,[],true);return client.sdkOtaState;});
   }
   async function wait(client,wanted,progress){
     const deadline=Date.now()+70000;
@@ -61,13 +69,16 @@ const OMSdkOTA=(()=>{
       throw failure("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。");
     return client.operation(async()=>{
       client.otaActive=true;client.update();
+      let phase='开始前检查';
       try{
         await client.waitForDisplay();await client.initialize();
         if(client.payload<66 || client.reportedPayload<28)throw failure("本连接传输容量不足，请使用支持 MTU 协商的浏览器重新连接。");
-        const before=await request(client,0x60);
+        const before=await request(client,0x60,[],true);
         if(before.millivolts<2900)throw failure("电压不足 2.90 V，没有开始升级。");
         if(before.state!==0 && before.state!==7)throw failure("设备有未结束的升级，请先核对状态或手动取消。");
-        await request(client,0x61,pkg.header);await wait(client,3,progress);
+        if(before.state===7)client.log?.('已读取上次未提交的失败记录；本次点击开始新的升级。');
+        phase='准备暂存区';await request(client,0x61,pkg.header);await wait(client,3,progress);
+        phase='传输固件';
         let crc=0xFFFFFFFF;
         for(let off=0;off<pkg.image.length;){
           const data=pkg.image.subarray(off,off+client.payload-6),offset=new Uint8Array(4);
@@ -76,12 +87,13 @@ const OMSdkOTA=(()=>{
           if(state.state!==3 || state.received!==off || state.crc!==((crc^0xFFFFFFFF)>>>0))throw failure("设备接收位置或 CRC 未确认，已停止，不会自动重发。");
           progress?.(Math.floor(off/pkg.size*96)+2,OMI18n.t("正在传输 SDK 固件，图库保持保留…"));
         }
-        await request(client,0x63);await wait(client,5,progress);
+        phase='完整镜像读回校验';await request(client,0x63);await wait(client,5,progress);
+        phase='提交升级';
         const committed=await request(client,0x64);
         if(committed.state!==6)throw failure("升级提交未确认，请核对设备状态，不要重复提交。");
-        return {device,model:pkg.model,revision:pkg.revision,crc:pkg.crc,
-          identityChange:before.revision<11 && pkg.revision>=11};
-      }finally{client.otaActive=false;client.update();}
+        return {device,model:pkg.model,revision:pkg.revision,crc:pkg.crc,identityChange:before.revision<11 && pkg.revision>=11};
+      }catch(error){if(error.otaState)error.message+='（阶段：'+phase+'）';throw error;}
+      finally{client.otaActive=false;client.update();}
     });
   }
   async function confirmBoot(client,receipt,progress){
@@ -112,8 +124,9 @@ const OMSdkOTA=(()=>{
     if(client.device!==device || !client.ready || !device.gatt.connected ||
        state.state!==0 || state.error!==0 || state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
+    client.log("重启读回："+(state.model===2?"SSD1619":"JD79668")+" · SDK "+state.revision+" · CRC32 "+state.runningCrc.toString(16).toUpperCase().padStart(8,"0"));
     progress?.(100,OMI18n.t("升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
   async function abort(client){return client.operation(async()=>{const state=await request(client,0x65);if(state.state!==0)throw failure("升级已经提交，不能取消。请等待重启并核对设备。");return state;});}
-  return {parse,crc32,supported,request,transfer,confirmBoot,confirmRestoredAddress,abort};
+  return {parse,crc32,supported,request,transfer,confirmBoot,confirmRestoredAddress,abort,inspect,describe};
 })();

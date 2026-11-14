@@ -62,9 +62,15 @@ const OMOTA = (() => {
         view.getUint16(8, true) !== 1 || view.getUint16(10, true) !== 1 || view.getUint32(12, true) !== (0x5A4B0000 | (model << 8)) ||
         ![2, 5].includes(model) || !revision || view.getUint32(20, true) !== bin.length)
       throw Error(OMI18n.t("只接受本项目独立签名 OTA 包；原版、未签名或其他屏型包已拒绝"));
-    const digest = await sha(bin);
+    const digest = await sha(bin), imageHash=hex(digest);
     if (hex(digest.slice().reverse()) !== hex(dat.slice(24, 56))) throw Error(OMI18n.t("firmware.bin 的 SHA-256 与签名包不符"));
     if (!await signature(dat)) throw Error(OMI18n.t("OTA 项目签名无效；不接受作者或其他项目的签名"));
+    // Both signed bench fixtures claim v34 but their actual boot notifications report v33.
+    if (imageHash==="8ce8178011b5cac2eb25394694f265d90fbd281c0a080390a5f5be6f9cebb909" ||
+        imageHash==="4fbd1d2bd04de1e6595d763261e8431b13b051d8af2aa2818a4b1703ecda50f9") {
+      const error=Error(OMI18n.t("这是测试镜像，重启后仍是 v33，不能迁移到 SDK 6。没有开始擦写。"));
+      error.code="OTA_PRECHECK";throw error;
+    }
     const protectedBytes = bin.slice(); for (const [start, end] of APP) protectedBytes.fill(0, start, end);
     const foundation=hex((await sha(protectedBytes)).reverse());
     const boot=revision>=30 && foundation===BOOT_FOUNDATION[model];
@@ -74,7 +80,7 @@ const OMOTA = (() => {
     if (new TextDecoder().decode(bin.slice(208405, 208416)) !== OMProtocol.OTA_MARKER || bin[51172] !== model ||
         new DataView(bin.buffer).getUint32(79984,true) !== revision || hex(bin.slice(79988,80036)) !== KEY || hex(bin.slice(80036,80068)) !== foundation)
       throw Error(OMI18n.t("固件中的独立 OTA 信任、屏型或标识不符"));
-    return {dat, bin, size: bin.length, version: String(revision), revision, model, sha256: hex(digest), independent: true,repaired:lifecycle || foundation===REPAIRED_FOUNDATION[model],lifecycle,hardened,boot};
+    return {dat, bin, size: bin.length, version: String(revision), revision, model, sha256:imageHash, independent: true,repaired:lifecycle || foundation===REPAIRED_FOUNDATION[model],lifecycle,hardened,boot};
   }
   async function single(files) {
     if (files.size !== 3 || !["manifest.json", "firmware.dat", "firmware.bin"].every(n => files.has(n)))
@@ -193,6 +199,9 @@ const OMOTA = (() => {
     if([19,21,24].includes(revision)) return "stable";
     if(revision===28) return "hardened";
     return revision===29 ? "boot" : revision===30 || revision===31 ? "target" : null;
+  }
+  function pairedRevision(current) {
+    return [15,18,20,23,27].includes(current) ? current+1 : null;
   }
   async function transfer(client, input, consent, progress = () => {}) {
     target(client); const device = client.device;
@@ -320,6 +329,7 @@ const OMOTA = (() => {
       }
       if (client.device !== device) throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
       const revision = await readRevision(client);
+      client.log(OMI18n.t("重启读回：")+(client.config.model===2?"SSD1619":"JD79668")+" · v"+revision);
       if (Date.now() >= deadline || revision !== pack.revision || client.config.model !== pack.model)
         throw Error(OMI18n.t("重启后的屏型或固件版本不匹配，OTA 结果未确认"));
       progress(100, OMI18n.msg`升级完成，已重连并确认 ELINK 固件版本 ${pack.revision}；请核对实屏`);
@@ -338,7 +348,7 @@ const OMOTA = (() => {
       const error=Error(OMI18n.t("设备已达到整合包版本，无需升级"));error.code="OTA_PRECHECK";throw error;
     }
     const route=bundleRoute(current);
-    if(!route) { const error=Error(OMI18n.t([15,18,20,23,27].includes(current)?"此旧接收器锁定原配镜像，不能在两次刷写内升级到 v32；请使用对应屏型 HEX，未发送升级命令":"当前版本不兼容本两阶段包，未发送升级命令"));error.code="OTA_PRECHECK";throw error; }
+    if(!route) { const error=Error(pairedRevision(current)?OMI18n.t("请先载入原配无线升级包：")+"v"+pairedRevision(current):OMI18n.t("当前版本不兼容本两阶段包，未发送升级命令"));error.code="OTA_PRECHECK";throw error; }
     const stages=route==="target" ? [bundle.models[model].legacy[1]] : bundle.models[model][route];
     if(stages.length>2) { const error=Error(OMI18n.t("旧整合包需要超过两次刷写，已停止；请使用新版两阶段包"));error.code="OTA_PRECHECK";throw error; }
     const quietReceiver=async()=>{
@@ -361,34 +371,65 @@ const OMOTA = (() => {
     }
     return result;
   }
-  async function readRevision(client) {
-    target(client);
+  async function versionReply(client, version, query, matches) {
     const device = client.device;
-    const service = await client.bounded(device.gatt.getPrimaryService(SERVICE), OMI18n.t("读取 OTA 服务"));
-    const version = await client.bounded(service.getCharacteristic(VERSION), OMI18n.t("读取固件版本接口"));
     if (!version.properties.write || !version.properties.notify) throw Error(OMI18n.t("固件版本接口不符，无法核对版本"));
+    let versionBytes;
     const notify = event => {
       if (event.target !== version) return;
       const v = event.target.value, bytes = new Uint8Array(v.buffer,v.byteOffset,v.byteLength).slice();
+      versionBytes=bytes;
       for (const waiter of [...client.pending]) if (waiter.match(bytes)) waiter.resolve(bytes);
     };
     version.addEventListener("characteristicvaluechanged", notify);
     let receipt;
     try {
       await client.bounded(version.startNotifications(), OMI18n.t("启用版本回执"));
-      receipt = client.wait(b => b.length === 12 && new DataView(b.buffer,b.byteOffset,b.byteLength).getUint32(0,true) === 0x5A4B4F54,
-        OMI18n.t("固件版本回执"), 15000);
-      await client.bounded(version.writeValueWithResponse(Uint8Array.of(0)), OMI18n.t("只读查询固件版本"));
+      if(client.device!==device || !device.gatt.connected || !client.ready || client.connectCancelled)
+        throw Error(OMI18n.t("固件版本核对已中断，版本未确认"));
+      receipt = client.wait(b=>b===versionBytes && matches(b), OMI18n.t("固件版本回执"), 15000);
+      await client.bounded(version.writeValueWithResponse(query), OMI18n.t("只读查询固件版本"));
       const bytes = await receipt.promise, view = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
       if (client.device !== device || !device.gatt.connected || !client.ready || client.connectCancelled)
         throw Error(OMI18n.t("固件版本核对已中断，版本未确认"));
       target(client);
-      if (view.getUint32(4,true) !== client.config.model || !view.getUint32(8,true))
-        throw Error(OMI18n.t("屏型或固件版本不匹配，版本未确认"));
-      client.firmwareRevision = view.getUint32(8,true);
-      return client.firmwareRevision;
+      return view;
     } catch (error) { receipt?.cancel(error); throw error; }
     finally { version.removeEventListener("characteristicvaluechanged", notify); }
   }
-  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision,upgradeBundle,bundleRoute};
+  async function readRevision(client) {
+    target(client);
+    const device=client.device;
+    const service=await client.bounded(device.gatt.getPrimaryService(SERVICE), OMI18n.t("读取 OTA 服务"));
+    const version=await client.bounded(service.getCharacteristic(VERSION), OMI18n.t("读取固件版本接口"));
+    if(client.device!==device)throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
+    const view=await versionReply(client,version,Uint8Array.of(0),
+      b=>b.length===12 && new DataView(b.buffer,b.byteOffset,b.byteLength).getUint32(0,true)===0x5A4B4F54);
+    if(view.getUint32(4,true)!==client.config.model || !view.getUint32(8,true))
+      throw Error(OMI18n.t("屏型或固件版本不匹配，版本未确认"));
+    client.firmwareRevision=view.getUint32(8,true);
+    return client.firmwareRevision;
+  }
+  async function probeOnMicroDfu(client) {
+    target(client);
+    if(client.firmwareRevision!==34)throw Error(OMI18n.t("请先核对过渡版 v34。"));
+    const device=client.device, model=client.config.model;
+    const current=()=>client.device===device && device.gatt.connected && client.ready && !client.connectCancelled &&
+      client.config?.model===model && client.firmwareRevision===34;
+    let service;
+    try {
+      service=await client.bounded(device.gatt.getPrimaryService(OMProtocol.ONMICRO_DFU_SERVICE), OMI18n.t("读取 OTA 服务"));
+    } catch(error) {
+      if(current() && error.name==="NotFoundError")return "absent";
+      if(current() && error.name==="SecurityError")return "permission";
+      throw error;
+    }
+    const version=await client.bounded(service.getCharacteristic("000001bf-5f03-0000-0000-4f4d2d4f5441"),OMI18n.t("读取固件版本接口"));
+    if(!current())throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
+    // VERN is the Rev4316 version-only query on the vendor characteristic.
+    const view=await versionReply(client,version,new TextEncoder().encode("VERN"),b=>b.length===12);
+    if(!current())throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
+    return view.getUint32(0,true)===0x20211229 && view.getUint32(4,true)===15 && view.getUint32(8,true)===3?"protocol-3":"unrecognized";
+  }
+  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision,probeOnMicroDfu,upgradeBundle,bundleRoute,pairedRevision};
 })();

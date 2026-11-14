@@ -20,6 +20,7 @@ class OMClient {
     this.sdkCapabilities = 0;
     this.deviceInfo = null;
     this.idleTimer = null;
+    this.connectionGeneration = 0;
   }
   get canPublish() { return [2, 5].includes(this.config?.model); }
   get deviceInfoSupported() { return OMProtocol.sdkBoard(this.board) ? !!(this.sdkCapabilities & 1) : this.firmwareRevision >= 32 && this.board?.name === OMProtocol.OTA_MARKER; }
@@ -66,10 +67,10 @@ class OMClient {
   }
   async bounded(operation, label, ms = 10000, discovery = false) {
     let timer, expired = false;
-    const device = this.device;
+    const device = this.device, generation = this.connectionGeneration;
     try {
       return await Promise.race([
-        operation.then(value => { if (expired) device?.gatt.disconnect(); return value; }),
+        operation.then(value => { if (expired && generation === this.connectionGeneration) device?.gatt.disconnect(); return value; }),
         new Promise((_, reject) => timer = setTimeout(() => {
           if (discovery) {
             const error = Error(label + OMI18n.t("超时")); error.name = "NetworkError";
@@ -96,6 +97,7 @@ class OMClient {
   }
   async connect(existingDevice) {
     if (this.busy || this.device?.gatt.connected) throw Error(OMI18n.t("当前连接或操作尚未结束"));
+    this.connectionGeneration++;
     this.busy = true;
     this.connectCancelled = false;
     this.config = null;
@@ -108,7 +110,7 @@ class OMClient {
     try {
       this.device = existingDevice || await navigator.bluetooth.requestDevice({
         filters: [{namePrefix: "ELINK42-"}, {namePrefix: "GCLab_EPD_"}, {services: [OMProtocol.SERVICE]}],
-        optionalServices: [OMProtocol.SERVICE, "0000fe59-0000-1000-8000-00805f9b34fb"],
+        optionalServices: [OMProtocol.SERVICE, "0000fe59-0000-1000-8000-00805f9b34fb", OMProtocol.ONMICRO_DFU_SERVICE],
       });
       for (let attempt = 0; ; attempt++) {
         try { await this.openConnection(); break; }
@@ -137,9 +139,17 @@ class OMClient {
     const service = await this.bounded(server.getPrimaryService(OMProtocol.SERVICE), OMI18n.t("读取服务"), 10000, true);
     this.control = await this.bounded(service.getCharacteristic(OMProtocol.CONTROL), OMI18n.t("读取控制接口"), 10000, true);
     this.control.addEventListener("characteristicvaluechanged", this.notify);
-    const initial = this.wait(bytes => bytes.length === 15, OMI18n.t("读取配置"));
-    try { await this.bounded(this.control.startNotifications(), OMI18n.t("启用通知")); await initial.promise; }
-    catch (error) { initial.cancel(error); throw error; }
+    await this.bounded(this.control.startNotifications(), OMI18n.t("启用通知"));
+    if (!this.config) {
+      // A second browser subscription can reuse an enabled CCCD without a new notification.
+      if (this.control.properties?.read) {
+        const value = await this.bounded(this.control.readValue(), OMI18n.t("读取配置"));
+        this.config = OMProtocol.config(new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice());
+        this.update();
+      } else {
+        await this.wait(bytes => bytes.length === 15, OMI18n.t("读取配置")).promise;
+      }
+    }
     this.board = OMProtocol.board(await this.request(Uint8Array.of(0), b => b[0] === 0x42, OMI18n.t("读取板型")));
     if (!OMProtocol.independentBoard(this.board))
       throw Error(OMI18n.t("这台设备未运行配套 Web 测试固件，请先刷入交付包中的 HEX"));
@@ -222,6 +232,14 @@ class OMClient {
     this.deviceInfo = {mac, millivolts: !reply[3] && mv >= 1000 && mv <= 5000 ? mv : null, status: reply[3]};
     this.update();
     return this.deviceInfo;
+  }
+  async readRuntime() {
+    this.runtime=null;
+    if(!(this.sdkRevision>=16 && (this.sdkCapabilities&64)))return null;
+    const seq=this.nextSequence(),r=await this.request(Uint8Array.of(0x24,0x54,seq),b=>b[0]===0x5E&&b[1]===seq,"读取设备运行状态");
+    if(r.length!==18 || r[2]!==this.sdkRevision || r[3]!==this.config.model)throw Error("运行状态读回无效");
+    const v=new DataView(r.buffer,r.byteOffset,r.byteLength);
+    return this.runtime={bootId:v.getUint32(4,true),uptime:v.getUint32(8,true),schoolReads:v.getUint16(12,true),mode:r[14],flags:r[15],active:!!r[16],error:r[17]};
   }
   async home(progress) {
     return this.operation(async () => {
@@ -386,7 +404,7 @@ class OMClient {
     this.calendarProtocol=reply.length===7 ? 2 : 0;
     if(this.calendarProtocol){
       const style=reply[1]>>3;
-      const validFlags=reply[1]<=7 || (this.sdkRevision>=7 && (style<=4 || (this.sdkRevision>=8 && style===5)) && (reply[1]&7)===2);
+      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128)) && (reply[1]&7)===2);
       if(!validFlags || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
       Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
       this.log(OMI18n.msg`日历读回：国家=${reply[3]}，模式=${reply[4]}，标志=${reply[1]}，槽位=${reply[5]}`);
@@ -400,7 +418,9 @@ class OMClient {
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
     if (style===5 && !(this.sdkRevision>=8)) throw Error(OMI18n.t("单日极简需要 SDK 8。"));
-    if (![0,1,2,4,5].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if (![0,1,2,4,5,6,7,8].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if ([6,7].includes(style) && !(this.sdkRevision>=16 && (this.sdkCapabilities&32))) throw Error("课表自动更新需要 SDK 16；当前版本可发送预览画面。");
+    if(style===8 && !(this.sdkRevision>=17 && (this.sdkCapabilities&128)))throw Error("离线提醒需要 SDK 17；当前版本可发送预览画面。");
     if(style && (!(this.sdkRevision>=7) || photo || language!=="zh"))throw Error(OMI18n.t("新全屏样式需要 SDK 7 和中文。"));
     const code=region.code, option=(style<<3) | (photo?1:0) | (this.sdkRevision>=6 && language==="en"?0:2) | (photo && fit==="contain"?4:0);
     const time=OMProtocol.time(date,1,OMCalendar.zone(code,date));
@@ -409,6 +429,11 @@ class OMClient {
       if (!await this.readCalendar()) throw Error(OMI18n.t("Calendar configuration requires firmware revision 6 or later. Update firmware and reload this page."));
       await this.waitForDisplay();
       await this.command(OMProtocol.time(date,0,OMCalendar.zone(code,date)));
+      if(this.sdkRevision>=16 && style<6){
+        const rotation=await this.request(Uint8Array.of(0x24,0x49,0x52),b=>b[0]===0x58,"核对自动换图");
+        if(rotation.length!==6 || ![0,3,4,5].includes(rotation[2]))throw Error("自动换图状态无效");
+        if(rotation[2])await this.command(Uint8Array.of(0x26,0,photo?1:0));
+      }
       await this.initialize();
       if(photo){
         OMProtocol.integer(slot,0,44,"Slot");
@@ -476,8 +501,29 @@ class OMClient {
       return {...state, slots};
     });
   }
+  async readImage(slot, external=false, progress=()=>{}) {
+    if(!(this.sdkRevision>=16 && (this.sdkCapabilities&64)))throw Error("读取设备图片需要 SDK 16，请先升级或从网页重新选择图片。");
+    OMProtocol.integer(slot,0,44,"图片位置");
+    return this.operation(async()=>{
+      await this.waitForDisplay();await this.initialize();
+      const row=await this.slotMetadata(slot,external);this.storedFormat(row);
+      const bytes=new Uint8Array(30000),limit=Math.min(180,this.reportedPayload-7);
+      if(limit<1)throw Error("图片读取通知容量不足");
+      for(let off=0;off<bytes.length;off+=limit){
+        const count=Math.min(limit,bytes.length-off),seq=this.nextSequence();
+        const r=await this.request(Uint8Array.of(0x58,Number(external),slot,off&255,off>>8,count,seq),b=>b[0]===0x5D&&b[1]===seq || b[0]===0x51&&b[1]===0x58&&b[2]===seq,"读取图片像素");
+        if(r[0]!==0x5D || r.length!==count+7 || r[2]!==slot || r[3]!==Number(external) || (r[4]|r[5]<<8)!==off || r[6]!==count){const error=Error("设备图片读取未确认，原图未改动");error.code="DISPLAY_NOT_READY";throw error;}
+        bytes.set(r.subarray(7),off);progress(Math.round((off+count)/300),"读取图片到预览");
+      }
+      if(OMProtocol.crc16(bytes)!==row.crc)throw Error("设备图片 CRC 校验失败，未用于方案");
+      return this.config.model===5?{packed:bytes}:{black:bytes.slice(0,15000),red:bytes.slice(15000)};
+    });
+  }
   async store(frame, slot, external, progress) {
-    const bytes = OMProtocol.imageBytes(frame, this.config?.model), crc = OMProtocol.crc16(bytes);
+    const school=frame?.school||frame?.reminder;
+    const outline=frame?.reminder && school instanceof Uint8Array && String.fromCharCode(...school.subarray(0,7))==="ELREM02";
+    if(school && (!(school instanceof Uint8Array) || school.length!==30000 || (frame.reminder?!(this.sdkRevision>=(outline?18:17) && (this.sdkCapabilities&(outline?256:128))):!(this.sdkRevision>=15 && (this.sdkCapabilities&32)))))throw Error(OMI18n.t("原生记录格式或固件能力不匹配"));
+    const bytes = school?school.slice():OMProtocol.imageBytes(frame, this.config?.model), crc = OMProtocol.crc16(bytes);
     OMProtocol.integer(slot, 0, 44, OMI18n.t("槽位"));
     return this.operation(async () => {
       await this.initialize();
@@ -488,6 +534,7 @@ class OMClient {
       const start = new Uint8Array(7), view = new DataView(start.buffer);
       start[0] = external ? 0x4C : 0x40; start[1] = slot;
       view.setUint16(2, 400, true); view.setUint16(4, 300, true); start[6] = this.config.model === 5 ? 3 : 2;
+      if(school)start[6]|=128;
       await this.write(start);
       for (let off = 0; off < bytes.length; off += this.payload - 1) {
         await this.write(Uint8Array.of(external ? 0x4D : 0x41, ...bytes.subarray(off, off + this.payload - 1)));
@@ -557,7 +604,9 @@ class OMClient {
         const required = mode === 2 ? [...new Set(days.filter(s => s !== 255))] : [...Array(state.count).keys()];
         let valid = 0;
         for (const slot of required) {
-          const row = await this.slotMetadata(slot, external); valid += row.valid ? 1 : 0;
+          const row = await this.slotMetadata(slot, external);
+          if(mode===1 && (row.color&128))continue;
+          valid += row.valid ? 1 : 0;
           if (row.valid) this.storedFormat(row);
           if (mode === 2 && !row.valid) throw Error(OMI18n.t("星期映射中有空槽 ") + slot);
         }

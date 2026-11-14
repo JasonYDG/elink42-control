@@ -6,11 +6,12 @@
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
   let otaPackage = null,firmwareRequest=null;
   let sdkPackage=null, pendingIdentityReceipt=null;
+  let stockTimer=null,stockFetching=false,stockTarget=null,stockGeneration=0,stockProxy=false;
   let libraryKind="full",libraryCategory="month",selectedWallpaper=null,libraryObserver=null;
   const bundledFirmwareRevision=33;
-  const sectionViews={calendar:"calendar",image:"image",gallery:"gallery",more:"settings"};
-  let draft = F.defaultTemplates()[0], editingTodo = null, courseDay = 1, store;
-  const lines = [], drawable = new Set(["image", "todo", "template", "course", "weather"]);
+  const sectionViews={calendar:"calendar",photo:"photo-calendar",reminder:"todo",course:"course",stock:"stock",gallery:"image",settings:"settings"};
+  let draft = F.defaultTemplates()[0], editingTodo = null, store;
+  const lines = [], drawable = new Set(["image", "todo", "template", "course", "stock"]);
   const supported = window.isSecureContext && !!navigator.bluetooth;
   function result(text, error = false) { $("result").textContent = OMI18n.t(text) + (transientWorkspace ? OMI18n.t("（临时工作区，请导出保存）") : ""); $("result").classList.toggle("error", error); }
   function log(text) { lines.push(new Date().toLocaleTimeString(OMI18n.locale) + "  " + text); $("log").textContent = lines.slice(-150).join("\n"); }
@@ -21,7 +22,7 @@
     store = new F.Store({getItem: () => null, setItem() {}});
     result(OMI18n.t("工作区读取失败；原数据保留，本次修改无法持久保存，请查看日志。"), true);
   }
-  const client = new OMClient(update, log, () => tab === "ota" || uiBusy || scheduler !== null, message => {
+  const client = new OMClient(update, log, () => tab === "ota" || uiBusy || scheduler !== null || !!stockTimer&&!!stockTarget, message => {
     gallery = null; result(message); window.alert(message);
   });
   for (const event of ["pointerdown", "keydown", "input", "wheel"])
@@ -42,7 +43,7 @@
     return client.device.name || "";
   }
   const settingsMap = {theme: "theme", "font-size": "fontSize", "urgent-hours": "urgentHours", dither: "dither",
-    "dither-strength": "strength", brightness: "brightness", contrast: "contrast", gamma: "gamma", "red-threshold": "redThreshold", "packet-bytes": "packetBytes", "packet-delay": "packetDelay"};
+    "dither-strength": "strength", brightness: "brightness", contrast: "contrast", gamma: "gamma", "red-threshold": "redThreshold", "packet-bytes": "packetBytes", "packet-delay": "packetDelay", "stock-interval":"stockInterval"};
   function change(callback) { store.change(callback); refreshLists(); preview(); }
   function options(id, rows, empty = OMI18n.t("请选择")) {
     const control = $(id), before = control.value; control.replaceChildren();
@@ -60,9 +61,10 @@
   }
   function bundledRevision() {
     const revision=client.firmwareRevision;
-    return revision!==null && (revision<30 || revision===31) ? 32 : bundledFirmwareRevision;
+    return OMOTA.pairedRevision(revision) ?? (revision!==null && (revision<30 || revision===31) ? 32 : bundledFirmwareRevision);
   }
   function update() {
+    $("preview-model").disabled=client.ready || client.busy || uiBusy;
     const sdkView=sdkOnly || OMProtocol.sdkBoard(client.board);
     for(const id of ["calendar-language","photo-language"]){
       const english=$(id).querySelector?.('option[value="en"]');
@@ -80,24 +82,31 @@
       $("sdk-ota-bundled").textContent=OMI18n.t(label)+" SDK "+revision+(panel?" · "+panel:"");
       $("sdk-ota-start").disabled=!ready || !sdkPackage || !$("sdk-ota-consent").checked;
       $("sdk-ota-abort").disabled=!ready;
+      $("sdk-ota-inspect").disabled=!ready;
       $("sdk-ota-file").disabled=$("sdk-ota-consent").disabled=uiBusy || client.busy || schedulerRunning;
     }
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
+    for(const name of Object.keys(sectionViews))$("nav-"+name).disabled=busy;
+    for(const button of $("feature-tabs").children)button.disabled=busy;
+    $("stock-save").disabled=busy||stockFetching;$("stock-start").disabled=busy||stockFetching;
+    $("school-view").disabled=$("school-page").disabled=busy;
     $("transfer-status").classList.toggle("busy",busy);
     if(!client.ready)client.offlineRotation=null;
     $("connect").disabled = !supported || busy || client.ready;
     $("reconnect").disabled = !supported || busy || client.ready || !navigator.bluetooth?.getDevices || !$("saved-device").value;
     $("disconnect").disabled = !client.device?.gatt.connected || client.otaActive;
     const otaReady = ready && client.board?.name === OMProtocol.OTA_MARKER;
+    if(!client.ready)$("ota-service").textContent=OMI18n.t("尚未检测；开始升级时会自动检查。");
     $("ota-inspect").disabled = !otaReady;
     $("ota-file").disabled = busy;
     $("ota-bundled").disabled = !otaReady || client.firmwareRevision === null || client.firmwareRevision >= bundledFirmwareRevision;
-    const bundledLabel=bundledRevision()===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
+    const paired=OMOTA.pairedRevision(client.firmwareRevision);
+    const bundledLabel=paired?"载入原配无线升级包":bundledRevision()===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
     $("ota-bundled").setAttribute("data-i18n",bundledLabel);$("ota-bundled").textContent=OMI18n.t(bundledLabel);
     $("ota-consent").disabled = busy;
     const revision=client.firmwareRevision;
     const needsTransition=!!otaPackage && (otaPackage.bundleVersion===7 ? !OMOTA.bundleRoute(revision) :
-      !otaPackage.bundle && ((otaPackage.boot && revision!==29 && revision!==31 && revision<30) || (revision>=30 && !otaPackage.boot) || (!otaPackage.boot && otaPackage.hardened && revision!==27 && revision<28) ||
+      !otaPackage.bundle && ((paired && otaPackage.revision!==paired) || (otaPackage.boot && revision!==29 && revision!==31 && revision<30) || (revision>=30 && !otaPackage.boot) || (!otaPackage.boot && otaPackage.hardened && revision!==27 && revision<28) ||
       (revision>=28 && !otaPackage.hardened) || (otaPackage.lifecycle && revision<18) || (otaPackage.repaired && revision<15)));
     const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
     $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (otaPackage.bundle && client.firmwareRevision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
@@ -107,25 +116,35 @@
       $("ota-capability").textContent=OMI18n.t(revision===32?"已升级到 v32；再次载入内置 v33 升级包即可完成更新。":"旧版按原路线经配套 v31 或 v30 升至 v32，每次操作最多两次刷写；完成后再次载入内置 v33。锁定旧镜像或启动记录不兼容的版本仍使用对应屏型 HEX。");
     if(otaReady && needsTransition && !otaPackage.bundle)
       $("ota-capability").textContent=OMI18n.t(otaPackage.hardened?"本修复包需要配套过渡接收器；请使用内置整合包，没有发送升级命令":revision>=28?"当前版本不接受旧底层固件回退；没有发送升级命令":otaPackage.lifecycle?"本修复包需要过渡接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
-    if(otaReady && otaPackage?.bundle && [15,18,20,23,27].includes(revision))
-      $("ota-capability").textContent=OMI18n.t("此旧接收器锁定原配镜像，不能在两次刷写内升级到 v30；请使用对应屏型 HEX，未发送升级命令");
+    if(otaReady && paired)
+      $("ota-capability").textContent=OMI18n.t("请先载入原配无线升级包：")+"v"+revision+" → v"+paired+"。"+OMI18n.t("重启核对屏型和版本后，再载入内置包继续升级。");
+    if(otaReady && revision===bundledFirmwareRevision && !otaPackage)
+      $("ota-capability").textContent=OMI18n.t("v33 已是内置旧系列的最新版本。当前没有可从此版本安装 SDK 6 的无线包。");
     if(otaReady && otaPackage?.bundle && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
-    $("sdk-month-style-field").hidden=client.ready && !(client.sdkRevision>=7);
+    $("sdk-month-style-field").hidden=true;
+    for(const button of $("calendar-presets").children){
+      const style=Number(button.dataset.style);
+      button.disabled=busy || (client.ready && style>0 && client.sdkRevision<(style===5?8:7));
+      button.setAttribute("aria-pressed",String(style===Number($("sdk-month-style").value)));
+    }
+    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"选择方案后在右侧查看实际像素效果。";
     $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
-      "gallery-read", "photo-gallery-read", "course-send-week", "job-add"]) $(id).disabled = !ready;
+      "gallery-read", "photo-gallery-read", "job-add"]) $(id).disabled = !ready;
+    $("photo-read-preview").disabled=!ready || !(client.sdkRevision>=16) || $("photo-slot").value==="";
     for(const id of ["holiday-read","holiday-write"])$(id).disabled=!ready || Number($("calendar-layout").value)!==0;
     $("photo-calendar-start").disabled = !ready || $("photo-slot").value==="" || !gallery || gallery.external!==($("photo-source").value==="1");
     $("native-clock").disabled = !ready || ((client.config?.model === 5 || OMProtocol.sdkBoard(client.board)) && !$("clock-full").checked);
     $("led-off").disabled = $("led-on").disabled = !ready || client.config?.model !== 5;
     $("preview-model").disabled = client.ready || busy;
-    $("rotate").disabled=busy || tab==="calendar" || tab==="photo-calendar" || (tab==="image" && $("image-target").value==="calendar");
+    $("rotate").disabled=busy || ["calendar","photo-calendar","course"].includes(tab) || (tab==="image" && $("image-target").value==="calendar");
     $("packet-bytes").disabled = $("packet-delay").disabled = $("render-reset").disabled = busy;
     const canSend = ready && client.canPublish && !!frame && !loading && drawable.has(tab);
-    $("publish").disabled = $("store-frame").disabled = !canSend;
-    $("download").disabled = !frame || loading || !drawable.has(tab);
+    const screenScene=["calendar","photo-calendar","course","todo","stock"].includes(tab);document.documentElement.dataset.screenScene=String(screenScene);
+    $("publish").disabled = $("store-frame").disabled = !canSend || screenScene;
+    $("download").disabled = !frame || loading || (!drawable.has(tab) && !["calendar","photo-calendar"].includes(tab));
     $("image-file").disabled=busy || loading;
     for(const id of ["image-target","image-fit","photo-source","photo-slot","photo-fit","gallery-source","save-auto","auto-frequency"])$(id).disabled=busy || loading;
     for(const node of $("library-grid").children)node.disabled=busy || loading;
@@ -135,17 +154,22 @@
     $("store-frame").textContent=OMI18n.t(prepared?"保存并继续设置日历":"仅保存到设备");
     $("quick-change").disabled=!ready || !client.canPublish || !OMRotation.presentation(client);
     const rotation=client.offlineRotation;
-    $("auto-rotation-panel").hidden=!["calendar","photo-calendar","image","gallery"].includes(tab);
+    $("auto-rotation-panel").hidden=!["photo-calendar","image","gallery"].includes(tab);
     $("auto-apply").disabled=!ready || !OMRotation.supported(client) || (!rotation?.active && !OMRotation.presentation(client));
     $("auto-state").textContent=OMI18n.t(!client.ready?"连接设备后可读取自动换图状态。":!OMRotation.supported(client)?"离线日、周、月换图需要 v24 固件，请先升级。":!rotation?"自动换图状态尚未核实，请重新读取或连接。":rotation.active?"已在设备启用，关闭网页后仍会执行。当前存储源的全部有效图片依次参与轮播。":"尚未启用。启用图片日历或换图时，保存两张以上图片会默认每天更换。");
     const slot = gallery?.external === external() && gallery.slots.find(s => s.slot === Number($("gallery-slot").value));
     for (const id of ["slot-display", "slot-delete", "slot-background", "slot-remark-save"]) $(id).disabled = !ready || !slot?.valid;
+    if(slot?.color&128)$("slot-display").disabled=$("slot-background").disabled=true;
     $("rotation-save").disabled = !ready || !gallery || gallery.external !== external();
     $("connection-state").textContent = busy ? OMI18n.t("操作中") : client.ready ? OMI18n.t("已连接") : OMI18n.t("未连接");
     $("connection-state").classList.toggle("online", client.ready);
     $("device-name").textContent = client.ready ? connectedName() || OMI18n.t("OM6626 屏幕") : OMI18n.t("连接一台屏幕开始");
     $("device-id").textContent = client.ready ? client.device.id : "—";
     const info = client.ready ? client.deviceInfo : null;
+    try {
+      if (client.ready) window.sessionStorage?.setItem("elink42-course-device-v1", JSON.stringify({deviceName: connectedName(), millivolts: info?.millivolts ?? null}));
+      else window.sessionStorage?.removeItem("elink42-course-device-v1");
+    } catch (_) { /* Optional editor handoff must not interrupt device queries when session storage is unavailable. */ }
     $("device-mac").textContent = info?.mac || "—";
     $("device-voltage").textContent = info?.millivolts == null ? "—" : (Math.round(info.millivolts / 10) / 100).toFixed(2) + " V";
     $("device-voltage").classList.toggle("low-voltage", info?.millivolts != null && info.millivolts < 2800);
@@ -158,6 +182,9 @@
     $("firmware-state").textContent = client.ready && OMProtocol.sdkBoard(client.board) ? `SDK ${client.sdkRevision}` : client.ready && client.firmwareRevision ? `v${client.firmwareRevision}` +
       OMI18n.t(" · 网页内置 v") + bundledFirmwareRevision + (client.firmwareRevision < bundledFirmwareRevision ? OMI18n.t(" · 发现内置更新") : "") : OMI18n.t("待核对");
     $("screen-model").textContent = client.ready ? client.config.model === 5 ? OMI18n.t("JD79668 · 四色") : OMI18n.t("SSD1619 · 黑白红") : OMI18n.t("三色 / 四色 · 连接后识别");
+    $("device-summary").hidden = !client.ready;
+    $("device-summary").textContent = client.ready ? `OM6626B · ${$("screen-model").textContent.split(" · ")[0]} · ${$("firmware-state").textContent.split(" · ")[0]} · ${info?.millivolts == null ? OMI18n.t("电压尚未读出") : $("device-voltage").textContent}` : "";
+    $("device-summary").classList.toggle("low-voltage", info?.millivolts != null && info.millivolts < 2800);
     $("mtu-state").textContent = OMI18n.msg`${client.reportedPayload || 20} B ATT / ${client.payload} B 当前发送`;
     $("clock-capability").textContent = client.ready && OMProtocol.sdkBoard(client.board) ? OMI18n.t("独立固件的三色和四色时钟均使用全刷，请先确认接受频繁刷新。") : client.ready ? client.config.model === 5 ?
       OMI18n.t("JD79668：原驱动局刷回调为空，只能启用原版全刷时钟；不建议长期开启。") :
@@ -170,8 +197,9 @@
     $("nfc-write").disabled = !ready || !("NDEFReader" in window);
     $("nfc-read").disabled = !("NDEFReader" in window);
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
-      "photo-calendar-start","native-clock","course-send-week","publish","store-frame","slot-display","slot-delete",
+      "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
+    OMScreen.device({ready:client.ready,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -182,10 +210,11 @@
   async function preview() {
     const token = ++previewToken; frame = null; update();
     const calendarTab=tab==="calendar" || tab==="photo-calendar";
-    $("preview-panel").hidden = (!drawable.has(tab) && !calendarTab) || (tab === "weather" && !store.data.weather);
+    if(tab==="calendar")renderPresets();
+    $("preview-panel").hidden = (!drawable.has(tab) && !calendarTab);
     if (!drawable.has(tab) && !calendarTab) return;
     try {
-      const canvas = newCanvas(), settings = F.clone(store.data.settings), chosenModel = model();
+      const canvas = newCanvas(), settings = F.clone(store.data.settings), chosenModel = model();let pageLabel="";
       if(calendarTab){
         const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
@@ -197,30 +226,38 @@
           await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
             revision:client.ready?client.sdkRevision:12,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
           if(token!==previewToken)return;
+          if(photo)OMScreen.paintBackground(canvas,chosenModel);
         }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
+        frame=OMProtocol.planes(canvas.getContext("2d").getImageData(0,0,400,300).data,false,chosenModel);
         $("preview").getContext("2d").drawImage(canvas,0,0);
-        $("preview-label").textContent=OMI18n.t(tab==="calendar"?"标准日历":"图片日历")+" · "+OMI18n.t(region.zh)+" · 400 × 300"+(sdkLayout && tab==="photo-calendar"?" · "+OMI18n.t("设备照片未读回，左侧留白"):"");
+        $("preview-label").textContent=OMI18n.t(tab==="calendar"?"标准日历":"图片日历")+" · "+OMI18n.t(region.zh)+" · 400 × 300"+(sdkLayout && tab==="photo-calendar" && !OMScreen.current().background?" · "+OMI18n.t("设备照片未读回，左侧留白"):"");
         return;
       }
       if (tab === "image") {
         if (!bitmap || loading) { OMRender.image(canvas, null); $("preview").getContext("2d").drawImage(canvas, 0, 0);$("preview-label").textContent=OMI18n.t("尚未选择图片"); return; }
         OMRender.image(canvas, bitmap, {target:$("image-target").value,fit: $("image-fit").value, angle: Number($("image-angle").value), zoom: Number($("image-zoom").value), x: Number($("image-x").value), y: Number($("image-y").value)});
       } else if (tab === "todo") {
-        const items = $("todo-mode").value === "single" ? store.data.todos.filter(t => t.id === $("todo-selected").value) : store.data.todos;
-        OMRender.todos(canvas, items, $("todo-title").value, settings, $("todo-mode").value === "single");
+        const p=OMScreen.capture(),items=p.reminderId?store.data.todos.filter(t=>t.id===p.reminderId):store.data.todos;
+        await OMRender.reminderCalendar(canvas,items,{date:p.date?new Date(p.date+"T12:00:00"):new Date(),country:p.country,title:p.reminderTitle,model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
       } else if (tab === "template") await OMRender.template(canvas, F.clone(draft), context());
-      else if (tab === "course") OMRender.course(canvas, $("course-text").value, Number($("course-day").value), settings.fontSize);
-      else if (tab === "weather") OMRender.weather(canvas, store.data.weather);
+      else if (tab === "course") {
+        const p=OMScreen.capture(),date=p.update==="snapshot"&&p.date?CourseTable.dateValue(p.date):C.localDate((C.byId(Number($("calendar-layout").value)) || C.regions[0]).code);
+        const proof=await OMSchool.render(canvas, {date, courses: store.data.courses, exams: store.data.exams || [],
+          examDays: store.data.examDays || {}, view: $("school-view").value, page:Number($("school-page").value)-1, panel: chosenModel === 5 ? "four" : "three",
+          deviceName: connectedName(), millivolts: client.ready ? client.deviceInfo?.millivolts : null});
+        pageLabel=` · 第${proof.page+1}/${proof.pages}页`;
+      }
+      else if (tab === "stock") await OMRender.stockCalendar(canvas,store.data.stocks,{date:new Date(),model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
       if (token !== previewToken) return;
-      frame = frameFrom(canvas, settings, chosenModel);
+      frame = ["stock","course","todo"].includes(tab) ? OMProtocol.planes(canvas.getContext("2d").getImageData(0,0,400,300).data,false,chosenModel) : frameFrom(canvas, settings, chosenModel);
       $("preview").getContext("2d").putImageData(new ImageData(OMProtocol.rgba(frame), 400, 300), 0, 0);
-      $("preview-label").textContent = {image: OMI18n.t("图片"), todo: OMI18n.t("待办"), template: OMI18n.t("模板"), course: OMI18n.t("周日程 / 课表"), weather: OMI18n.t("天气")}[tab] +
-        ` · 400 × 300 · ${chosenModel === 5 ? OMI18n.t("四色（黑白黄红）") : OMI18n.t("三色（黑白红）")}`;
+      $("preview-label").textContent = {image: OMI18n.t("图片"), todo: "提醒日历",stock:"股票日历", template: OMI18n.t("模板"), course: OMI18n.t("周日程 / 课表")}[tab] +
+        ` · 400 × 300 · ${chosenModel === 5 ? OMI18n.t("四色（黑白黄红）") : OMI18n.t("三色（黑白红）")}`+pageLabel;
       $("preview").setAttribute("aria-label", $("preview-label").textContent + OMI18n.t("预览"));
     } catch (error) { if (token === previewToken) { frame = null; result(error.message, true); } }
     finally { if (token === previewToken) update(); }
   }
-  function snapshot() { if (!frame || loading || !drawable.has(tab)) throw Error(OMI18n.t("当前没有可发送的画面")); return frame.packed ? {packed: frame.packed.slice()} : {black: frame.black.slice(), red: frame.red.slice()}; }
+  function snapshot() { if (!frame || loading || (!drawable.has(tab) && !["calendar","photo-calendar"].includes(tab))) throw Error(OMI18n.t("当前没有可发送的画面")); return frame.packed ? {packed: frame.packed.slice()} : {black: frame.black.slice(), red: frame.red.slice()}; }
   function progress(value, label) { $("progress").value = value; result(label); }
   async function action(callback, complete = OMI18n.t("操作完成；设备显示和灯光请核对实物。")) {
     try { const value = await callback(); if (complete) result(complete); return value; }
@@ -234,19 +271,58 @@
   function jsonDownload(name, data) { download(name, new Blob([JSON.stringify(data, null, 2)], {type: "application/json"})); }
   async function jsonFile(file) { if (!file || file.size > 4500000) throw Error(OMI18n.t("JSON 文件最大 4.5 MB")); return JSON.parse(await file.text()); }
   const tabs = [...document.querySelectorAll("[data-tab]")];
-  const sectionOf=name=>["calendar","photo-calendar"].includes(name)?"calendar":["image","gallery"].includes(name)?name:"more";
+  const sectionOf=name=>name==="photo-calendar"?"photo":name==="todo"?"reminder":["image","gallery"].includes(name)?"gallery":["calendar","course","stock"].includes(name)?name:"settings";
   function selectTab(button) {
     tab = button.dataset.tab;
+    const nativeScene=["calendar","photo-calendar","course","todo","stock"].includes(tab);
+    if(nativeScene)$("rotate").checked=false;
+    if($("rotate").parentElement)$("rotate").parentElement.hidden=nativeScene;
     const section=sectionOf(tab);sectionViews[section]=tab;
     for (const b of tabs) { const on = b === button; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; $(b.getAttribute("aria-controls")).hidden = !on; }
     for(const b of tabs)b.hidden=sectionOf(b.dataset.tab)!==section;
-    $("feature-tabs").hidden=section==="image" || section==="gallery";
+    $("feature-tabs").hidden=!["settings","gallery"].includes(section);
+    $("screen-workbench").hidden=["settings","gallery"].includes(section);
+    $("screen-date-settings").hidden=section==="stock";
+    document.documentElement.dataset.section=section;
+    if($("transfer-status").parentElement)(section==="settings"||tab==="gallery"?$("content-editor").parentElement:$("preview-panel")).append($("transfer-status"));
+    $("scene-title").textContent={calendar:"日历",photo:"图片日历",reminder:"提醒日历",course:"课程日历",stock:"股票日历",gallery:"图库",settings:"设置"}[section];
     for(const name of Object.keys(sectionViews))$("nav-"+name).setAttribute("aria-pressed",String(name===section));
     renderLibrary();
+    if(tab==="calendar")renderPresets();
+    OMScreen.context(tab);
     client.armIdleDisconnect();
     preview();
+    window.scrollTo?.({top:0,behavior:"instant"});
   }
   for(const name of Object.keys(sectionViews))bind("nav-"+name,()=>selectTab($("tab-"+sectionViews[name])),"");
+  let presetKey="";
+  function renderPresets(){
+    if(typeof OMSdkPreview==="undefined")return;
+    const date=$("calendar-date").value?new Date($("calendar-date").value+"T12:00:00"):C.localDate(C.byId(Number($("calendar-layout").value)).code);
+    const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString()].join(":");
+    if(key===presetKey)return;presetKey=key;
+    for(const button of $("calendar-presets").children){
+      const canvas=button.querySelector("canvas"),region=C.byId(Number($("calendar-layout").value));
+      OMSdkPreview.calendar(canvas,{date,country:region.id,model:model(),revision:16,flags:(Number(button.dataset.style)<<3)|2}).catch(error=>{presetKey="";$("calendar-preset-note").textContent=error.message;});
+    }
+  }
+  function setupShell(){
+    for(const [style,name] of [[0,"经典月历"],[1,"月历全览"],[2,"今日侧栏"],[4,"全屏极简"],[5,"单日极简"]]){
+      const b=document.createElement("button"),canvas=newCanvas(),label=document.createElement("span");
+      b.dataset.style=String(style);b.setAttribute("aria-pressed",String(style===0));label.textContent=name;b.append(canvas,label);
+      b.addEventListener("click",()=>{if(b.disabled)return;$("sdk-month-style").value=String(style);$("calendar-language").value="zh";syncCalendar();OMScreen.persist();});
+      $("calendar-presets").append(b);
+    }
+    if(!$("content-editor").parentElement)return;
+    const main=document.querySelector("main"),oldAside=main.querySelector("aside"),header=document.querySelector("header"),rail=document.createElement("aside");
+    rail.className="navigation-rail";rail.append(document.querySelector(".primary-nav"),document.querySelector(".site-links"));main.prepend(rail);
+    const settings=$("settings-editor"),device=$("device-panel");
+    settings.prepend($("compatibility"),$("device-details"),oldAside.querySelector(".device-extras"));header.insertBefore(device,header.querySelector(".header-tools"));oldAside.remove();
+    const backup=document.createElement("details"),summary=document.createElement("summary");summary.textContent="导入 / 导出方案";backup.className="plan-backup";backup.append(summary,document.querySelector(".plan-actions"));$("screen-workbench").append(backup);
+    $("preview-panel").insertBefore($("screen-apply"),$("preview-panel").querySelector(".preview-caption"));
+    $("preview-panel").append($("transfer-status"));
+    $("settings-editor").append($("operation-log"));
+  }
   tabs.forEach(b => {
     b.addEventListener("click", () => selectTab(b));
     b.addEventListener("keydown", event => {
@@ -257,15 +333,21 @@
     });
   });
   function restoreDevicePresentation() {
-    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26?client.config.alternate>>3:0);
+    $("preview-model").value=String(client.config.model);
+    if(OMScreen.hasProfile()){OMScreen.restore();return;}
+    const style=client.config.alternate>>3;
+    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26 && style<6?style:0);
+    if(client.sdkRevision>=15 && (client.sdkCapabilities&32) && [6,7].includes(style))$("school-view").value=style===7?"week":"day";
     $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(C.byId(client.config.layout)?client.config.layout:0);
     $("calendar-language").value = client.sdkRevision>=6 && !(client.config.alternate&2) ? "en" : "zh"; syncCalendar();
     if(client.calendarProtocol===2){
+      const school=client.sdkRevision>=15 && [6,7].includes(style),reminder=client.sdkRevision>=17 && style===8;
       $("photo-source").value=String(client.config.photoSource);
-      options("photo-slot",client.config.photoSlot===255?[]:[[client.config.photoSlot,OMI18n.t("Device slot")+" "+client.config.photoSlot]]);
+      options("photo-slot",school || reminder || client.config.photoSlot===255?[]:[[client.config.photoSlot,OMI18n.t("Device slot")+" "+client.config.photoSlot]]);
+      if(school || reminder)$("gallery-source").value=String(client.config.photoSource);
       $("photo-fit").value=!(client.config.alternate&1)||client.config.alternate&4?"contain":"prepared";
-      selectTab($(client.config.alternate&1?"tab-photo-calendar":"tab-calendar"));
+      selectTab($(reminder?"tab-todo":school?"tab-course":client.config.alternate&1?"tab-photo-calendar":"tab-calendar"));
     }
   }
   function sdkBootComplete(state){
@@ -282,11 +364,14 @@
     }
     const state=await OMSdkOTA.confirmBoot(client,receipt,progress);
     if(client.deviceInfoSupported)await client.operation(()=>client.readDeviceInfo());
+    await client.operation(()=>client.readRuntime());
     restoreDevicePresentation(); sdkBootComplete(state);
   }
   async function connected(device) {
     const stayOnOTA = tab === "ota";
-    gallery = null; await client.connect(device);
+    if(!transientWorkspace)store=new F.Store(localStorage);
+    const keepProfile=OMScreen.hasProfile();
+    gallery = null; await client.connect(device); $("device-details").open = true;
     if(pendingIdentityReceipt){
       try{
         const state=await OMSdkOTA.confirmRestoredAddress(client,pendingIdentityReceipt,progress);
@@ -306,13 +391,16 @@
     $("saved-device").value = client.device.id; await preview();
     if (OMProtocol.sdkBoard(client.board)) {
       if(client.deviceInfoSupported && !client.deviceInfo)await client.operation(()=>client.readDeviceInfo());
+      await client.operation(()=>client.readRuntime());
+      if(OMSchool.supported(client)){const state=await client.operation(()=>OMSchool.state(client));if(state.format===2&&!keepProfile){$("school-page").value=String(state.page+1);OMScreen.persist();}}
       await preview();
-      if(OMRotation.supported(client)){await OMRotation.read(client);if(client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
+      if(OMRotation.supported(client)){await OMRotation.read(client);if(!keepProfile && client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
     } else if (client.board.name === OMProtocol.OTA_MARKER) {
       try { await client.operation(() => OMOTA.readRevision(client)); }
       catch (error) { log(error.message); throw Error(OMI18n.t("无法核对固件版本，请重新连接后重试；没有发送升级命令。")); }
+      if(client.firmwareRevision===34)await showMigrationProbe();
       if(client.deviceInfoSupported) await client.operation(() => client.readDeviceInfo());
-      if(OMRotation.supported(client)){await OMRotation.read(client);if(client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
+      if(OMRotation.supported(client)){await OMRotation.read(client);if(!keepProfile && client.offlineRotation.frequency)$("auto-frequency").value=String(client.offlineRotation.frequency);}
       if (client.firmwareRevision < bundledFirmwareRevision && window.confirm(
         OMI18n.msg`当前固件 v${client.firmwareRevision}，网页内置升级包 v${bundledFirmwareRevision}。网页已内置对应屏型的升级包。升级会清空图库，请先备份。现在前往 OTA 升级？`)) {
         selectTab($("tab-ota")); await loadBundledFirmware();
@@ -366,15 +454,17 @@
         }
         if(!client.ready || client.device!==device || client.config?.model!==model)throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
         $("sdk-ota-state").textContent="SDK "+pkg.revision+" · "+(model===2?"SSD1619":"JD79668");
+        OMScreen.saveBeforeOTA();log('屏幕方案已保存到本机，开始升级。需要文件备份可使用“导出方案”。');
         const receipt=await OMSdkOTA.transfer(client,pkg,progress);
         await finishSdkUpdate(receipt);
         $("sdk-ota-consent").checked=false;
       }catch(error){
-        $("sdk-ota-state").textContent=error.message;throw error;
+        $("sdk-ota-state").textContent=error.message+(error.otaState?' '+OMSdkOTA.describe(error.otaState):'');throw error;
       }finally{uiBusy=false;update();}
     }
     bind("sdk-ota-bundled",()=>flashSdk(true),"");
     bind("sdk-ota-start",()=>flashSdk(false),"");
+    bind("sdk-ota-inspect",async()=>{const state=await OMSdkOTA.inspect(client),text=OMSdkOTA.describe(state);$("sdk-ota-state").textContent=text;log(text);},"");
     bind("sdk-ota-abort",async()=>{await OMSdkOTA.abort(client);$("sdk-ota-state").textContent=OMI18n.t("未提交的升级已取消，原应用和图库仍保留。");});
   }
   bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared",client.config.alternate===26?0:client.config.alternate>>3); });
@@ -436,6 +526,7 @@
     if (!client.ready || client.board?.name !== OMProtocol.OTA_MARKER || !client.firmwareRevision)
       throw Error(OMI18n.t("请先连接屏幕并核对固件版本"));
     if (client.firmwareRevision >= bundledFirmwareRevision) throw Error(OMI18n.t("没有更高版本的内置升级包"));
+    const device=client.device, model=client.config.model, revision=bundledRevision();
     if(typeof OMFirmware==="undefined"){
       otaPackage=null;$("ota-consent").checked=false;uiBusy=true;$("ota-package").textContent=OMI18n.t("正在载入内置升级包，请稍候…");update();
       let timer;
@@ -450,18 +541,42 @@
       }catch(error){$("ota-package").textContent=error.message;throw error;}finally{clearTimeout(timer);uiBusy=false;update();}
     }
     if(typeof OMFirmware==="undefined" || OMFirmware.revision!==bundledFirmwareRevision)throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
-    const catalog = bundledRevision()===32?OMFirmware.legacy:OMFirmware, pack = catalog.packages[client.config.model];
+    if(client.device!==device || !client.ready || client.config?.model!==model || bundledRevision()!==revision)
+      throw Error(OMI18n.t("校验期间目标设备发生变化，未发送 OTA 命令"));
+    const catalog=revision===32?OMFirmware.legacy:revision===bundledFirmwareRevision?OMFirmware:OMFirmware.paired?.[revision];
+    const pack=catalog?.packages[model];
+    if(!pack)throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
     const bytes = Uint8Array.from(atob(pack.data), c => c.charCodeAt(0));
     await loadFirmware({name: pack.name, size: bytes.length, arrayBuffer: async () => bytes.buffer},pack.sha256);
-    if (!otaPackage || otaPackage.revision !== catalog.revision ||
-        (otaPackage.bundle ? !otaPackage.models[client.config.model] : otaPackage.model !== client.config.model)) {
+    if (!otaPackage || client.device!==device || !client.ready || client.config?.model!==model || bundledRevision()!==revision ||
+        otaPackage.revision !== revision || (otaPackage.bundle ? !otaPackage.models[model] : otaPackage.model !== model)) {
       otaPackage = null; update(); throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
     }
   }
   $("ota-file").addEventListener("change", event => action(() => loadFirmware(event.target.files[0]), ""));
   bind("ota-bundled", loadBundledFirmware, "");
   $("ota-consent").addEventListener("change", update);
+  async function showMigrationProbe(){
+    const device=client.device, model=client.config.model;
+    $("ota-service").textContent=OMI18n.t("正在查询昂瑞微 DFU 版本…");
+    const message=await client.operation(async()=>{
+      try{
+        const kind=await OMOTA.probeOnMicroDfu(client);
+        return OMI18n.t({
+          absent:"未发现昂瑞微 DFU 服务。SDK 8 迁移未就绪。",
+          permission:"请断开并重新选择这台设备，以授权查询昂瑞微 DFU 服务。",
+          "protocol-3":"已读回昂瑞微 DFU 协议 3。SDK 8 安装能力尚未验证。",
+          unrecognized:"DFU 版本回执不匹配。SDK 8 迁移未就绪。"
+        }[kind]);
+      }catch(error){return OMI18n.t("迁移服务未确认。")+" "+error.message;}
+    });
+    if(client.device===device && client.ready && device.gatt.connected && client.config?.model===model && client.firmwareRevision===34){
+      $("ota-service").textContent=(model===2?"SSD1619":"JD79668")+" · v34 · "+message;
+      log($("ota-service").textContent);
+    }
+  }
   bind("ota-inspect", async () => {
+    if(client.firmwareRevision===34)return showMigrationProbe();
     await client.otaInspect(); $("ota-service").textContent = OMI18n.t("已发现 OM6626 FE59 DFU 服务、控制与数据特征；未进入升级。");
   }, OMI18n.t("OTA 服务检测完成，没有发送升级控制命令。"));
   bind("ota-start", async () => {
@@ -472,12 +587,20 @@
     const text = OMI18n.msg`目标：${client.device.name || client.device.id}\n固件 SHA-256：${otaPackage.sha256}\n升级会清空设备全部图片，期间不能断电或退出。` +
       OMI18n.t(otaPackage.bundle?"\n最多两次刷写：匹配的 v31 → v32（v29：原配 v30 → v32）。会暂时清零设备时间；过渡期间请勿操作，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
+    const paired=OMOTA.pairedRevision(client.firmwareRevision);
     await client.ota(otaPackage, consent, progress);
+    if(client.firmwareRevision===34)await showMigrationProbe();
+    if(paired && client.firmwareRevision===paired){
+      gallery=null;otaPackage=null;$("ota-consent").checked=false;
+      $("ota-package").textContent=OMI18n.t("尚未选择固件包");$("ota-file").value="";
+      $("ota-service").textContent=OMI18n.t("重启核对屏型和版本后，再载入内置包继续升级。");selectTab($("tab-ota"));update();return;
+    }
     if(otaPackage.revision===15 || otaPackage.revision===18 || [20,23,27,29,31].includes(otaPackage.revision)) {
       const message=OMI18n.t(otaPackage.revision!==15?"过渡接收器已确认；请载入内置整合包继续升级。":"v15 过渡版已确认；请继续选择配套 v16。尚未启用日历或时间同步。");
       gallery=null;otaPackage=null;$("ota-consent").checked=false;
       $("ota-service").textContent=message;result(message);selectTab($("tab-ota"));update();return;
     }
+    if(!otaPackage.bundle){otaPackage=null;$("ota-consent").checked=false;$("ota-file").value="";$("ota-package").textContent=OMI18n.t("尚未选择固件包");}
     gallery=null;restoreDevicePresentation();await preview();
     $("ota-service").textContent = OMI18n.t("升级完成，已重新连接并核对固件版本；日历需手动启用，请查看实屏。");
   }, "");
@@ -488,11 +611,43 @@
     if(uiBusy || client.busy || schedulerRunning)throw Error(OMI18n.t("设备正在操作，请稍后重试"));
     uiBusy=true;update();try{return await callback();}finally{uiBusy=false;update();}
   }
+  function screenData(){if(!transientWorkspace)store.data=new F.Store(localStorage).data;return store.data;}
+  async function applyScreen(p,automaticStock=false){
+    if(model()!==client.config?.model)throw Error("预览屏型与已连接设备不一致，请重新连接后核对。");
+    OMScreen.persist();p=OMScreen.capture();await preview();let applied=OMScreen.signature(screenData(),p);
+    if(automaticStock&&!F.stockSession(new Date()).open)throw Error("已离开交易时段，停止自动推送");
+    if(!frame || loading || OMScreen.dirty())throw Error("请先保存表格并等待预览完成");
+    if(p.update==="snapshot")await client.publish(frame,progress);
+    else if(p.content==="reminder"){
+      const todos=p.reminderId?screenData().todos.filter(t=>t.id===p.reminderId):screenData().todos;
+      const saved=await OMReminder.apply(client,{todos:F.clone(todos),date:new Date(),country:p.country,title:p.reminderTitle,model:client.config.model,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
+      log("离线提醒已应用并核对完整内容：位置 "+saved.slot);client.offlineRotation=null;
+    }else if(["day","week"].includes(p.content)){
+      const saved=await OMSchool.apply(client,{...F.clone(screenData()),date:new Date(),country:p.country,view:p.content,page:p.page,panel:client.config.model===5?"four":"three",deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
+      log("课表已应用并读回：位置 "+saved.slot+"，页 "+(saved.page+1));client.offlineRotation=null;
+    }else if(p.content==="photo"){
+      const pixels=OMScreen.background(client.config.model);if(!pixels)throw Error("请先读取或选择背景图片，让预览与屏幕一致");
+      const crc=OMProtocol.crc16(OMProtocol.imageBytes(pixels,client.config.model));let slot=p.slot,row=slot===255?null:await client.operation(()=>client.slotMetadata(slot,!!p.source));
+      if(!row?.valid || row.color!==(client.config.model===5?3:2) || row.crc!==crc){
+        const state=await client.gallery(!!p.source);slot=state.slots.find(s=>!s.valid)?.slot;if(slot===undefined)throw Error("没有空图片位置，原有图片未覆盖");
+        await client.store(pixels,slot,!!p.source,progress);OMScreen.setBackground(pixels,client.config.model,slot,p.source,p.fit);p=OMScreen.capture();applied=OMScreen.signature(screenData(),p);
+      }
+      await client.internationalCalendar(p.country,p.language,true,slot,!!p.source,progress,new Date(),p.fit);
+      if(p.frequency)await OMRotation.configure(client,{frequency:p.frequency,slot,source:p.source,photo:true});
+    }else await client.internationalCalendar(p.country,p.language,false,255,false,progress,new Date(),"prepared",p.style);
+    const runtime=await client.operation(()=>client.readRuntime());if(runtime?.error)throw Error("设备返回错误 "+runtime.error+"，显示状态未确认");OMScreen.confirmed(runtime,connectedName(),applied);
+    if(runtime)log("设备开机标识 "+runtime.bootId.toString(16)+"；课表缓存读取 "+runtime.schoolReads+" 次");
+    result("已应用并确认。方案保存在本机，可导出后在升级后恢复。");await preview();
+  }
+  bind("photo-read-preview",()=>locked(async()=>{
+    const slot=Number($("photo-slot").value),source=$("photo-source").value==="1";
+    const pixels=await client.readImage(slot,source,progress);OMScreen.setBackground(pixels,client.config.model,slot,source,$("photo-fit").value);await preview();
+  }),"图片已读入预览，并包含在方案备份中。");
   async function defaultRotation(slot,source,photo){
     client.offlineRotation=null;
     if(!OMRotation.supported(client))return;
     const state=gallery?.external===source?gallery:await client.gallery(source);
-    if(state.slots.filter(s=>s.valid).length<2){await OMRotation.read(client);return;}
+    if(state.slots.filter(s=>s.valid && !(s.color&128)).length<2){await OMRotation.read(client);return;}
     const frequency=Number($("auto-frequency").value);
     await OMRotation.configure(client,{frequency,slot,source:Number(source),photo});
   }
@@ -515,6 +670,7 @@
       if(slot===undefined)throw Error(OMI18n.t("设备图片已满，请到设备图片页面手动删除不需要的图片；本次没有覆盖或删除。"));
     }
     const saved=await client.store(pixels,slot,source,progress);
+    if(prepared)OMScreen.setBackground(pixels,client.config.model,slot,source,"prepared");
     gallery={...state,slots:state.slots.map(s=>s.slot===slot?saved:s)};renderGallery();
     $("gallery-slot").value=String(slot);$("photo-slot").value=String(slot);$("save-slot").value=String(slot);
     if(prepared)$("photo-fit").value="prepared";
@@ -526,8 +682,8 @@
       result(OMI18n.t("图片已保存并提交显示，位置 ")+slot);
     }catch(error){throw Error(OMI18n.t("图片已保存到位置 ")+slot+OMI18n.t("；显示或自动换图未确认，请勿重复保存。 ")+error.message);}
   }
-  bind("publish",()=>locked(()=>tab==="image"?savePicture(true):client.publish(snapshot(),progress)),"");
-  bind("store-frame",()=>locked(()=>savePicture()),"");
+  bind("publish",()=>locked(()=>{if(["calendar","photo-calendar","course"].includes(tab))throw Error('请使用屏幕方案的应用按钮');return tab==="image"?savePicture(true):client.publish(snapshot(),progress);}),"");
+  bind("store-frame",()=>locked(()=>{if(["calendar","photo-calendar","course"].includes(tab))throw Error('请使用屏幕方案的应用按钮');return savePicture();}),"");
   $("save-auto").addEventListener("change",update);
   bind("download", () => { snapshot(); const output=newCanvas();if(tab==="image" && $("image-target").value==="calendar")output.width=256;output.getContext("2d").drawImage($("preview"),0,0);return new Promise((resolve, reject) => output.toBlob(blob => { if (!blob) { reject(Error(OMI18n.t("无法导出画面"))); return; } download(`om6626-${tab}-${output.width}x300.png`, blob); resolve(); })); }, OMI18n.t("已导出 PNG。"));
   async function loadImage(file,target){
@@ -597,6 +753,7 @@
     $(id).addEventListener("input", preview);
   $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
   function refreshLists() {
+    if(store.data.stocks){$("stock-text").value=store.data.stocks.symbols.join(",");$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"上次获取 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
     options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
     options("template-list", store.data.templates.map(t => [t.id, t.name]));
@@ -665,33 +822,7 @@
     const file = e.target.files[0]; if (!file || file.size > 4000000) throw Error(OMI18n.t("模板文件最大 4 MB"));
     const spec = await OMArchive.unpack(await file.arrayBuffer()); spec.id = uid(); change(data => data.templates.push(spec)); loadDraft(spec);
   }, OMI18n.t("网页模板已导入，原有模板保留。")));
-  $("course-day").addEventListener("change", () => { courseDay = Number($("course-day").value); $("course-text").value = store.data.courses[courseDay]; preview(); });
-  $("course-text").addEventListener("input", () => action(() => change(data => { data.courses[courseDay] = $("course-text").value; }), ""));
   function daysInput(value) { const days = value.split(/[,，\s]+/).filter(Boolean).map(Number); if (days.length !== 7 || days.some(d => !Number.isInteger(d))) throw Error(OMI18n.t("请提供周一到周日的七个整数槽位")); return [days[6], ...days.slice(0, 6)]; }
-  bind("course-send-week", async () => {
-    const slots = daysInput($("course-slots").value), chosenModel = client.config?.model;
-    if (slots.includes(255) || new Set(slots).size !== 7) throw Error(OMI18n.t("周日程需要七个不同的空槽"));
-    const sourceExternal = external(), settings = F.clone(store.data.settings), courses = [...store.data.courses], frames = [];
-    uiBusy = true; update();
-    try {
-      // Validate and render all seven days before the first storage write.
-      for (let day = 0; day < 7; day++) { const canvas = newCanvas(); OMRender.course(canvas, courses[day] || OMI18n.t("当日无日程"), day, settings.fontSize); frames.push(frameFrom(canvas, settings, chosenModel)); }
-      const state = await client.gallery(sourceExternal);
-      for (const slot of slots) if (slot < 0 || slot >= state.count || state.slots[slot].valid) throw Error(OMI18n.t("七天目标必须全是实际容量内的空槽"));
-      for (let day = 0; day < 7; day++) { await client.store(frames[day], slots[day], sourceExternal, progress); log(OMI18n.t("已保存星期") + ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][day] + OMI18n.t(" 到槽 ") + slots[day]); }
-      await client.rotate(2, 60, slots, sourceExternal, progress);
-    } finally { uiBusy = false; }
-  });
-  async function fetchWeather() {
-    if (document.documentElement.dataset.hosting==="github-pages") throw Error(OMI18n.t("实时天气需要本地控制端；网页不会发送天气私钥"));
-    if (!$("weather-consent").checked || !$("weather-key").value.trim() || !$("weather-city").value.trim()) throw Error(OMI18n.t("请填写心知天气私钥、城市并勾选网络许可"));
-    const response = await fetch("/weather", {method: "POST", headers: {"Content-Type": "application/json", "X-OM6626-Request": "1"}, body: JSON.stringify({key: $("weather-key").value.trim(), city: $("weather-city").value.trim()}), signal: AbortSignal.timeout(35000)});
-    if (!response.ok) throw Error(OMI18n.t("天气请求失败，请核对私钥、产品权限、城市及网络"));
-    const data = await response.json(), weather = F.seniverse(data.now, data.daily);
-    change(value => { value.weather = weather; }); $("weather-state").textContent = weather.city + OMI18n.t(" · 更新 ") + new Date(weather.updated).toLocaleString(OMI18n.locale);
-    return weather;
-  }
-  bind("weather-fetch", fetchWeather, OMI18n.t("天气已获取并更新预览。"));
   bind("saying-fetch", async () => {
     const hosted=document.documentElement.dataset.hosting==="github-pages";
     const response = await fetch(hosted?"https://uapis.cn/api/v1/saying":"/saying", {headers:hosted?{}:{"X-OM6626-Request":"1"},credentials:"omit",referrerPolicy:"no-referrer",signal: AbortSignal.timeout(18000)}); if (!response.ok) throw Error(OMI18n.t("一言获取失败"));
@@ -705,10 +836,10 @@
     $("gallery-state").textContent = OMI18n.t(state.external?"外置":"内部")+" · "+OMI18n.t("已存图片 ")+valid.length+" / "+state.count;
     options("gallery-slot", valid.map(s => [s.slot, `${s.slot} · ${s.remark || OMI18n.t("已有图片")}`]));
     $("photo-source").value=String(state.external?1:0);
-    options("photo-slot",state.slots.filter(s=>s.valid).map(s=>[s.slot,`${s.slot} · ${s.remark||OMI18n.t("已有图片")}`]));
+    options("photo-slot",state.slots.filter(s=>s.valid && !(s.color&128)).map(s=>[s.slot,`${s.slot} · ${s.remark||OMI18n.t("已有图片")}`]));
     $("photo-state").textContent=OMI18n.t("Slot pixels are read by the device; this browser preview shows the date layout only.");
     $("gallery-list").replaceChildren();
-    for (const s of valid) row("gallery-list", OMI18n.t("位置 ")+s.slot+" · "+(s.remark||OMI18n.t("已有图片")),[button(OMI18n.t("选择"),()=>{$("gallery-slot").value=String(s.slot);slotSelected();})]);
+    for (const s of valid) row("gallery-list", OMI18n.t("位置 ")+s.slot+" · "+(s.color&128?"课表 / 提醒原生数据":s.remark||OMI18n.t("已有图片")),[button(OMI18n.t("选择"),()=>{$("gallery-slot").value=String(s.slot);slotSelected();})]);
     $("rotation-mode").value = String(state.mode<=2?state.mode:0); $("rotation-interval").value = String(state.interval || 60);
     $("rotation-days").value = [...state.days.slice(1), state.days[0]].join(","); slotSelected(); update();
   }
@@ -731,7 +862,7 @@
     if(name==="display"){await rememberPicture(slot,external());await defaultRotation(slot,external(),false);}
     if(name==="delete" && OMRotation.supported(client)){
       const policy=await OMRotation.read(client);
-      if(policy.active && policy.source===Number(external()) && gallery.slots.filter(s=>s.valid).length<2)
+      if(policy.active && policy.source===Number(external()) && gallery.slots.filter(s=>s.valid && !(s.color&128)).length<2)
         await OMRotation.configure(client,{frequency:0,slot,source:Number(external()),photo:policy.photo});
     }
   });
@@ -762,7 +893,7 @@
     schedulerRunning = true; update();
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings);
-      if (job.kind === "weather") OMRender.weather(canvas, await fetchWeather());
+      if (job.kind === "weather") throw Error("天气任务已停用；股票更新请在股票日历设置。");
       else if (job.kind === "template") {
         const spec = store.data.templates.find(t => t.id === job.templateId); if (!spec) throw Error(OMI18n.t("任务模板已删除"));
         await OMRender.template(canvas, spec, {...context(), title: job.title, content: job.text});
@@ -775,7 +906,7 @@
       await client.publish(image, progress);
       change(data => { const i = data.jobs.findIndex(j => j.id === job.id); if (i >= 0) data.jobs[i] = {...(manual ? data.jobs[i] : F.nextJob(job)), status: OMI18n.t("已发送，实物待确认")}; });
     } catch (error) {
-      change(data => { const current = data.jobs.find(j => j.id === job.id); if (current) { current.enabled = false; current.status = OMI18n.t("失败或结果不确定，请检查后手动重试"); } }); throw error;
+      change(data => { const current = data.jobs.find(j => j.id === job.id); if (current) { current.enabled = false; current.status = job.kind === "weather" ? error.message : OMI18n.t("失败或结果不确定，请检查后手动重试"); } }); throw error;
     } finally { schedulerRunning = false; update(); }
   }
   async function tick() {
@@ -804,13 +935,12 @@
     change(data => { data.settings[key] = value; }); applySettings();
   }, ""));
   bind("render-reset", () => { change(data => { data.settings = F.defaults().settings; }); applySettings(); }, OMI18n.t("渲染默认值已恢复。"));
-  bind("workspace-export", () => jsonDownload("om6626-workspace.json", store.data), OMI18n.t("已导出工作区（不含天气私钥）。"));
-  $("workspace-import").addEventListener("change", e => action(async () => {
-    const value = F.validate(await jsonFile(e.target.files[0]));
-    if (!window.confirm(OMI18n.t("导入会替换本浏览器工作区。将先导出当前工作区备份，继续？"))) return;
-    if (client.busy || uiBusy || schedulerRunning || scheduler) throw Error(OMI18n.t("先停止定时器并等待设备操作完成"));
-    jsonDownload("om6626-workspace-before.json", store.data); store.commit(value); applySettings(); refreshLists(); $("course-text").value = store.data.courses[courseDay]; loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
-  }, OMI18n.t("工作区已导入，原工作区已导出备份。")));
+  bind("workspace-export",()=>OMScreen.exportPlan(),"完整屏幕方案已导出，含课程、考试、布局和已备份背景。");
+  $("workspace-import").addEventListener("change",e=>action(async()=>{
+    if(client.busy || uiBusy || schedulerRunning || scheduler)throw Error("请等待设备操作结束再导入方案");
+    try{await OMScreen.importPlan(e.target.files[0]);applySettings();refreshLists();loadDraft(store.data.templates[0]||F.defaultTemplates()[0]);}
+    finally{e.target.value="";}
+  },""));
   bind("log-export", () => download("om6626-web-log.txt", new Blob([lines.join("\n")], {type: "text/plain"})), OMI18n.t("已导出日志。"));
   $("nfc-state").textContent = "NDEFReader" in window ? OMI18n.t("支持 Web NFC；需要 NFC 硬件和浏览器权限。标签是本网页独立格式。") : OMI18n.t("此浏览器不提供 Web NFC（Windows Edge 不支持）；当前不可读写 NFC。");
   bind("nfc-write", async () => {
@@ -846,12 +976,60 @@
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) $("preview").addEventListener(event, () => { drag = null; });
   $("compatibility").textContent = supported ? OMI18n.t("浏览器支持蓝牙，连接由你点击发起。") : OMI18n.t("此浏览器不支持网页蓝牙，仍可选图和预览。连接设备请使用支持 Web Bluetooth 的浏览器。");
-  applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
+  async function refreshStocks({automatic=false,generation=stockGeneration}={}){
+    if(stockFetching)return;
+    if(automatic&&(!F.stockSession(new Date()).open||generation!==stockGeneration))return;
+    const symbols=F.stockSymbols($("stock-text").value),key=symbols.join(",");stockFetching=true;$("stock-save").disabled=true;$("stock-state").textContent="正在获取行情…";
+    try{
+      const local=["127.0.0.1","localhost"].includes(location.hostname);
+      const url=local?(stockProxy?"http://127.0.0.1:8290":"")+"/api/stock/quote?symbols="+encodeURIComponent(key):"https://qt.gtimg.cn/q="+encodeURIComponent(key);
+      const request={signal:AbortSignal.timeout(15000),credentials:"omit",redirect:"error",referrerPolicy:"no-referrer"};
+      let response=await fetch(url,request);
+      if(local&&!stockProxy&&location.port==="8289"&&response.status===404){response=await fetch("http://127.0.0.1:8290/api/stock/quote?symbols="+encodeURIComponent(key),request);if(response.ok)stockProxy=true;}
+      if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
+      const bytes=await response.arrayBuffer();if(bytes.byteLength>32000)throw Error("行情响应过大");
+      const next=F.stockTencent(new TextDecoder("gbk",{fatal:true}).decode(bytes),symbols);
+      if(F.stockSymbols($("stock-text").value).join(",")!==key)throw Error("代码已修改，本次结果未保存，请重新获取。");
+      if(automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
+      change(data=>{data.stocks=next;});
+      if(F.stockSession(new Date()).open&&$("stock-auto-send").checked&&stockTarget&&tab==="stock"&&client.ready&&client.device.id===stockTarget&&!client.busy&&!uiBusy&&!next.stale){
+        await locked(async()=>{if(tab!=="stock"||client.device?.id!==stockTarget)throw Error("股票同步目标已改变");await applyScreen(OMScreen.capture(),true);});
+      }
+    }catch(error){
+      const message=error.name==="TypeError"&&/fetch/i.test(error.message)?(["127.0.0.1","localhost"].includes(location.hostname)?"无法连接本地行情接口，请确认本地控制端正在运行":"行情请求被浏览器或网络拦截，请在配套本地控制端获取行情"):error.name==="TimeoutError"?"行情服务响应超时，请稍后重新获取":error.message;
+      $("stock-state").textContent="获取或同步失败："+message+"。上次行情保留，时间见预览。";throw Error(message);
+    }
+    finally{stockFetching=false;update();}
+  }
+  bind("stock-save",refreshStocks,"");
+  bind("stock-start",async()=>{
+    if($("stock-auto-send").checked&&!client.ready)throw Error("自动同步前请连接目标屏幕");
+    if(stockTimer)clearInterval(stockTimer);stockTimer=null;const generation=++stockGeneration;
+    stockTarget=$("stock-auto-send").checked?client.device.id:null;
+    const minutes=Number($("stock-interval").value);if(![5,15,30,60].includes(minutes))throw Error("刷新间隔无效");
+    let nextRefresh=0;
+    const tick=async()=>{
+      if(generation!==stockGeneration)return;
+      const session=F.stockSession(new Date());
+      $("stock-timer-state").textContent=session.open?`${session.phase} · 每${minutes}分钟更新；自动推送限当前股票页和所选屏幕。`:`${session.phase} · 自动获取与推送已暂停，${session.known?"开市后":"更新交易日历后"}恢复。`;
+      if(!session.open){nextRefresh=0;return;}
+      if(client.busy||uiBusy||stockFetching||Date.now()<nextRefresh)return;
+      nextRefresh=Date.now()+minutes*60000;await refreshStocks({automatic:true,generation});
+    };
+    stockTimer=setInterval(()=>action(tick,""),30000);await tick();
+  },"");
+  bind("stock-stop",()=>{stockGeneration++;if(stockTimer)clearInterval(stockTimer);stockTimer=null;stockTarget=null;$("stock-timer-state").textContent="自动更新已停止。";},"");
+  for(const id of ["stock-interval","stock-auto-send"])$(id).addEventListener("change",()=>{stockGeneration++;if(stockTimer)clearInterval(stockTimer);stockTimer=null;stockTarget=null;$("stock-timer-state").textContent="设置已更改，点击开始自动更新后生效。";client.armIdleDisconnect();});
+  setupShell();applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   OMI18n.onChange=()=>{
     for(const id of ["compatibility","nfc-state","result","photo-state","scheduler-state","ota-package","ota-kind","ota-service","gallery-state"])$(id).textContent=OMI18n.t($(id).textContent);
     update();refreshLists();calendarInfo();renderLibrary();preview();
   };
   $("ui-language").addEventListener("change",()=>OMI18n.setLanguage($("ui-language").value));
   OMI18n.apply();syncCalendar(false,false);
-  $("course-text").value = store.data.courses[courseDay];renderLibrary();selectTab($("tab-calendar"));
+  renderLibrary();
+  OMScreen.init({read:screenData,save:data=>store.commit(data),show:type=>{
+    $("school-view").value=type==="day"?"day":"week";
+    selectTab($(type==="photo"?"tab-photo-calendar":type==="reminder"?"tab-todo":type==="stock"?"tab-stock":["day","week"].includes(type)?"tab-course":"tab-calendar"));
+  },preview,deviceSettings:()=>selectTab($("tab-settings")),download:jsonDownload,refresh:()=>{if(!uiBusy&&!client.busy){screenData();refreshLists();}},apply:p=>action(()=>locked(()=>applyScreen(p)),"")});
 })();

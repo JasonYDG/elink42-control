@@ -201,5 +201,48 @@ const OMRender = (() => {
       }
     } finally { for (const bitmap of images.values()) bitmap.close(); }
   }
-  return {todo, todos, image, calendar, course, weather, template, textBlock};
+  function calendarSide(canvas,options,title){
+    const ctx=start(canvas),date=options.date||new Date(),month=date.getMonth(),year=date.getFullYear();
+    ctx.font=`14px ${FONT}`;ctx.fillText(`${year}.${String(month+1).padStart(2,"0")}`,14,24);
+    ctx.font=`52px ${FONT}`;ctx.fillText(String(date.getDate()),12,73);ctx.font=`14px ${FONT}`;ctx.fillText("星期"+"日一二三四五六"[date.getDay()],14,115);
+    ctx.font=`11px ${FONT}`;for(let d=0;d<7;d++)ctx.fillText("日一二三四五六"[d],12+d*15,151);
+    const first=new Date(year,month,1).getDay(),count=new Date(year,month+1,0).getDate();
+    for(let day=1;day<=count;day++){const col=(first+day-1)%7,row=Math.floor((first+day-1)/7),x=12+col*15,y=173+row*17;ctx.fillStyle=day===date.getDate()?COLORS.red:COLORS.black;ctx.fillText(String(day),x,y);}
+    ctx.fillStyle=COLORS.black;line(ctx,123,15,123,271);ctx.font=`20px ${FONT}`;ctx.fillText(fit(ctx,title,248),138,26);line(ctx,138,48,386,48);
+    ctx.font=`10px ${FONT}`;ctx.fillText(fit(ctx,options.deviceName||"设备未连接",285),12,287);ctx.textAlign="right";ctx.fillText(options.millivolts?`${(options.millivolts/1000).toFixed(2)} V`:"电量未读取",388,287);ctx.textAlign="left";
+    return ctx;
+  }
+  async function reminderCalendar(canvas,items,options={}){return OMReminder.render(canvas,{...options,todos:items});}
+  async function stockCalendar(canvas,stocks,options={}){
+    await Promise.all([OMCalendarFont.load(10),OMCalendarFont.load(12)]);
+    const ctx=start(canvas),font=OMCalendarFont,date=options.date||new Date(),session=OMFeatures.stockSession(date),quotes=stocks?.quotes||[];
+    const text=(value,x,y,scale=1,align="left",size=12)=>font.draw(ctx,value,x,y,scale,align,size);
+    const local=new Date(date.getTime()+8*3600000),weekday="日一二三四五六"[local.getUTCDay()];
+    const times=quotes.map(q=>q.time).filter(Boolean).sort();
+    ctx.fillStyle=COLORS.red;ctx.fillRect(14,31,4,10);ctx.fillRect(22,25,4,16);ctx.fillRect(30,17,4,24);
+    ctx.fillStyle=COLORS.black;ctx.fillRect(12,44,26,1);text("股票行情",48,20,2,"left",10);
+    text(session.date.replaceAll("-","."),388,10,1,"right");
+    text(`周${weekday} ${times[0]?times[0].slice(11,16):"--:--"} ${stocks?.stale?"缓存":"更新"}`,388,30,1,"right");
+    ctx.fillStyle=options.model===2?COLORS.black:COLORS.yellow;ctx.fillRect(12,51,376,2);
+    ctx.fillStyle=COLORS.black;ctx.fillRect(12,58,376,20);ctx.fillStyle="white";text("名称 / 代码",15,62);
+    text("最新",220,62,1,"right");text("涨跌额",309,62,1,"right");text("涨跌幅",386,62,1,"right");
+    const height=Math.min(63,Math.floor(181/Math.max(quotes.length,1)));
+    quotes.forEach((q,i)=>{
+      const y=84+i*height,change=q.change??(q.price!==null&&q.prevClose>0?q.price-q.prevClose:null),up=q.changePercent>0;
+      if(up){ctx.fillStyle=COLORS.red;ctx.fillRect(12,y+2,2,height-8);if(options.model!==2){ctx.fillStyle=COLORS.yellow;ctx.fillRect(312,y+5,76,25);}}
+      ctx.fillStyle=COLORS.black;text(font.fit(q.name,100,2,10),15,y,2,"left",10);text(q.symbol,15,y+24,1,"left",10);
+      const signed=value=>value==null?"—":`${value>0?"+":""}${value.toFixed(2)}`;
+      const price=q.price===null?"—":q.price.toFixed(2),scale=font.measure(price,2)<=100?2:1,changeText=signed(change),percentText=signed(q.changePercent)+(q.changePercent==null?"":"%");
+      text(price,220,y+5,scale,"right");
+      ctx.fillStyle=change>0?COLORS.red:COLORS.black;text(changeText,309,y+7,font.measure(changeText,2,10)<=82?2:1,"right",10);
+      ctx.fillStyle=up?COLORS.red:COLORS.black;text(percentText,386,y+7,font.measure(percentText,2,10)<=72?2:1,"right",10);
+      ctx.fillStyle=COLORS.black;if(i<quotes.length-1)ctx.fillRect(12,y+height-1,376,1);
+    });
+    ctx.fillStyle=COLORS.black;if(!quotes.length)text("请先获取行情",14,112,2);
+    ctx.fillRect(12,277,376,1);text(font.fit(options.deviceName||"设备未连接",280),11,283);
+    const voltage=options.millivolts?`${(Math.round(options.millivolts/10)/100).toFixed(2)} V`:"电量未读取",battery=388-font.measure(voltage)-16;
+    ctx.fillRect(battery,286,11,1);ctx.fillRect(battery,292,11,1);ctx.fillRect(battery,287,1,5);ctx.fillRect(battery+10,287,1,5);ctx.fillRect(battery+11,288,2,3);
+    ctx.fillStyle=options.millivolts&&options.millivolts<2800?COLORS.red:COLORS.black;text(voltage,388,283,1,"right");
+  }
+  return {todo, todos, image, calendar, course, weather, template, textBlock,reminderCalendar,stockCalendar};
 })();
