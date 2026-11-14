@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ELINK42 · 周历课表</title>
+<script defer src="i18n.js?v=0.8.10&h=a457a6ac2650"></script>
+<script defer src="protocol.js?v=0.8.10&h=34b1f1533fec"></script><script defer src="features.js?v=0.8.10&h=5cf95bbe35f4"></script>
+<script defer src="course-import.js?v=0.8.10&h=ce7cd41b7fe3"></script>
+<script defer src="planner.js?v=0.8.10&h=5103de4f25a9"></script>
+<script defer src="course-table.js?v=0.8.10&h=503d7e3cd406"></script>
+<script defer src="school-native.js?v=0.8.10&h=0d7d2bd9e2ec"></script><script defer src="course-editor.js?v=0.8.10&h=8a55a0447f8a"></script>
+<link rel="stylesheet" href="timetable.css?v=0.8.10&h=f30f78336cd5">
+</head>
+<body>
+<main>
+<header><div class="eyebrow">ELINK42 / TIMETABLE / C</div><h1>周历课表</h1><p>按星期管理全天课程，表格修改后即时预览。</p></header>
+<div class="toolbar">
+<label>视图<select id="view"><option value="day">全天课表</option><option value="week">一周综合课表</option></select></label>
+<label>星期<select id="weekday"><option value="0">周日</option><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option></select></label>
+<label>预览日期<input id="date" type="date" min="1970-01-01" max="2105-12-31"></label>
+<label>屏型<select id="panel"><option value="four">四色</option><option value="three">三色</option></select></label>
+</div>
+<div class="layout">
+<section aria-labelledby="editor-heading">
+<div class="heading"><h2 id="editor-heading">课程管理</h2><span id="count">8 节</span></div>
+<details class="excel-import"><summary>Excel 导入与模板</summary><p class="editor-note">下载模板，填写“课程”和“考试”两张表。课程表按周一至周五更新，周末和其他记录保留。自习录入可保留，屏幕不显示。</p><div class="editor-actions"><a href="timetable-template.xlsx" download>下载 Excel 模板</a><label>导入 .xlsx<input id="excel-file" type="file" accept=".xlsx"></label></div><p id="excel-state" role="status" class="editor-note"></p><button id="excel-apply" type="button" disabled>应用导入内容</button></details>
+<div class="table-wrap"><table aria-label="按星期编辑课程"><thead><tr><th scope="col">节次</th><th scope="col">开始</th><th scope="col">结束</th><th scope="col">课程</th><th scope="col"><span aria-label="操作">操作</span></th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="empty" hidden>这天还没有课程，可添加一节。</p>
+<div class="editor-actions"><button type="button" id="add">＋ 添加课程</button><button type="button" id="save" class="primary" disabled>保存课表与考试</button></div>
+<p class="editor-note">结束时间可留空。每天最多12节；每侧按内容显示4–6行，超出分页保留全部。</p>
+<div class="exams" aria-labelledby="exam-heading"><div class="heading"><h2 id="exam-heading">考试安排</h2><span>按日期管理</span></div>
+<div class="table-wrap"><table class="exam-table" aria-label="编辑考试安排"><thead><tr><th scope="col">日期</th><th scope="col">开始</th><th scope="col">结束</th><th scope="col">科目</th><th scope="col">操作</th></tr></thead><tbody id="exam-rows"></tbody></table></div>
+<p id="exam-empty">暂未安排考试。没有考试时，屏幕不显示考试提示。</p>
+<div class="editor-actions"><button type="button" id="exam-add">＋ 添加考试</button></div>
+<div id="exam-day-policy" hidden><label><span id="exam-day-date"></span> 当天课程<select id="exam-day-mode"><option value="all">全天停课，仅显示考试</option><option value="morning">上午停课，下午照常</option><option value="afternoon">下午停课，上午照常</option><option value="none">保留课程与考试</option></select></label><p id="policy-note" class="editor-note"></p></div>
+<p class="editor-note">考试日默认只显示考试安排，周课表保留。半天考试可选择只停上午或下午的课；其他日期照常。7天内的考试倒数使用固定状态行。</p></div>
+<p id="conflict" role="status" hidden></p>
+<p id="status" role="status" aria-live="polite"></p>
+</section>
+<aside class="preview" aria-labelledby="preview-heading">
+<div class="heading"><h2 id="preview-heading">屏幕预览</h2><span>400 × 300</span></div>
+<div class="screen-wrap"><canvas id="screen" width="400" height="300" aria-label="全天课程预览"></canvas><p id="invalid" hidden></p></div>
+<div class="caption"><span id="preview-caption">原尺寸 · 周历与全天课程</span><button type="button" id="download">保存 PNG</button></div>
+<p id="device-note" class="editor-note"></p>
+<div id="pagination" class="page-nav" hidden><button type="button" id="page-prev">上一页</button><span id="page-label">1 / 1</span><button type="button" id="page-next">下一页</button></div>
+<p class="preview-note">普通课程黑色，考试红色。周视图仅显示周一至周五；考试日整列合并，只显示考试科目，不增加时间行。自习不显示。日视图保留当天的详细时间和半天上课安排。</p>
+<details class="research"><summary>设计参考</summary><p>参考日期层级、灵活日程和独立考试模型，按400 × 300墨水屏重新排版。</p><a href="https://classtimetable.app/" target="_blank" rel="noopener">Class Timetable</a><a href="https://mystudylife.com/tour/" target="_blank" rel="noopener">MyStudyLife</a></details>
+</aside>
+</div>
+<footer><span id="workspace-note"></span> 考试和停课范围按日期保存，原周课表保留。预览使用 SDK 18 的同一份绘图代码。保存后在控制台确认预览并应用到屏幕。<br><a href="index.html?v=0.8.10">返回控制台</a></footer>
+</main>
+</body>
+</html>

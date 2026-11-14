@@ -10,9 +10,11 @@ const OMFeatures = (() => {
   };
   const defaults = () => ({version: 1, todos: [], courses: Array.from({length: 7}, () => ""), templates: [], jobs: [],
     devices: [], settings: {fontSize: 16, urgentHours: 24, theme: "system", dither: "none", strength: 1,
-      brightness: 0, contrast: 1, gamma: 1, redThreshold: 1.35, packetBytes: 180, packetDelay: 0, calendarCountry:0, calendarLanguage:"zh", imageTarget:"full"}, weather: null});
+      brightness: 0, contrast: 1, gamma: 1, redThreshold: 1.35, packetBytes: 180, packetDelay: 0, stockInterval:15, calendarCountry:0, calendarLanguage:"zh", imageTarget:"full"}, weather: null});
   function validate(data) {
     if (!data || data.version !== 1) throw Error(OMI18n.t("备份版本不支持"));
+    if(data.screenProfile!==undefined && typeof OMScreen!=="undefined")OMScreen.normalise(data.screenProfile);
+    if(data.stocks!==undefined)stockState(data.stocks);
     if (!Array.isArray(data.todos) || data.todos.length > 200 || !Array.isArray(data.templates) || data.templates.length > 60 ||
         !Array.isArray(data.jobs) || data.jobs.length > 200 || !Array.isArray(data.devices) || data.devices.length > 100 ||
         !Array.isArray(data.courses) || data.courses.length !== 7) throw Error(OMI18n.t("备份条目数量或结构无效"));
@@ -32,7 +34,8 @@ const OMFeatures = (() => {
     for (const device of data.devices) { string(device.id, 200, OMI18n.t("设备编号")); string(device.name, 100, OMI18n.t("设备名称")); }
     const s = data.settings;
     if (!s || typeof s!=="object") throw Error(OMI18n.t("外观或抖动配置无效"));
-    s.calendarCountry ??= 0; s.calendarLanguage ??= "zh"; s.imageTarget ??= "full";
+    s.calendarCountry ??= 0; s.calendarLanguage ??= "zh"; s.imageTarget ??= "full";s.stockInterval??=15;
+    if(![5,15,30,60].includes(s.stockInterval))throw Error("股票刷新间隔无效");
     if(!Number.isInteger(s.calendarCountry) || s.calendarCountry<0 || s.calendarCountry>5 || !["en","zh"].includes(s.calendarLanguage) || !["full","calendar"].includes(s.imageTarget)) throw Error(OMI18n.t("Invalid calendar or image settings"));
     if(![0,2,3].includes(s.calendarCountry)) s.calendarCountry=0;
     s.calendarLanguage="zh";
@@ -117,6 +120,12 @@ const OMFeatures = (() => {
       todo: (context.todos || []).filter(t => !t.done).map(t => t.title).join("\n")};
     return String(text).replace(/\{\{([a-z]+)\}\}/g, (_, key) => Object.hasOwn(vars, key) ? vars[key] : "");
   }
+  function monochrome(rgba){
+    if(!(rgba instanceof Uint8ClampedArray)||rgba.length!==480000)throw Error("黑白画面必须为400×300 RGBA");
+    const out=new Uint8ClampedArray(rgba.length);
+    for(let i=0;i<rgba.length;i+=4){const alpha=rgba[i+3]/255,luma=(rgba[i]*.299+rgba[i+1]*.587+rgba[i+2]*.114)*alpha+255*(1-alpha),value=luma<160?0:255;out.set([value,value,value,255],i);}
+    return out;
+  }
   function process(rgba, model, settings) {
     if (!(rgba instanceof Uint8ClampedArray) || rgba.length !== 480000) throw Error(OMI18n.t("处理输入必须为 400 × 300 RGBA"));
     validate({...defaults(), settings});
@@ -177,5 +186,47 @@ const OMFeatures = (() => {
     [OMI18n.t("时钟字体擦除、晶振校准、驱动/引脚/波形切换"), OMI18n.t("保留限制：不发送这些硬件配置或擦除命令")],
     [OMI18n.t("其他主控和屏型、激活"), OMI18n.t("当前只绑定本项目 OM6626 三色/四色独立固件；不接入授权或改写身份数据")],
   ];
-  return {Store, defaults, validate, template, clone, weather, seniverse, nextJob, dueJobs, placeholders, process, defaultTemplates, matrix};
+  function stockSymbols(text){
+    const symbols=String(text).trim().toLowerCase().split(/[\s,，]+/).filter(Boolean);
+    if(!symbols.length||symbols.length>5||new Set(symbols).size!==symbols.length||symbols.some(s=>!/^(sh|sz|bj)\d{6}$/.test(s)))throw Error("请输入1–5个不重复的A股代码，包含sh、sz或bj前缀，例如sh000001、sz000001。");
+    return symbols;
+  }
+  function stockState(value){
+    if(!value||typeof value!=="object"||!Array.isArray(value.symbols)||!Array.isArray(value.quotes)||value.quotes.length>5||typeof value.updated!=="string"||(value.updated&&!Number.isFinite(Date.parse(value.updated)))||typeof value.stale!=="boolean")throw Error("股票行情格式无效");
+    stockSymbols(value.symbols.join(","));const seen=new Set();
+    for(const q of value.quotes){
+      if(!q||!value.symbols.includes(q.symbol)||seen.has(q.symbol)||typeof q.name!=="string"||!q.name.trim()||q.name.length>40||typeof q.time!=="string"||q.time.length>40||!(q.price===null||typeof q.price==="number"&&Number.isFinite(q.price)&&q.price>=0&&q.price<1e9)||!(q.changePercent===null||typeof q.changePercent==="number"&&Number.isFinite(q.changePercent)&&Math.abs(q.changePercent)<1e6))throw Error("股票行情字段无效");
+      seen.add(q.symbol);
+      for(const key of ["change","prevClose"])if(q[key]!==undefined&&q[key]!==null&&!(typeof q[key]==="number"&&Number.isFinite(q[key])&&Math.abs(q[key])<1e9))throw Error("股票涨跌或昨收字段无效");
+      if(q.prevClose!=null&&q.prevClose<0)throw Error("股票昨收字段无效");
+    }
+    return clone(value);
+  }
+  function stockTencent(text,symbols){
+    stockSymbols(symbols.join(","));
+    if(typeof text!=="string"||text.length>32000)throw Error("行情返回格式或大小无效");
+    const quotes=[];
+    // Tencent returns assignments in GBK. Parse their quoted fields as data; never execute them.
+    for(const match of text.matchAll(/(?:^|\n)\s*v_((?:sh|sz|bj)\d{6})="([^"\r\n]*)";?/g)){
+      const fields=match[2].split("~"),time=fields[30]||"";
+      if(!/^\d{14}$/.test(time)||fields[2]!==match[1].slice(2))throw Error("行情代码或时间无效");
+      const stamp=time.replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/,"$1-$2-$3 $4:$5:$6");
+      const instant=Date.parse(stamp.replace(" ","T")+"+08:00");
+      if(!Number.isFinite(instant)||new Date(instant+8*3600000).toISOString().slice(0,19).replace(/[-:T]/g,"")!==time)throw Error("行情时间无效");
+      const number=value=>value===""||value==="-"?null:/^[+-]?\d+(?:\.\d+)?$/.test(value||"")?Number(value):NaN;
+      quotes.push({symbol:match[1],name:fields[1],price:number(fields[3]),prevClose:number(fields[4]),change:number(fields[31]),changePercent:number(fields[32]),time:stamp});
+    }
+    const result=stockState({symbols,quotes,updated:new Date().toISOString(),stale:false});
+    if(quotes.length!==symbols.length)throw Error("部分代码没有行情，请核对代码；上次数据已保留。");
+    result.quotes=symbols.map(s=>quotes.find(q=>q.symbol===s));return result;
+  }
+  function stockSession(date=new Date()){
+    const local=new Date(date.getTime()+8*3600000),key=local.toISOString().slice(0,10),minute=local.getUTCHours()*60+local.getUTCMinutes(),weekday=local.getUTCDay();
+    // 2026 CN holiday dates were cross-checked against the SSE closure notice; make-up weekends stay closed.
+    const calendar=typeof OMHolidays!=="undefined"?OMHolidays.regions.find(r=>r.code==="CN"):null;
+    const known=local.getUTCFullYear()===2026&&calendar?.years.includes(2026);
+    const phase=!known?"交易日历待更新":weekday===0||weekday===6||calendar.days.some(d=>d[0]===key&&!d[2])?"休市":minute<555?"未开盘":minute<565?"开盘竞价":minute<570?"开盘前":minute<690?"交易中":minute<780?"午间休市":minute<897?"交易中":minute<900?"收盘竞价":"已收盘";
+    return {date:key,known:!!known,open:["开盘竞价","交易中","收盘竞价"].includes(phase),phase};
+  }
+  return {Store, defaults, validate, template, clone, weather, seniverse, nextJob, dueJobs, placeholders, process, monochrome,defaultTemplates, matrix,stockSymbols,stockState,stockTencent,stockSession};
 })();

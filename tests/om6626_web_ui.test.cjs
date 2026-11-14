@@ -8,15 +8,15 @@ function firmwareZip(model=5){const info=firmwareMetadata.variants[model===5?"fo
 const transitionFixture=process.env.OM6626_TRANSITION_BUILD;
 const repairFixture=process.env.OM6626_REPAIR_ROOT;
 function ui(model=5,ota=false,language="zh",international=true,initial={}){
-  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map();let scriptRequests=0,pendingScript;
+  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map(),session=new Map();let scriptRequests=0,pendingScript,lastFetchURL,fetchCount=0;
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
   function element(tag="div",id=""){
     const attrs={},classes=new Set();
     return {id,tagName:tag,children:[],value:"",checked:false,disabled:false,hidden:false,textContent:"",listeners:{},dataset:{},files:[],
-      classList:{contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},setAttribute(k,v){attrs[k]=v;},getAttribute:k=>attrs[k],
-      addEventListener(k,f){this.listeners[k]=f;},append(...nodes){this.children.push(...nodes);if(tag==="select"&&!this.value&&nodes.length)this.value=nodes[0].value;},
-      replaceChildren(...nodes){this.children=[];if(tag==="select")this.value="";this.append(...nodes);},getContext:()=>ctx,focus(){},
+      classList:{contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},setAttribute(k,v){attrs[k]=v;},getAttribute:k=>attrs[k],removeAttribute(k){delete attrs[k];},
+      addEventListener(k,f){const previous=this.listeners[k];this.listeners[k]=previous?async e=>{await previous(e);return f(e);}:f;},append(...nodes){this.children.push(...nodes);if(tag==="select"&&!this.value&&nodes.length)this.value=nodes[0].value;},
+      replaceChildren(...nodes){this.children=[];if(tag==="select")this.value="";this.append(...nodes);},querySelector(selector){return this.children.find(child=>child.tagName===selector)||null;},getContext:()=>ctx,focus(){},
       click(){if(this.download)downloads.push({name:this.download,url:this.href});return this.listeners.click?.();},remove(){},
       toBlob(callback){callback(new Blob(["PNG"]));},getBoundingClientRect:()=>({width:400}),setPointerCapture(){}};
   }
@@ -49,7 +49,8 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       if(op===0x24 && bytes[1]===0x4A && international){if(bytes.length===5 && calendarMode===0){calendarCountry=bytes[2];calendarOption=bytes[3];}emit(Uint8Array.of(0x55,calendarOption,0x4A,calendarCountry,calendarMode,photoSlot,photoSource));return;}
       if(op===0x24 && bytes.length===1){emit(Uint8Array.of(0x55,calendarOption));return;}
       if(op===0x24 && bytes.length===3 && bytes[1]===0x49 && international){emit(Uint8Array.of(0x55,calendarOption,0x49));return;}
-      if(op===0)emit(Uint8Array.of(0x42,1,...text(ota?"BOARD_ELINK":"BOARD_ZKWEB")));
+      if(op===0)emit(Uint8Array.of(0x42,1,...text(initial.sdkRevision?"BOARD_ELSDK":ota?"BOARD_ELINK":"BOARD_ZKWEB")));
+      if(op===0x24 && bytes[1]===0x53 && initial.sdkRevision){emit(Uint8Array.of(0x5B,bytes[2],1,initial.sdkRevision,1,0,model,0));return;}
       if(op===1 || op===0x25){if(initial.displaceForRotation && calendarMode===1)photoSlot=5;emit(text("mtu=180"));emit(text("t=123"));}
       if([5,6,0x20,0x24,0x25,0x26,0x27,0x45,0x50].includes(op))emit(Uint8Array.of(0x51,op,bytes.at(-1),initial.displayFailure && [0x45,0x50].includes(op)?0xA8:0xA0));
       if(op===0x46||op===0x51){const b=new Uint8Array(36),v=new DataView(b.buffer);b[0]=op===0x46?0x53:0x73;b.set(text("EIMG"),2);
@@ -65,7 +66,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     }};
   let rotation=null;
   const device={name:"GCLab_EPD_test",id:"test-device",addEventListener(){},gatt:{connected:false,async connect(){this.connected=true;return {getPrimaryService:async()=>({getCharacteristic:async()=>control})};},disconnect(){this.connected=false;}}};
-  let serial=0,clockTime=Date.now(),interval,respond,confirm=initial.confirm??true,requestOptions;
+  let serial=0,clockTime=initial.now?Date.parse(initial.now):Date.now(),interval,respond,rejectFetch,confirm=initial.confirm??true,requestOptions;
   const alerts=[],confirmations=[],idleTimers=new Map(),versionQueries=[];
   const windowListeners={};
   let versionListener;
@@ -79,44 +80,155 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:url=>String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise(resolve=>{respond=value=>resolve({ok:true,json:async()=>value});}),
-    Date:ClockDate,atob,setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:{createObjectURL:()=>"blob:test",revokeObjectURL(){}},
+    fetch:url=>(fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>new TextEncoder().encode(String(value)).buffer});})),
+    Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
-    localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;}},
+    localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
-    document:{getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}},head:{append(script){
+    document:{currentScript:{src:"http://localhost/school-native.js"},getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}},head:{append(script){
       scriptRequests++;assert.match(script.src,/^firmware\.js(?:\?|$)/);
       if(scriptRequests===1 && initial.firmwareFailure==='timeout'){pendingScript=script;return;}
       setImmediate(()=>{if(scriptRequests===1 && initial.firmwareFailure==='error')script.onerror();else{vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);script.onload();}});
     }}},
-    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js","wallpapers.js","rotation.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+
+    OMSdkPreview:initial.sdkRevision?{async calendar(...args){rendered.push({kind:'sdk-calendar',args});}}:undefined,
+    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
+  // Mock only course pixels here; real date helpers run, and verify-school.py checks actual rendering.
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","firmware.js","wallpapers.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const context=vm.createContext(sandbox),api=vm.runInContext(code,context);
-  return {get,packets,pixels,rendered,downloads,local,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,respond(value){assert.ok(respond);respond(value);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
+  return {get,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(){rejectFetch(new TypeError("Failed to fetch"));},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
+
+test('seven primary destinations restore the five calendar presets without weather navigation',async()=>{
+  const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),nav=html.match(/<nav class="primary-nav"[^>]*>(.*?)<\/nav>/s)[1];
+  assert.deepEqual([...nav.matchAll(/id="nav-([^"]+)"/g)].map(m=>m[1]),['calendar','photo','reminder','course','stock','gallery','settings']);
+  const u=ui();assert.equal(u.get('calendar-presets').children.length,5);
+  for(const [nav,content] of [['nav-photo','photo'],['nav-reminder','reminder'],['nav-stock','stock'],['nav-course','week'],['nav-calendar','calendar']]){
+    await u.click(nav);assert.equal(u.get('screen-content').value,content);assert.equal(u.get('feature-tabs').hidden,true);
+  }
+  await u.click('nav-settings');assert.doesNotMatch(html,/id="tab-weather"|id="weather-editor"/);assert.equal(u.get('screen-workbench').hidden,true);
+  await u.click('nav-course');await u.input('school-view','day','change');assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).screenProfile.content,'day');
+});
+
+function liveQuote(){const f=Array(33).fill('');Object.assign(f,{1:'Index',2:'000001',3:'3200',30:'20261113113000',32:'0.5'});return 'v_sh000001="'+f.join('~')+'";';}
+test('stock fetch stores real validated quotes, and failed refresh retains the prior snapshot',async()=>{
+  const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+  const pending=u.click('stock-save');assert.equal(u.lastFetchURL(),'/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await pending;
+  const data=JSON.parse(u.local.get('om6626-workspace-v1'));assert.equal(data.stocks.quotes[0].price,3200);assert.equal(u.rendered.at(-1).kind,'stockCalendar');assert.equal(data.screenProfile.update,'snapshot');
+  const retry=u.click('stock-save');u.respond('v_pv_none="1";');await retry;
+  assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,data.stocks);assert.match(u.get('stock-state').textContent,/失败.*没有行情.*上次行情保留/);
+  const automatic=u.click('stock-start');u.respond(liveQuote());await automatic;
+  assert.match(u.get('stock-timer-state').textContent,/每15分钟/);await u.click('stock-stop');assert.match(u.get('stock-timer-state').textContent,/已停止/);
+});
+test('stop during the first quote request cannot restart the timer or enable device synchronization',async()=>{
+  const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+  const pending=u.click('stock-start');await u.click('stock-stop');u.respond(liveQuote());await pending;
+  assert.match(u.get('stock-timer-state').textContent,/已停止/);await u.tick();assert.equal(u.packets.length,0);
+});
+
+test('local quote network failures preserve data and explain the missing service',async()=>{
+ const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ let request=u.click('stock-save');u.respond(liveQuote());await request;
+ const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
+ request=u.click('stock-save');u.failFetch();await request;
+ assert.match(u.get('stock-state').textContent,/无法连接本地行情接口/);assert.doesNotMatch(u.get('stock-state').textContent,/Failed to fetch/);
+ assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
+ request=u.click('stock-save');u.respond('',404);await request;assert.match(u.get('stock-state').textContent,/静态预览服务/);
+ request=u.click('stock-save');u.respond('',502);await request;assert.match(u.get('stock-state').textContent,/本地控制端暂时无法取得行情/);
+});
+
+test('existing 8289 static previews discover the local quote service and reuse it',async()=>{
+ const u=ui(5,false,'zh',true,{port:'8289',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ const pending=u.click('stock-save');u.respond('',404);await new Promise(setImmediate);
+ assert.equal(u.lastFetchURL(),'http://127.0.0.1:8290/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await pending;
+ const again=u.click('stock-save');assert.equal(u.lastFetchURL(),'http://127.0.0.1:8290/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await again;
+ assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks.quotes[0].price,3200);
+});
+
+test('stock automation pauses lunch, resumes at afternoon open, and stops all fetching at close',async()=>{
+ const u=ui(5,false,'zh',true,{now:'2026-11-13T11:30:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';await u.click('stock-start');
+ assert.equal(u.fetchCount(),0);assert.match(u.get('stock-timer-state').textContent,/午间休市.*暂停/);
+ u.advance(90*60000);const opening=u.tick();assert.equal(u.fetchCount(),1);u.respond(liveQuote());await opening;
+ u.advance(2*3600000);const closing=u.tick();assert.equal(u.fetchCount(),1);await closing;assert.match(u.get('stock-timer-state').textContent,/已收盘.*暂停/);await u.click('stock-stop');
+});
+
+test('stock data arriving after close is not committed or pushed automatically',async()=>{
+ const u=ui(5,false,'zh',true,{now:'2026-11-13T14:59:59+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ const pending=u.click('stock-start');u.advance(2000);u.respond(liveQuote());await pending;
+ assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,undefined);assert.equal(u.packets.length,0);await u.click('stock-stop');
+});
+
+test('closed-day automation makes no requests and manual snapshots cannot trigger automatic BLE pushes',async()=>{
+ const u=ui(5,false,'zh',true,{now:'2026-11-14T10:00:00+08:00'});await u.click('connect');await u.click('nav-stock');u.get('stock-text').value='sh000001';u.get('stock-auto-send').checked=true;
+ const before=u.packets.length;await u.click('stock-start');assert.equal(u.fetchCount(),0);assert.match(u.get('stock-timer-state').textContent,/休市/);
+ const manual=u.click('stock-save');u.respond(liveQuote());await manual;assert.equal(u.packets.length,before);await u.click('stock-stop');
+});
+
+test('unverified trading years suspend automation until the calendar is updated',async()=>{
+ const u=ui(5,false,'zh',true,{now:'2027-01-04T10:00:00+08:00'});await u.click('nav-stock');await u.click('stock-start');
+ assert.equal(u.fetchCount(),0);assert.match(u.get('stock-timer-state').textContent,/更新交易日历后恢复/);await u.click('stock-stop');
+});
+
+for(const model of [2,5])test("v34 reconnect reports missing vendor DFU for panel "+model,async()=>{
+  const u=ui(model,true,'zh',true,{revision:34,voltage:3000});
+  const service=u.device.gatt.getPrimaryService;
+  let probes=0;
+  u.device.gatt.getPrimaryService=async id=>{
+    if(id==='000001bf-5f00-0000-0000-4f4d2d4f5441'){
+      probes++;throw Object.assign(Error(),{name:'NotFoundError'});
+    }
+    return service(id);
+  };
+  await u.click('connect');
+  assert.equal(probes,1);
+  assert.match(u.get('ota-service').textContent,new RegExp((model===2?'SSD1619':'JD79668')+' · v34 · 未发现昂瑞微 DFU'));
+  assert.equal(u.get('sdk-ota-bundled').disabled,true);
+  await u.click('ota-inspect');
+  assert.equal(probes,2);
+  assert.ok(u.device.gatt.connected);
+});
 
 for(const model of [2,5])test(`UI ${model}: v32 reads real MAC and two-decimal voltage without initializing the panel`,async()=>{
  const u=ui(model,true,'zh',true,{revision:32});await u.click('connect');
  assert.equal(u.get('device-mac').textContent,'D1:A2:B3:C4:97:2B');assert.equal(u.get('device-voltage').textContent,'2.90 V');
+ assert.equal(u.get('device-summary').hidden,false);assert.match(u.get('device-summary').textContent,/OM6626B.*v32.*2.90 V/);assert.equal(u.get('device-details').open,true);
+ for(const tab of ['nav-stock','nav-course','nav-settings']){await u.click(tab);assert.equal(u.get('device-summary').hidden,false);assert.match(u.get('device-summary').textContent,/2.90 V/);}
  assert.equal(u.get('device-home').disabled,false);assert.ok(!u.packets.some(p=>[1,0x20,0x25,0x27].includes(p[0])));
  const before=u.packets.length;await u.click('device-info-refresh');
  assert.deepEqual(u.packets.slice(before).map(p=>[...p.slice(0,2)]),[[0x24,0x44]]);
  await u.click('disconnect');assert.equal(u.get('device-mac').textContent,'—');assert.equal(u.get('device-voltage').textContent,'—');
+ assert.equal(u.get('device-summary').hidden,true);assert.equal(u.get('device-summary').textContent,'');
 });
+test('SDK 15 keeps its actual version and battery visible across stock and settings pages',async()=>{
+ const u=ui(5,false,'zh',true,{sdkRevision:15,voltage:2930});await u.click('connect');
+ assert.equal(u.get('device-summary').hidden,false);assert.match(u.get('device-summary').textContent,/OM6626B.*JD79668.*SDK 15.*2.93 V/);
+ for(const tab of ['nav-stock','nav-settings','nav-calendar']){await u.click(tab);assert.equal(u.get('device-summary').hidden,false);assert.match(u.get('device-summary').textContent,/SDK 15.*2.93 V/);}
+ assert.ok(!u.packets.some(p=>[1,0x25,0x27,0x40].includes(p[0])));
+});
+
 for(const [voltage,low] of [[2699,true],[2700,true],[2799,true],[2800,false],[2900,false]])test(`UI voltage ${voltage}: warning preserves connection`,async()=>{
  const u=ui(5,true,'zh',true,{revision:32,voltage});await u.click('connect');
  assert.equal(u.get('device-voltage').classList.contains('low-voltage'),low);assert.equal(u.device.gatt.connected,true);
+ assert.equal(u.get('device-summary').classList.contains('low-voltage'),low);
  assert.match(u.get('device-info-hint').textContent,voltage<2700?/停止新刷新/:voltage<2800?/仍可刷屏/:/最近一次采样/);
 });
 test('UI ADC fault retains the real MAC and shows unknown voltage without disconnecting',async()=>{
  const u=ui(5,true,'zh',true,{revision:32,adcError:4,voltage:0});await u.click('connect');
  assert.equal(u.get('device-mac').textContent,'D1:A2:B3:C4:97:2B');assert.equal(u.get('device-voltage').textContent,'—');assert.equal(u.device.gatt.connected,true);
+ assert.match(u.get('device-summary').textContent,/电压尚未读出/);assert.doesNotMatch(u.get('device-summary').textContent,/0.00 V/);
 });
 test('UI voltage rounds integer millivolts consistently at half-hundredths',async()=>{
  const u=ui(5,true,'zh',true,{revision:32,voltage:3005});await u.click('connect');
  assert.equal(u.get('device-voltage').textContent,'3.01 V');
+});
+test('course preview and editor handoff receive the actual connected name and measured voltage',async()=>{
+ const u=ui(5,true,'zh',true,{revision:32,voltage:3005});await u.click('connect');await u.click('tab-course');
+ const options=u.rendered.filter(row=>row.kind==='course').at(-1).args[1];
+ assert.equal(options.deviceName,u.get('device-name').textContent);assert.equal(options.millivolts,3005);
+ const cached=JSON.parse(u.session.get('elink42-course-device-v1'));
+ assert.equal(cached.deviceName,options.deviceName);assert.equal(cached.millivolts,3005);
+ await u.click('disconnect');assert.equal(u.session.has('elink42-course-device-v1'),false);
 });
 test('UI older firmware never receives the new query or home command',async()=>{
  const u=ui(5,true,'zh',true,{revision:30,confirm:false});await u.click('connect');
@@ -184,6 +296,7 @@ for(const model of [2,5])test(`v33 model ${model} still starts its calendar afte
 for(const revision of [33,34])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
+  if(revision===33)assert.match(u.get('ota-capability').textContent,/没有.*SDK 6/);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 for(const model of [2,5])for(const revision of [30,32])test(`UI model ${model} v${revision}: built-in v33 matches the connected panel and requires consent`,async()=>{
@@ -270,16 +383,16 @@ for(const model of [2,5])test(`manual signed OTA for model ${model} can start fr
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
  const before=u.packets.length;await u.click('ota-start');assert.equal(u.packets.length,before);
 });
-test("v18 keeps display actions disabled and refuses a route exceeding two writes",async()=>{
+test("v18 keeps display actions disabled while selecting its original v19",async()=>{
  const u=ui(5,true,'zh',true,{revision:18});await u.click('connect');
  for(const id of ['native-calendar','set-time','photo-calendar-start','publish','store-frame','scheduler-start'])assert.equal(u.get(id).disabled,true);
- u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,true);
- assert.match(u.get('ota-capability').textContent,/两次.*HEX/);assert.equal(u.idleTimers.size,0);
+ assert.match(u.get('ota-package').textContent,/版本 19/);assert.equal(u.get('ota-start').disabled,true);
+ assert.match(u.get('ota-capability').textContent,/v18 → v19/);assert.equal(u.idleTimers.size,0);
 });
-test("v15 cannot start the new bundle and explains the two-write limit",async()=>{
+test("v15 loads v16 before offering the v32 bundle",async()=>{
  const u=ui(5,true,'zh',true,{revision:15});await u.click('connect');
- u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,true);
- assert.match(u.get('ota-capability').textContent,/不能在两次刷写内/);
+ assert.equal(u.get('ota-start').disabled,true);assert.match(u.get('ota-package').textContent,/版本 16/);
+ assert.match(u.get('ota-capability').textContent,/v15 → v16/);
 });
 test("verified OTA leaves the device idle and never enables a calendar",{skip:!firmwareMetadata||firmwareMetadata.revision<9},async()=>{
  const u=ui(5,true,"zh",true,{country:3,flags:2,mode:1,slot:1,otaBootRevision:9});
@@ -357,9 +470,13 @@ for(const model of [2,5])test(`UI ${model}: native calendar has no static image 
 for(const model of [2,5])test(`UI ${model}: real todo edit, completion, image and immutable frame transport`,async()=>{
   const u=ui(model);await u.click("connect");await u.click("tab-todo");
   u.get("todo-item-title").value="会议";u.get("todo-description").value="项目复盘";await u.click("todo-add");
-  assert.equal(JSON.parse(u.local.get("om6626-workspace-v1")).todos[0].title,"会议");assert.equal(u.rendered.at(-1).kind,"todos");
-  assert.equal(u.get("publish").disabled,false);
-  const operation=u.click("publish");u.pixels.set([255,210,0,255]);await u.input("rotate","");await operation;
+  assert.equal(JSON.parse(u.local.get("om6626-workspace-v1")).todos[0].title,"会议");assert.equal(u.rendered.at(-1).kind,"reminderCalendar");
+  assert.equal(u.get("screen-apply").disabled,true);assert.match(u.get("screen-update-note").textContent,/SDK 18/);
+  await u.input("screen-update","snapshot","change");
+  assert.equal(u.get("screen-apply").disabled,false);assert.equal(u.get("publish").disabled,true);
+  const operation=u.click("screen-apply");
+  for(let n=0;n<100&&!u.packets.some(p=>p[0]===3);n++)await Promise.resolve();
+  assert.ok(u.packets.some(p=>p[0]===3));u.pixels.set([255,210,0,255]);await u.input("rotate","");await operation;
   const start=u.packets.findIndex(p=>p[0]===3&&p[1]===(model===5?0x10:0x24));assert.ok(start>0);
   assert.equal(u.packets.slice(start+1).find(p=>p[0]===4)[1],model===5?0xD5:0xFF);
   await u.click("tab-image");assert.equal(u.get("publish").disabled,true);
@@ -372,15 +489,14 @@ test("template save and workspace export call real validation and persistence",a
   await u.click("template-new");u.get("element-text").value="{{date}}";await u.click("element-add");await u.click("template-save");
   data=JSON.parse(u.local.get("om6626-workspace-v1"));assert.equal(data.templates.length,2);assert.equal(data.templates[1].elements[0].text,"{{date}}");
   await u.click("template-export");assert.equal(u.downloads.at(-1).name,"om6626-template.epdtpl");
-  await u.click("workspace-export");assert.equal(u.downloads.at(-1).name,"om6626-workspace.json");
+  await u.click("workspace-export");assert.equal(u.downloads.at(-1).name,"elink42-screen-plan.json");
 });
-test("weekly schedule preflights all seven empty slots and then enables Sunday-first native map",async()=>{
-  const u=ui();await u.click("connect");await u.click("tab-course");u.get("course-slots").value="0,1,2,3,4,5,6";
-  await u.click("course-send-week");assert.ok(u.stored.slice(0,7).every(Boolean));
-  assert.deepEqual([...u.packets.find(p=>p[0]===0x44)],[0x44,2,60,6,0,1,2,3,4,5]);
-  assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],3);
-  const before=u.packets.length;await u.click("course-send-week");assert.ok(!u.packets.slice(before).some(p=>p[0]===0x40));
-  assert.ok(u.get("result").textContent.includes("空槽"));
+test("course menu uses the shared screen workbench and removes the obsolete seven-picture route",async()=>{
+  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+  assert.doesNotMatch(html,/id="(?:school-sync|course-send-week|course-slots|course-text)"/);
+  const u=ui();await u.click('tab-course');
+  assert.match(u.get('course-frame').src,/^timetable\.html\?embedded=1&/);
+  assert.equal(u.get('screen-apply').disabled,true);
 });
 test("page scheduler submits a due one-shot once, disables it before BLE and never replays after completion",async()=>{
   const u=ui();await u.click("connect");u.get("job-title").value="提醒喝水";u.get("job-text").value="测试日程";
@@ -395,16 +511,12 @@ test("page scheduler marks stale jobs missed and never overwrites screen with la
   u.advance(600000);const before=u.packets.length;await u.click("scheduler-start");assert.equal(u.packets.length,before);
   const job=JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0];assert.equal(job.enabled,false);assert.match(job.status,/错过/);
 });
-test("weather job rechecks the target after asynchronous network work and never sends to changed identity",async()=>{
+test("legacy weather jobs stop without fetching or sending after weather is replaced by stocks",async()=>{
   const u=ui();await u.click("connect");u.get("job-title").value="天气";u.get("job-kind").value="weather";
   u.get("job-time").value=new Date(Date.now()+120000).toISOString();await u.click("job-add");
-  u.get("weather-key").value="test-only-not-a-real-key";u.get("weather-consent").checked=true;u.advance(121000);
-  const before=u.packets.length,operation=u.click("scheduler-start");await new Promise(setImmediate);
-  assert.equal(u.get("reconnect").disabled,true);
-  u.device.id="different-device";
-  u.respond({now:{results:[{location:{name:"北京"},last_update:new Date().toISOString(),now:{text:"晴",temperature:"20",code:"0"}}]},daily:{results:[{daily:[]}]}});
-  await operation;assert.equal(u.packets.length,before);
-  assert.match(JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0].status,/失败|不确定/);
+  u.advance(121000);
+  const before=u.packets.length,requests=u.fetchCount();await u.click("scheduler-start");assert.equal(u.packets.length,before);assert.equal(u.fetchCount(),requests);
+  assert.match(JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0].status,/天气任务已停用/);assert.equal(JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0].enabled,false);
 });
 
 test("connection restores actual photo presentation and time sync preserves its slot and fitting",async()=>{
@@ -420,7 +532,7 @@ test("existing full-screen gallery images default to uncropped calendar fitting"
 });
 
 test("country holiday summaries show local upcoming holidays and China overrides stay scoped",async()=>{
- const u=ui(5,false,"en");await u.click("connect");await u.input("calendar-date","2026-11-04");await u.input("calendar-layout","3","change");
+ const u=ui(5,false,"en");await u.click("connect");await u.input("screen-update","snapshot","change");await u.input("calendar-date","2026-11-04","change");await u.input("calendar-layout","3","change");
  assert.match(u.get("holiday-summary").textContent,/Taiwan: government-office calendar/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
  await u.input("calendar-layout","2","change");assert.match(u.get("holiday-summary").textContent,/Next holiday: Deepavali/);
  await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
@@ -430,7 +542,7 @@ test('homepage works without the firmware payload and creates wallpaper cards on
  const u=ui(5,true,'zh',true,{revision:33,noBuiltin:true});
  assert.equal(u.get('library-grid').children.length,0);assert.equal(u.scriptRequests(),0);
  await u.click('connect');assert.match(u.get('firmware-state').textContent,/v33/);assert.equal(u.scriptRequests(),0);
- await u.click('nav-image');assert.equal(u.get('library-grid').children.length,44);
+ await u.click('nav-gallery');assert.equal(u.get('library-grid').children.length,44);
  u.get('wallpaper-library').open=false;await u.get('wallpaper-library').listeners.toggle();assert.equal(u.get('library-grid').children.length,0);
  u.get('wallpaper-library').open=true;await u.get('wallpaper-library').listeners.toggle();assert.equal(u.get('library-grid').children.length,44);
  await u.click('nav-calendar');assert.equal(u.get('library-grid').children.length,0);assert.equal(u.scriptRequests(),0);
@@ -463,7 +575,7 @@ test('a timed-out built-in download releases the UI and late success does not st
 });
 
 test('wallpaper categories separate months, individual solar terms, holidays and original art',async()=>{
- const u=ui();await u.click('nav-image');assert.equal(u.get('library-category-label').hidden,true);
+ const u=ui();await u.click('nav-gallery');assert.equal(u.get('library-category-label').hidden,true);
  await u.click('library-calendar');assert.equal(u.get('library-category-label').hidden,false);
  assert.equal(u.get('library-grid').children.length,12);
  for(const [category,count]of [['term',24],['holiday',20],['art',6],['all',62]]){
@@ -484,20 +596,20 @@ for(const dimensions of [[256,300],[1159,1358]])test(`calendar-aspect ${dimensio
  assert.equal(u.get('image-target').value,'calendar');assert.equal(u.get('photo-fit').value,'contain');
  const call=u.rendered.filter(r=>r.kind==='image').at(-1),options=call.args[2];assert.equal(options.target,'calendar');assert.equal(options.zoom,1);assert.equal(options.angle,0);assert.equal(options.x,0);assert.equal(options.y,0);
  await u.click('download');assert.match(u.downloads.at(-1).name,/256x300/);
- await u.click('connect');await u.click('nav-image');await u.click('store-frame');assert.ok(u.stored[0]);assert.equal(u.get('photo-fit').value,'prepared');
+ await u.click('connect');await u.click('nav-gallery');await u.click('store-frame');assert.ok(u.stored[0]);assert.equal(u.get('photo-fit').value,'prepared');
 });
 test('saving chooses the next position and wraps to holes without overwriting',async()=>{
- const u=ui();await u.click('connect');await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});
+ const u=ui();await u.click('connect');await u.click('nav-gallery');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});
  u.stored[0]=123;u.stored[3]=124;await u.click('store-frame');assert.ok(u.stored[4]);assert.equal(u.stored[0],123);
  u.stored[21]=125;await u.click('store-frame');assert.ok(u.stored[1]);assert.ok(!u.packets.some(p=>[0x43,0x4f].includes(p[0])));
 });
 test('full storage stops both save and quick change before any storage write or deletion',async()=>{
- const u=ui();await u.click('connect');await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});u.stored.fill(123);const before=u.packets.length;
+ const u=ui();await u.click('connect');await u.click('nav-gallery');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});u.stored.fill(123);const before=u.packets.length;
  await u.click('store-frame');assert.match(u.get('result').textContent,/已满/);await u.click('quick-change');assert.match(u.get('result').textContent,/已满/);
  assert.ok(!u.packets.slice(before).some(p=>[0x40,0x41,0x42,0x43,0x4c,0x4d,0x4e,0x4f].includes(p[0])));
 });
 test('quick change uses the device photo mode even when the full-image editor is open, and enables daily offline policy',async()=>{
- const u=ui(5,true,'zh',true,{revision:24,mode:1,flags:3,slot:2});await u.click('connect');u.stored[2]=123;u.stored[5]=124;await u.click('nav-image');await u.input('image-target','full','change');const before=u.packets.length;
+ const u=ui(5,true,'zh',true,{revision:24,mode:1,flags:3,slot:2});await u.click('connect');u.stored[2]=123;u.stored[5]=124;await u.click('nav-gallery');await u.input('image-target','full','change');await u.input('auto-frequency','3','change');const before=u.packets.length;
  await u.click('quick-change');const packets=u.packets.slice(before);assert.match(u.get('result').textContent,/已保存并提交/,JSON.stringify(packets.slice(-8).map(p=>[...p])));
  assert.ok(packets.some(p=>p[0]===0x40 && p[1]===6));assert.ok(packets.some(p=>p[0]===0x56 && p[1]===6));assert.ok(packets.some(p=>p[0]===0x26 && p[1]===3 && p[2]===1));assert.ok(!packets.some(p=>p[0]===0x45));
  assert.equal(u.get('image-target').value,'calendar');assert.match(u.get('auto-state').textContent,/关闭网页后仍会执行/);
@@ -509,7 +621,7 @@ test('full-image quick change preserves its domain on subsequent rotation mode r
  assert.equal(u.get('image-target').value,'full');assert.equal(u.packets.filter(p=>p[0]===0x45).length,2);assert.equal(u.packets.filter(p=>p[0]===0x26 && p[2]===0).length,2);
 });
 test('a saved image survives unconfirmed display and reports its position without retrying storage',async()=>{
- const u=ui(5,false,'zh',true,{displayFailure:true});await u.click('connect');await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});await u.click('publish');
+ const u=ui(5,false,'zh',true,{displayFailure:true});await u.click('connect');await u.click('nav-gallery');await u.file('image-file',{type:'image/png',size:100,name:'new.png'});await u.click('publish');
  assert.ok(u.stored[0]);assert.equal(u.packets.filter(p=>p[0]===0x40).length,1);assert.match(u.get('result').textContent,/已保存到位置 0.*请勿重复保存/);assert.equal(u.get('gallery-slot').value,'0');
 });
 for(const revision of [18,20,23])test(`quiet v${revision} disables new image and rotation controls`,async()=>{
@@ -517,7 +629,7 @@ for(const revision of [18,20,23])test(`quiet v${revision} disables new image and
 });
 test('native active-calendar selection cannot cause a second refresh and drop the rotation command',async()=>{
  const u=ui(5,true,'zh',true,{revision:24,nativeSelection:true});await u.click('connect');u.stored[0]=123;
- await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,width:256,height:300,name:'photo.png'});
+ await u.click('nav-gallery');await u.file('image-file',{type:'image/png',size:100,width:256,height:300,name:'photo.png'});
  const start=u.packets.length;await u.click('publish');const packets=u.packets.slice(start);
  assert.match(u.get('result').textContent,/已保存并提交/);assert.equal(u.device.gatt.connected,true);
  assert.equal(packets.filter(p=>p[0]===0x20 && p[6]===1).length,1);
@@ -532,18 +644,29 @@ test('native active-calendar selection cannot cause a second refresh and drop th
  assert.ok(!stopped.some(p=>p[0]===0x56));assert.equal(u.device.gatt.connected,true);
 });
 test('rotation target readback mismatch preserves the saved picture and stops before a setter or reselection',async()=>{
- const u=ui(5,true,'zh',true,{revision:24,nativeSelection:true,displaceForRotation:true});await u.click('connect');u.stored[0]=123;
- await u.click('nav-image');await u.file('image-file',{type:'image/png',size:100,width:256,height:300,name:'photo.png'});const start=u.packets.length;
+ const u=ui(5,true,'zh',true,{revision:24,nativeSelection:true,displaceForRotation:true});await u.click('connect');u.stored[0]=123;await u.input('auto-frequency','3','change');
+ await u.click('nav-gallery');await u.file('image-file',{type:'image/png',size:100,width:256,height:300,name:'photo.png'});const start=u.packets.length;
  await u.click('publish');const packets=u.packets.slice(start);assert.ok(u.stored[1]);assert.match(u.get('result').textContent,/已保存到位置 1.*当前图片位置与轮播目标不符/);
  assert.ok(!packets.some(p=>p[0]===0x26));assert.equal(packets.filter(p=>p[0]===0x56).length,1);
  assert.equal(u.device.gatt.connected,true,'A read-only target mismatch must preserve the stable connection');
 });
 
-for(const revision of [1,2,15,18,20,23,27])test(`UI v${revision}: incompatible receiver cannot start v32 bundle or send preparation commands`,async()=>{
+for(const revision of [1,2])test(`UI v${revision}: incompatible receiver cannot start v32 bundle or send preparation commands`,async()=>{
  const u=ui(5,true,'zh',true,{revision});await u.click('connect');await u.click('ota-bundled');
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,true);
  assert.match(u.get('ota-capability').textContent,/HEX/);
  assert.ok(!u.packets.some(p=>[1,5,6,0x20].includes(p[0])));
+});
+for(const model of [2,5])for(const revision of [15,18,20,23,27])test(`UI model ${model} v${revision}: only the paired first hop is offered`,async()=>{
+ const u=ui(model,true,'zh',true,{revision,confirm:false});await u.click('connect');await u.click('ota-bundled');
+ assert.match(u.get('ota-package').textContent,new RegExp((model===2?'SSD1619':'JD79668')+'.*版本 '+(revision+1)));
+ assert.equal(u.get('ota-start').disabled,true);
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
+ assert.ok(!u.packets.some(p=>[1,5,6,0x20].includes(p[0])));
+ const old=vm.runInNewContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8')+';OMFirmware.legacy.packages[2]');
+ const bytes=Buffer.from(old.data,'base64');await u.file('ota-file',{name:old.name,size:bytes.length,arrayBuffer:async()=>Uint8Array.from(bytes).buffer});
+ u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,true);
+ assert.match(u.get('ota-capability').textContent,new RegExp('v'+revision+' → v'+(revision+1)));
 });
 for(const model of [2,5])for(const revision of [3,4,6,7,8,9,10,12,13])test(`UI model ${model} v${revision}: older firmware can load and start the matching bundle`,async()=>{
  const u=ui(model,true,'zh',true,{revision});await u.click('connect');

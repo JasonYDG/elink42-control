@@ -4,7 +4,7 @@ const OMRotation=(()=>{
   function requireSupport(client){if(!supported(client))throw Error(OMI18n.t("离线日、周、月换图需要 v24 固件，请先升级。"));}
   async function query(client){
     const bytes=await client.request(Uint8Array.of(0x24,0x49,0x52),b=>b[0]===0x58,OMI18n.t("读取自动换图设置"));
-    if(bytes.length!==6 || bytes[1]>1 || ![0,3,4,5].includes(bytes[2]) || (bytes[3]>44 && bytes[3]!==255) || bytes[4]>1 || bytes[5]>1)
+    if(bytes.length!==6 || bytes[1]>1 || ![0,3,4,5].includes(bytes[2]) || (bytes[3]>44 && bytes[3]!==255) || (bytes[4]>1 && (bytes[2] || !(client.sdkRevision>=15) || bytes[4]>15)) || bytes[5]>1)
       throw Error(OMI18n.t("自动换图设置回执无效"));
     return {source:bytes[1],frequency:bytes[2],slot:bytes[3],photo:!!bytes[4],active:!!bytes[5]};
   }
@@ -19,7 +19,7 @@ const OMRotation=(()=>{
         await client.initialize();const state=await client.storageState(!!source);let count=0;
         for(let index=0;index<state.count;index++){
           const entry=await client.slotMetadata(index,!!source);
-          if(entry.valid){client.storedFormat(entry);count++;}
+          if(entry.valid && !(entry.color&128)){client.storedFormat(entry);count++;}
           if(index===slot && !entry.valid)throw Error(OMI18n.t("所选位置没有图片"));
         }
         if(slot>=state.count || count<2)throw Error(OMI18n.t("至少保存两张图片后才能启用自动换图。"));

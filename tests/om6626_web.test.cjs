@@ -192,6 +192,85 @@ test("SSD1619 retains connection, initialization and time sync", async () => {
   assert.deepEqual(packets.map(p => p[0]), [0,0x24,0x24,0x24,0x20,0x24,1,0x24,0x20,0]);
 });
 
+test("a readable configuration connects when subscribing does not repeat the initial notification", async () => {
+  for (const model of [2, 5]) {
+    const {client, packets} = connectablePeripheral(model), control = client.control;
+    let reads = 0;
+    control.properties = {read: true};
+    control.startNotifications = async () => {};
+    control.readValue = async () => {
+      reads++;
+      const bytes = new Uint8Array(19); bytes[9] = model; bytes[13] = 1;
+      return new DataView(bytes.buffer, 2, 15);
+    };
+    const wait = client.wait.bind(client);
+    client.wait = (match, label, ms) => wait(match, label, label === "读取配置" ? 20 : ms);
+    await client.connect();
+    assert.equal(reads, 1); assert.equal(client.config.model, model); assert.equal(client.ready, true);
+    assert.equal(client.pending.size, 0); assert.deepEqual(packets.map(p => p[0]), [0, 0x24, 0x24]);
+    client.disconnect();
+  }
+});
+
+test("an initial configuration notification needs no extra GATT read", async () => {
+  const {client} = connectablePeripheral();
+  client.control.properties = {read: true};
+  client.control.readValue = async () => { throw Error("unnecessary read"); };
+  await client.connect(); assert.equal(client.ready, true); client.disconnect();
+});
+
+test("notify-only devices retain delayed configuration support and bounded failure cleanup", async () => {
+  for (const send of [true, false]) {
+    const {client} = connectablePeripheral(), control = client.control, notify = control.startNotifications;
+    control.startNotifications = async () => { if (send) setTimeout(notify, 0); };
+    const wait = client.wait.bind(client);
+    client.wait = (match, label, ms) => wait(match, label, label === "读取配置" ? 20 : ms);
+    if (send) { await client.connect(); assert.equal(client.ready, true); client.disconnect(); }
+    else await assert.rejects(client.connect(), /读取配置超时/);
+    assert.equal(client.pending.size, 0); assert.equal(client.busy, false);
+    assert.equal(client.device.gatt.connected, false);
+  }
+});
+
+test("configuration read errors and stalls clean up and allow the next connection", async () => {
+  for (const failure of ["rejected", "malformed", "stalled"]) {
+    const {client, packets} = connectablePeripheral(), control = client.control;
+    control.properties = {read: true}; control.startNotifications = async () => {};
+    control.readValue = async () => {
+      if (failure === "rejected") throw Error("config read failed");
+      if (failure === "malformed") return new DataView(new ArrayBuffer(14));
+      return new Promise(() => {});
+    };
+    const bounded = client.bounded.bind(client);
+    client.bounded = (op, label, ms, discovery) => bounded(op, label, label === "读取配置" ? 20 : ms, discovery);
+    await assert.rejects(client.connect(), /config read failed|15 字节|读取配置.*超时/);
+    assert.equal(client.ready, false); assert.equal(client.busy, false);
+    assert.equal(client.device.gatt.connected, false); assert.equal(client.pending.size, 0);
+    assert.equal(packets.length, 0);
+    control.readValue = async () => {
+      const bytes = new Uint8Array(15); bytes[7] = 5; bytes[11] = 1;
+      return new DataView(bytes.buffer);
+    };
+    await client.connect(); assert.equal(client.ready, true); client.disconnect();
+  }
+});
+
+test("a timed-out configuration read arriving late cannot disconnect a new connection", async () => {
+  const {client} = connectablePeripheral(), control = client.control;
+  let finishOld;
+  const bytes = new Uint8Array(15); bytes[7] = 5; bytes[11] = 1;
+  control.properties = {read: true}; control.startNotifications = async () => {};
+  control.readValue = () => new Promise(resolve => { finishOld = resolve; });
+  const bounded = client.bounded.bind(client);
+  client.bounded = (op, label, ms, discovery) => bounded(op, label, label === "读取配置" ? 20 : ms, discovery);
+  await assert.rejects(client.connect(), /读取配置.*超时/);
+  control.readValue = async () => new DataView(bytes.buffer);
+  await client.connect();
+  finishOld(new DataView(bytes.buffer)); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(client.ready, true); assert.equal(client.device.gatt.connected, true);
+  assert.equal(client.pending.size, 0); client.disconnect();
+});
+
 test("initial handshake disconnect reconnects the same device once without repeating the chooser or a display write", async () => {
   const {client,packets}=connectablePeripheral();const device=client.device,connect=device.gatt.connect;
   let connects=0,choices=0; sandbox.navigator.bluetooth.requestDevice=async options=>{

@@ -30,3 +30,12 @@ firmware/*
 !firmware/elink42-sdk-v12-fourcolor-jd79668.e42ota
 !firmware/elink42-sdk-v14-tricolor-ssd1619.e42ota
 !firmware/elink42-sdk-v14-fourcolor-jd79668.e42ota
+
+!firmware/elink42-sdk-v15-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v15-fourcolor-jd79668.e42ota
+!firmware/elink42-sdk-v16-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v16-fourcolor-jd79668.e42ota
+!firmware/elink42-sdk-v17-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v17-fourcolor-jd79668.e42ota
+!firmware/elink42-sdk-v18-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v18-fourcolor-jd79668.e42ota

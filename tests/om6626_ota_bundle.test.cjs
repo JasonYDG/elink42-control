@@ -7,6 +7,37 @@ const {OTA,SdkOTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh
  setTimeout:(f,ms)=>setTimeout(f,ms===2000||ms===2500?0:ms),clearTimeout,console,navigator:{}});
 const bytes=Buffer.from(F.legacy.packages[2].data,'base64'),parsed=OTA.parse(bytes);
 
+test('v34 probes only the OnMicro version characteristic and never authorizes SDK writing',async()=>{
+  for(const model of [2,5]){
+    const client=new Client(), requests=[];
+    let versionNumber=3,listener;
+    const characteristic={properties:{write:true,notify:true},async startNotifications(){},
+      addEventListener(_,fn){listener=fn;},removeEventListener(){listener=null;},
+      async writeValueWithResponse(query){
+        assert.equal(Buffer.from(query).toString(),'VERN');
+        const bytes=Buffer.from('291221200f00000003000000','hex');
+        bytes.writeUInt32LE(versionNumber,8);
+        this.value=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+        listener({target:this});
+      }};
+    const gatt={connected:true,async getPrimaryService(id){requests.push(id);return {
+      async getCharacteristic(id){requests.push(id);return characteristic;}};}};
+    Object.assign(client,{ready:true,device:{gatt},board:{id:1,name:P.OTA_MARKER},config:{model},firmwareRevision:34});
+    assert.equal(await OTA.probeOnMicroDfu(client),'protocol-3');
+    assert.deepEqual(requests,['000001bf-5f00-0000-0000-4f4d2d4f5441','000001bf-5f03-0000-0000-4f4d2d4f5441']);
+    assert.equal(SdkOTA.supported(client),false);
+    assert.equal(listener,null);assert.equal(client.pending.size,0);
+    versionNumber=2;
+    assert.equal(await OTA.probeOnMicroDfu(client),'unrecognized');
+    for(const [name,status] of [['NotFoundError','absent'],['SecurityError','permission']]){
+      gatt.getPrimaryService=async()=>{throw Object.assign(Error(),{name});};
+      assert.equal(await OTA.probeOnMicroDfu(client),status);
+    }
+    client.firmwareRevision=33;
+    await assert.rejects(()=>OTA.probeOnMicroDfu(client));
+  }
+});
+
 function storedZip(files){
  const local=[],central=[];let offset=0;
  for(const [name,input] of files){
@@ -42,7 +73,8 @@ function peripheral(model,current,options={}){
   let reply;
   const flags=(model===2?1:0)|(current>=8?0x80:0)|(current>=9?0x20:0);
   if(b[0]===0x24 && b[1]===0x44){const mv=options.voltage??2900;reply=Uint8Array.of(0x59,b[2],model,options.adcError??0,mv&255,mv>>8,0x2b,0x97,0xc4,0xb3,0xa2,0xd1);}
-  else if(b[0]===0x20){assert.deepEqual([...b.slice(1,7)],[0,0,0,0,0,0]);reply=options.pauseFailure?Uint8Array.of(0x51,0x20,b.at(-1),0xA8,2,0):Uint8Array.of(0x51,0x20,b.at(-1),flags);}
+  else if(b[0]===0x20){if(current!==15)assert.deepEqual([...b.slice(1,7)],[0,0,0,0,0,0]);reply=options.pauseFailure?Uint8Array.of(0x51,0x20,b.at(-1),0xA8,2,0):Uint8Array.of(0x51,0x20,b.at(-1),flags);}
+  else if(current===15 && b[0]===6)reply=Uint8Array.of(0x51,6,b.at(-1),flags);
   else if(b[0]===0x24 && b[1]===0x4A)reply=Uint8Array.of(0x55,2,0x4A,0,options.badQuiet?1:0,255,0);
   else {assert.equal(b[0],0x24);reply=Uint8Array.of(0x51,0x24,b.at(-1),flags);}
   this.value=new DataView(reply.buffer);client.notify({target:this});
@@ -53,10 +85,29 @@ function peripheral(model,current,options={}){
 }
 const consent={deviceId:'bundle-target',eraseImages:true};
 
+const futureFixtures=process.env.OM6626_V34_FIXTURES||path.resolve(__dirname,'../../../build/elink42-v33-ota-fixtures');
+for(const model of [2,5])test(`model ${model}: known v34 test image is refused before gallery erase`,{skip:!fs.existsSync(futureFixtures)},async()=>{
+ const raw=fs.readFileSync(path.join(futureFixtures,`future-model${model}-v34.zip`)),files=await A.unzip(raw);
+ const rejected=e=>e.code==='OTA_PRECHECK' && /重启后仍是 v33/.test(e.message);
+ await assert.rejects(OTA.parse(raw),rejected);
+ const r=peripheral(model,33);
+ await assert.rejects(r.client.ota({dat:files.get('firmware.dat'),bin:files.get('firmware.bin')},consent),rejected);
+ assert.equal(r.appCommands.length,0);assert.equal(r.commands.length,0);assert.equal(r.device.gatt.connected,true);
+});
 test('public v32 bundle verifies all twelve signed images and exact five-family pairings',async()=>{
  const b=await parsed;assert.equal(F.revision,33);assert.equal(F.legacy.revision,32);assert.equal(F.legacy.packages[2],F.legacy.packages[5]);assert.equal(b.bundleVersion,7);assert.equal(b.sha256,F.legacy.packages[2].sha256);
  for(const model of [2,5])for(const family of ['legacy','repaired','stable','hardened'])assert.deepEqual(Array.from(b.models[model][family],p=>[p.model,p.revision]),[[model,31],[model,32]]);
  for(const model of [2,5])assert.deepEqual(Array.from(b.models[model].boot,p=>[p.model,p.revision]),[[model,30],[model,32]]);
+});
+for(const model of [2,5])for(const current of [15,18,20,23,27])test(`model ${model}: v${current} confirms the original paired update after one restart`,async()=>{
+ const target=current+1, entry=F.paired[target].packages[model], bytes=Buffer.from(entry.data,'base64');
+ assert.equal(require('node:crypto').createHash('sha256').update(bytes).digest('hex'),entry.sha256);
+ const pack=await OTA.parse(bytes),r=peripheral(model,current);
+ assert.equal(pack.model,model);assert.equal(pack.revision,target);
+ const out=await r.client.ota(pack,consent,()=>{});
+ assert.equal(out.model,model);assert.equal(out.revision,target);assert.equal(out.status,'boot-verified');
+ assert.deepEqual(r.installed,[target]);assert.equal(r.received.length,1);assert.deepEqual(r.received[0].image,pack.bin);
+ assert.ok(r.log.includes('重启读回：'+(model===2?'SSD1619':'JD79668')+' · v'+target));
 });
 for(const model of [2,5])for(const revision of [30,32])test(`model ${model}: v${revision} selects its signed v33 image and transfers once`,async()=>{
  const embedded=F.packages[model],p=await OTA.parse(Buffer.from(embedded.data,'base64'));
@@ -107,6 +158,7 @@ test('v32 OTA at 2.90 V passes its separate gate',async()=>{
 test('unverified first reboot stops without installing v32',async()=>{
  const r=peripheral(5,14,{badBoot:31});await assert.rejects(r.client.ota(await parsed,consent),/版本不匹配/);
  assert.deepEqual(r.received.map(p=>p.revision),[31]);assert.equal(r.client.pending.size,0);assert.equal(r.client.otaActive,false);
+ assert.ok(r.log.includes('重启读回：JD79668 · v30'));
 });
 test('changed device after first reboot stops before the next stage',async()=>{
  const r=peripheral(5,14,{changeTarget:31});await assert.rejects(r.client.ota(await parsed,consent),/目标设备发生变化/);assert.deepEqual(r.received.map(p=>p.revision),[31]);
@@ -127,41 +179,18 @@ test('SDK reboot confirmation stops before initializing a different device or fi
    await assert.rejects(SdkOTA.confirmBoot(client,receipt),/重启后的固件内容尚未确认/);
  }
 });
-test('missing consent and already-current v32 never send DFU control/data',async()=>{
- const a=peripheral(5,14);await assert.rejects(a.client.ota(await parsed,{}),/确认目标/);assert.equal(a.commands.length,0);
- const b=peripheral(5,32);await assert.rejects(b.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(b.commands.length,0);assert.equal(b.device.gatt.connected,true);
-});
-for(const current of [1,2,15,18,20,23,27])test(`unsupported v${current} stops before any device command`,async()=>{
- const r=peripheral(5,current);await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);assert.equal(r.device.gatt.connected,true);
-});
-for(const current of [14,24,28,31])test(`v${current}: non-quiet receiver prevents the next write without replay`,async()=>{
- const r=peripheral(5,current,{badQuiet:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.deepEqual(r.received.map(p=>p.revision),current===31?[]:[31]);assert.equal(r.device.gatt.connected,true);
-});
-test('missing pause acknowledgments fails before DFU writes',async()=>{
- const r=peripheral(5,14,{noStatus:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
-});
-for(const current of [3,5,8,10,14,16,19,21,24,28])test(`direct v${current} to hardened v32 cannot bypass its matching v31`,async()=>{
- const r=peripheral(5,current);await assert.rejects(r.client.ota((await parsed).models[5].legacy[1],consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
-});
-for(const current of [3,5,8])test(`v${current} pause failure stops before any DFU control or data write`,async()=>{
- const r=peripheral(5,current,{pauseFailure:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.equal(r.commands.length,0);assert.equal(r.received.length,0);assert.equal(r.device.gatt.connected,true);
-});
-test('a confirmed Flash rejection keeps Bluetooth connected and never retries the rejected write',async()=>{
- const r=peripheral(5,31),service=await r.device.gatt.getPrimaryService(),control=await service.getCharacteristic(OTA.CONTROL),original=control.writeValueWithResponse;
- control.writeValueWithResponse=async b=>{if(b[0]===1){r.commands.push([...b]);const reply=Uint8Array.of(0x60,1,132);control.value=new DataView(reply.buffer);for(const waiter of [...r.client.pending])if(waiter.match(reply))waiter.resolve(reply);}else await original(b);};
- await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.filter(b=>b[0]===1).length,1);assert.equal(r.device.gatt.connected,true);assert.equal(r.client.pending.size,0);assert.equal(r.received.length,0);
-});
-
-for(const [identity,state,error] of [[5,0,0],[6,6,0],[6,0,3],[6,0,0]])test(`SDK 6 boot receipt: identity ${identity}, OTA state ${state}, error ${error}`,async()=>{
+for(const [identity,state,error,crc] of [[5,0,0,123],[6,6,0,123],[6,0,3,123],[6,0,0,124],[6,0,0,123]])test(`SDK 6 boot receipt: identity ${identity}, OTA state ${state}, error ${error}, CRC ${crc}`,async()=>{
  const device={gatt:{connected:true}}, receipt={device,model:5,revision:6,crc:123};
- const client=new Client();client.device=device;client.disconnect=()=>{};
+ const messages=[],client=new Client(undefined,message=>messages.push(message));client.device=device;client.disconnect=()=>{};
  client.connect=async()=>Object.assign(client,{device,ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:8,sdkRevision:identity,config:{model:5}});
  const calls=[];client.operation=async fn=>fn();client.initialize=async()=>{};
  client.request=async(bytes,match)=>{calls.push(bytes[0]);const reply=Uint8Array.of(0x70,bytes[1],1,state,error,5,...new Uint8Array(22));
-   const v=new DataView(reply.buffer);v.setUint32(8,6,true);v.setUint32(24,123,true);assert.ok(match(reply));return reply;};
+   const v=new DataView(reply.buffer);v.setUint32(8,6,true);v.setUint32(24,crc,true);assert.ok(match(reply));return reply;};
  const progress=[],result=SdkOTA.confirmBoot(client,receipt,n=>progress.push(n));
- if(identity===6 && state===0 && error===0){assert.equal((await result).revision,6);assert.ok(progress.includes(100));}
- else{await assert.rejects(result,/重启后的固件内容尚未确认/);assert.ok(!progress.includes(100));}
+ if(identity===6 && state===0 && error===0 && crc===receipt.crc){
+   assert.equal((await result).revision,6);assert.ok(progress.includes(100));
+   assert.deepEqual(messages,["重启读回：JD79668 · SDK 6 · CRC32 0000007B"]);
+ }else{await assert.rejects(result,/重启后的固件内容尚未确认/);assert.ok(!progress.includes(100));assert.deepEqual(messages,[]);}
  assert.deepEqual(calls,identity===6?[0x60]:[]);
 });
 test('SDK layout refusals identify the reporting firmware and only probe old BEGIN failures',async()=>{
@@ -186,6 +215,12 @@ test('SDK layout refusals identify the reporting firmware and only probe old BEG
      error.message.startsWith('SDK '+revision+' · JD79668') && expected.test(error.message));
    assert.deepEqual(calls,gallery?[op,'gallery']:[op]);
  }
+});
+
+test('SDK error inspection only reads status and retains diagnostic bytes without clearing failure',async()=>{
+ const calls=[],client={ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:8,config:{model:5},nextSequence:()=>23,operation:async fn=>fn(),
+  async request(bytes,match){calls.push(...bytes);const reply=new Uint8Array(28);reply.set([0x70,23,1,7,5,5]);const v=new DataView(reply.buffer);v.setUint16(6,3000,true);v.setUint32(8,12,true);v.setUint32(20,218684,true);assert.ok(match(reply));return reply;}};
+ const state=await SdkOTA.inspect(client);assert.deepEqual(calls,[0x60,23]);assert.equal(state.state,7);assert.equal(state.error,5);assert.equal(state.received,0);assert.equal(state.reply.length,56);assert.match(SdkOTA.describe(state),/3000 mV/);
 });
 
 test('SDK 12 reads the restored address and verifies the selected screen without asking for a MAC',async()=>{
@@ -214,4 +249,28 @@ test('SDK 12 reads the restored address and verifies the selected screen without
  await assert.rejects(SdkOTA.confirmRestoredAddress(client,{...original,crc:1}),/尚未确认/);
  assert.equal((await SdkOTA.confirmRestoredAddress(client,original)).runningCrc,original.crc);
  assert.equal(reads,2);
+});
+test('missing consent and already-current v32 never send DFU control/data',async()=>{
+ const a=peripheral(5,14);await assert.rejects(a.client.ota(await parsed,{}),/确认目标/);assert.equal(a.commands.length,0);
+ const b=peripheral(5,32);await assert.rejects(b.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(b.commands.length,0);assert.equal(b.device.gatt.connected,true);
+});
+for(const current of [1,2,15,18,20,23,27])test(`unsupported v${current} stops before any device command`,async()=>{
+ const r=peripheral(5,current);await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);assert.equal(r.device.gatt.connected,true);
+});
+for(const current of [14,24,28,31])test(`v${current}: non-quiet receiver prevents the next write without replay`,async()=>{
+ const r=peripheral(5,current,{badQuiet:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.deepEqual(r.received.map(p=>p.revision),current===31?[]:[31]);assert.equal(r.device.gatt.connected,true);
+});
+test('missing pause acknowledgments fails before DFU writes',async()=>{
+ const r=peripheral(5,14,{noStatus:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
+});
+for(const current of [3,5,8,10,14,16,19,21,24,28])test(`direct v${current} to hardened v32 cannot bypass its matching v31`,async()=>{
+ const r=peripheral(5,current);await assert.rejects(r.client.ota((await parsed).models[5].legacy[1],consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
+});
+for(const current of [3,5,8])test(`v${current} pause failure stops before any DFU control or data write`,async()=>{
+ const r=peripheral(5,current,{pauseFailure:true});await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.equal(r.commands.length,0);assert.equal(r.received.length,0);assert.equal(r.device.gatt.connected,true);
+});
+test('a confirmed Flash rejection keeps Bluetooth connected and never retries the rejected write',async()=>{
+ const r=peripheral(5,31),service=await r.device.gatt.getPrimaryService(),control=await service.getCharacteristic(OTA.CONTROL),original=control.writeValueWithResponse;
+ control.writeValueWithResponse=async b=>{if(b[0]===1){r.commands.push([...b]);const reply=Uint8Array.of(0x60,1,132);control.value=new DataView(reply.buffer);for(const waiter of [...r.client.pending])if(waiter.match(reply))waiter.resolve(reply);}else await original(b);};
+ await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.filter(b=>b[0]===1).length,1);assert.equal(r.device.gatt.connected,true);assert.equal(r.client.pending.size,0);assert.equal(r.received.length,0);
 });

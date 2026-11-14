@@ -6,6 +6,7 @@ const OMProtocol = (() => {
   const MARKER = "BOARD_ZKWEB";
   const OTA_MARKER = "BOARD_ELINK";
   const SDK_MARKER = "BOARD_ELSDK";
+  const ONMICRO_DFU_SERVICE = "000001bf-5f00-0000-0000-4f4d2d4f5441";
   const sdkBoard = board => board?.id === 1 && board.name === SDK_MARKER;
   const independentBoard = board => board?.id === 1 && [MARKER, "BOARD_ZKOTA", OTA_MARKER, SDK_MARKER].includes(board.name);
   const WIDTH = 400, HEIGHT = 300, PLANE_BYTES = 15000;
@@ -176,6 +177,6 @@ const OMProtocol = (() => {
     });
     return bytes;
   }
-  return {SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
+  return {SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
     planes, rgba, integer, crc16, remarkBytes, remarkText, storage, metadata, imageBytes, rotation, holidays};
 })();

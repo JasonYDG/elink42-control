@@ -3,8 +3,94 @@ const {test}=require("node:test"), assert=require("node:assert/strict");
 const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm"),zlib=require("node:zlib");
 const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,"..");
 const ctx={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,console};
-const {P,F,A}=vm.runInNewContext(["i18n.js","charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";OMI18n.setLanguage('zh');({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
+const {P,F,A}=vm.runInNewContext(["i18n.js","holidays.js","charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";OMI18n.setLanguage('zh');({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
 const plain=value=>JSON.parse(JSON.stringify(value));
+async function calendarFont(fetcher) {
+ const font=vm.runInNewContext(fs.readFileSync(path.join(root,'calendar-font.js'),'utf8')+';OMCalendarFont',{
+  document:{currentScript:{src:'https://elink.test/calendar-font.js'}},URL,Response,DecompressionStream,
+  fetch:fetcher|| (async url=>new Response(fs.readFileSync(path.join(root,new URL(url).pathname.slice(1)))))
+ });
+ await Promise.all([font.load(10),font.load(12)]);return font;
+}
+function pixelCanvas() {
+ const pixels=new Uint8ClampedArray(480000).fill(255),colors={white:[255,255,255],black:[0,0,0],'#000':[0,0,0],'#fff':[255,255,255],'#b81928':[184,25,40],'#ffd200':[255,210,0]};
+ const drawing={fillStyle:'black',fillRect(x,y,w,h){assert.ok([x,y,w,h].every(Number.isInteger));assert.ok(x>=0&&y>=0&&x+w<=400&&y+h<=300,JSON.stringify({x,y,w,h}));const c=colors[this.fillStyle];assert.ok(c,this.fillStyle);for(let row=y;row<y+h;row++)for(let col=x;col<x+w;col++)pixels.set([...c,255],(row*400+col)*4);},fillText(){throw Error('Browser text must not draw the stock screen');}};
+ return {pixels,drawing,getContext:()=>drawing};
+}
+
+test('A-share refresh windows use Beijing time, verified closures and never open make-up weekends',()=>{
+ const session=time=>F.stockSession(new Date('2026-11-13T'+time+'+08:00'));
+ for(const [time,open] of [['09:14:59',false],['09:15:00',true],['09:24:59',true],['09:25:00',false],['09:30:00',true],['11:29:59',true],['11:30:00',false],['12:59:59',false],['13:00:00',true],['14:57:00',true],['14:59:59',true],['15:00:00',false]])assert.equal(session(time).open,open,time);
+ assert.equal(session('11:30:00').phase,'午间休市');assert.equal(session('14:57:00').phase,'收盘竞价');
+ for(const date of ['2026-02-14','2026-02-23','2026-10-01','2026-10-10','2026-11-14'])assert.equal(F.stockSession(new Date(date+'T10:00:00+08:00')).open,false,date);
+ assert.equal(F.stockSession(new Date('2027-01-04T10:00:00+08:00')).known,false);
+ assert.equal(F.stockSession(new Date('2026-11-13T01:30:00-05:00')).open,true);
+});
+
+test('stock change and previous close are real optional quote fields and retain old backups',()=>{
+ const fields=Array(33).fill('');Object.assign(fields,{1:'上证指数',2:'000001',3:'3200',4:'3250',30:'20261113113000',31:'-50',32:'-1.54'});
+ const q=F.stockTencent('v_sh000001="'+fields.join('~')+'";',['sh000001']).quotes[0];assert.equal(q.change,-50);assert.equal(q.prevClose,3250);
+ const state={symbols:['sh000001'],quotes:[q],updated:'2026-11-13T03:30:00Z',stale:false};assert.equal(F.stockState(state).quotes[0].change,-50);
+ const legacy=plain(state);delete legacy.quotes[0].change;delete legacy.quotes[0].prevClose;assert.equal(F.stockState(legacy).quotes.length,1);
+ assert.throws(()=>F.stockState({...state,quotes:[{...q,prevClose:-1}]}));
+});
+
+test('stock rendering uses calendar glyphs, controlled rise colors and unknown reference values',async()=>{
+ const drawn=[],drawing={fillRect(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},measureText:text=>({width:String(text).length*7}),fillText(text,x,y){drawn.push({text,x,y,color:this.fillStyle});}};
+ const font=await calendarFont(),tracked={...font,draw(ctx,text,x,y,...rest){drawn.push({text,x,y,color:ctx.fillStyle,scale:rest[0]??1,size:rest[2]??12});font.draw(ctx,text,x,y,...rest);}};
+ const renderer=vm.runInNewContext(fs.readFileSync(path.join(root,'render.js'),'utf8')+';OMRender',{OMFeatures:F,OMCalendarFont:tracked,Date});
+ await renderer.stockCalendar({getContext:()=>drawing},{quotes:[{symbol:'sh600000',name:'示例',price:10,change:0.001,changePercent:0,time:'2026-11-13 10:00:00'},{symbol:'sz000001',name:'未知昨收',price:20,prevClose:0,changePercent:null,time:'2026-11-13 10:00:00'}]},{date:new Date('2026-11-13T10:00:00+08:00'),deviceName:'ELINK42-TEST',millivolts:2940});
+ assert.equal(drawn.find(row=>row.text==='10.00').color,'#000');assert.equal(drawn.find(row=>row.text==='20.00').x,220);assert.equal(drawn.find(row=>row.text==='+0.00').color,'#b81928');
+ assert.ok(drawn.some(row=>row.text==='—'&&row.x===309&&row.color==='#000'));assert.ok(drawn.some(row=>row.text==='ELINK42-TEST'));assert.ok(drawn.some(row=>row.text==='2.94 V'));
+ assert.ok(drawn.some(row=>row.text==='涨跌额'));assert.ok(!drawn.some(row=>row.text==='1'||row.text==='2'));
+ assert.ok(!drawn.some(row=>row.text.includes('指数·点')||row.text.includes('11-13 10:00:00')));
+ for(const text of ['2026.11.13','周五 10:00 更新','ELINK42-TEST','2.94 V']){const row=drawn.find(row=>row.text===text);assert.ok(row,text);assert.equal(row.size,12);assert.equal(row.scale,1);}
+ assert.equal(drawn.find(row=>row.text==='ELINK42-TEST').y,283);assert.equal(drawn.find(row=>row.text==='2.94 V').y,283);
+ assert.equal(drawn.find(row=>row.text==='股票行情').size,10);assert.equal(drawn.find(row=>row.text==='股票行情').scale,2);
+});
+
+test('12px stock glyph pixels match the actual C calendar renderer',async()=>{
+ const font=await calendarFont(),canvas=pixelCanvas(),engine=(await WebAssembly.instantiate(fs.readFileSync(path.join(root,'sdk-preview.wasm')),{})).instance.exports;
+ const label='日历0123456789',name=new Uint8Array(engine.memory.buffer,engine.preview_name(),20);name.fill(0);new TextEncoder().encodeInto(label,name);
+ const address=engine.preview_render(2026,11,13,0,2,5,2930),native=P.rgba({packed:new Uint8Array(engine.memory.buffer,address,30000).slice()});
+ font.draw(canvas.drawing,label,11,283);
+ for(let y=283;y<295;y++)for(let x=11;x<95;x++){const i=(y*400+x)*4;assert.equal(canvas.pixels[i],native[i],`${x},${y}`);}
+ for(const c of '上证指数深证成指创业板指平安银行贵州茅台中信证券')assert.equal(font.measure(c),12,c);
+ assert.equal(font.measure('𠮷'),font.measure('?'));assert.ok(font.measure(font.fit('东方财富证券股份有限公司',104,2,10),2,10)<=104);
+});
+
+test('stock reference layout fits three to five rows with exact panel colors and full footers',async()=>{
+ const font=await calendarFont(),renderer=vm.runInNewContext(fs.readFileSync(path.join(root,'render.js'),'utf8')+';OMRender',{OMFeatures:F,OMCalendarFont:font,Date});
+ const names=['上证指数','深证成指','创业板指','平安银行','东方财富证券股份有限公司'];
+ for(const count of [0,3,4,5])for(const model of [2,5]){
+  const canvas=pixelCanvas(),quotes=names.slice(0,count).map((name,i)=>({symbol:'sh60000'+i,name,price:i===1?10953.71:3629.28,change:i===3?0.28:-244.27,changePercent:i===3?2.37:-2.18,time:'2026-11-13 14:37:03'}));
+  await renderer.stockCalendar(canvas,{quotes},{model,date:new Date('2026-11-13T14:40:00+08:00'),deviceName:'FONT-TEST',millivolts:2930});
+  const packed=P.planes(canvas.pixels,false,model),roundtrip=P.rgba(packed);
+  assert.deepEqual(roundtrip,canvas.pixels);const i=(58*400+12)*4;assert.equal(canvas.pixels[i],0);
+  const sample=(y,x)=>[...canvas.pixels.slice((y*400+x)*4,(y*400+x)*4+3)];
+  assert.deepEqual(sample(51,12),model===5?[255,210,0]:[0,0,0]);
+  if(count>=4)assert.deepEqual(sample(84+3*Math.min(63,Math.floor(181/count))+5,312),model===5?[255,210,0]:[255,255,255]);
+ }
+});
+
+test('monochrome packing cannot turn antialiased gray into red on either panel',()=>{
+ const pixels=new Uint8ClampedArray(480000).fill(255);
+ for(let i=0;i<120000;i++){const value=i%256;pixels.set([value,value,value,255],i*4);}pixels.set([0,0,0,0]);
+ const bw=F.monochrome(pixels);assert.equal(bw[0],255);
+ for(const model of [2,5]){const frame=P.planes(bw,false,model),roundtrip=P.rgba(frame);for(let i=0;i<roundtrip.length;i+=4){assert.ok(roundtrip[i]===0||roundtrip[i]===255);assert.equal(roundtrip[i],roundtrip[i+1]);assert.equal(roundtrip[i],roundtrip[i+2]);}}
+ assert.throws(()=>F.monochrome(new Uint8ClampedArray(4)));
+});
+
+test('A-share quote parsing preserves nulls and source times and rejects malformed or incomplete results',()=>{
+  assert.deepEqual(plain(F.stockSymbols('SH000001, sz000001 bj920001')),['sh000001','sz000001','bj920001']);
+  for(const value of ['', '000001','usAAPL','sh000001,sh000001','sh000001&key=secret'])assert.throws(()=>F.stockSymbols(value));
+  const fields=Array(33).fill('');Object.assign(fields,{1:'上证指数',2:'000001',3:'',30:'20261113113000',32:''});
+  const text='v_sh000001="'+fields.join('~')+'";',state=F.stockTencent(text,['sh000001']);
+  assert.equal(state.quotes[0].price,null);assert.equal(state.quotes[0].time,'2026-11-13 11:30:00');
+  const data=F.defaults();data.stocks=state;const before=JSON.stringify(data);assert.equal(F.validate(data).stocks.quotes[0].name,'上证指数');
+  for(const bad of ['',text+'\n'+text,text.replace('v_sh','v_sz'),text.replace('20261113113000','20260230113000'),text.replace('~000001~~','~000001~oops~'),'x'.repeat(32001)])assert.throws(()=>F.stockTencent(bad,['sh000001']));
+  assert.equal(JSON.stringify(data),before);assert.throws(()=>F.validate({...data,settings:{...data.settings,stockInterval:1}}));
+});
 
 test('built-in wallpapers exclude the reported error screenshot and retain stable image IDs',()=>{
   const rows=vm.runInNewContext(fs.readFileSync(path.join(root,'wallpapers.js'),'utf8')+';OMWallpapers');
