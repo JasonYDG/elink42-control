@@ -80,6 +80,7 @@
       $("sdk-ota-bundled").disabled=!ready || !panel || !Number.isInteger(client.sdkRevision) || client.sdkRevision>revision;
       const label=client.ready && client.sdkRevision>revision?"设备版本高于内置包":client.ready && client.sdkRevision===revision?"重新刷入内置":"刷入内置";
       $("sdk-ota-bundled").textContent=OMI18n.t(label)+" SDK "+revision+(panel?" · "+panel:"");
+      $("sdk-ota-power-hint").textContent=client.ready && sdkSupported?`当前 SDK ${client.sdkRevision} 的 OTA 门限为 ${(OMSdkOTA.minimumMillivolts(client.sdkRevision)/1000).toFixed(2)} V。SDK19起支持2.80 V；SDK2–18的本次升级仍需达到旧固件的2.90 V。`:"SDK19起 OTA 门限为2.80 V；SDK2–18仍为2.90 V。门限由当前设备固件决定，升级后会核对版本和运行镜像。";
       $("sdk-ota-start").disabled=!ready || !sdkPackage || !$("sdk-ota-consent").checked;
       $("sdk-ota-abort").disabled=!ready;
       $("sdk-ota-inspect").disabled=!ready;

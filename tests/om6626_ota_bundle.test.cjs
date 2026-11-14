@@ -223,6 +223,31 @@ test('SDK error inspection only reads status and retains diagnostic bytes withou
  const state=await SdkOTA.inspect(client);assert.deepEqual(calls,[0x60,23]);assert.equal(state.state,7);assert.equal(state.error,5);assert.equal(state.received,0);assert.equal(state.reply.length,56);assert.match(SdkOTA.describe(state),/3000 mV/);
 });
 
+test('SDK15 flash error retains its raw code and explains a below-threshold voltage',async()=>{
+ const client={config:{model:5},nextSequence:()=>23,async request(bytes,match){
+  const reply=new Uint8Array(28);reply.set([0x70,23,1,7,5,5]);const v=new DataView(reply.buffer);
+  v.setUint16(6,2899,true);v.setUint32(8,15,true);assert.ok(match(reply));return reply;
+ }};
+ await assert.rejects(SdkOTA.request(client,0x60),error=>error.otaState.error===5 && error.otaState.millivolts===2899 && /2\.899 V.*2\.90 V.*尚不能.*闪存故障/.test(error.message));
+});
+
+for(const [revision,mv,afterInit,allowed] of [[15,2899,2899,false],[18,2800,2800,false],[19,2799,2799,false],[19,0,0,false],[15,3000,2899,false],[19,2800,2800,true],[19,2899,2899,true]])test(`SDK${revision} OTA voltage ${mv}/${afterInit}: current receiver decides the threshold`,async()=>{
+ let voltage=mv,state=0,received=0,sequence=0;const calls=[],image=Uint8Array.of(1,2,3,4),crc=SdkOTA.crc32(image);
+ const client={board:{id:1,name:P.SDK_MARKER},sdkCapabilities:9,sdkRevision:revision,ready:true,device:{gatt:{connected:true}},config:{model:5},payload:180,reportedPayload:180,deviceInfoSupported:true,
+  operation:async fn=>fn(),update(){},pause:async()=>{},nextSequence:()=>++sequence,
+  async readDeviceInfo(){calls.push('readVoltage');return {millivolts:voltage}},
+  async waitForDisplay(){calls.push('wait')},async initialize(){calls.push('initialize');voltage=afterInit},
+  async request(bytes,match){const op=bytes[0];calls.push(op);
+   if(op===0x61)state=3;if(op===0x62)received=image.length;if(op===0x63)state=5;if(op===0x64)state=6;
+   const reply=new Uint8Array(28);reply.set([0x70,bytes[1],1,state,0,5]);const v=new DataView(reply.buffer);
+   v.setUint16(6,voltage,true);v.setUint32(8,revision,true);v.setUint32(12,received,true);v.setUint32(16,received?crc:0,true);v.setUint32(20,image.length,true);assert.ok(match(reply));return reply;
+  }};
+ const pkg={model:5,revision:19,size:image.length,image,header:new Uint8Array(64),crc};
+ if(allowed){assert.equal((await SdkOTA.transfer(client,pkg,()=>{})).revision,19);assert.equal(calls.filter(op=>op===0x61).length,1);assert.equal(state,6);}
+ else {await assert.rejects(SdkOTA.transfer(client,pkg,()=>{}),/电压|实测/);assert.ok(!calls.includes(0x61));if(mv<2800 || revision<19&&mv<2900)assert.ok(!calls.includes('initialize'));}
+ assert.equal(client.otaActive,false);assert.equal(SdkOTA.minimumMillivolts(revision),revision>=19?2800:2900);
+});
+
 test('SDK 12 reads the restored address and verifies the selected screen without asking for a MAC',async()=>{
  const device={name:"ELINK42-4CD854",gatt:{connected:true}}, client=new Client();
  Object.assign(client,{device,ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:9,sdkRevision:12,config:{model:5}});

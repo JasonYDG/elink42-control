@@ -18,6 +18,12 @@ const OMSdkOTA=(()=>{
     return {model,revision,size,crc,header:bytes.slice(0,64),image,sha256:Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("")};
   }
   function supported(client){return OMProtocol.sdkBoard(client.board) && !!(client.sdkCapabilities&8);}
+  const minimumMillivolts=revision=>revision>=19?2800:2900;
+  function requireVoltage(mv,revision){
+    if(!mv)throw failure("未能读取有效电压，没有开始升级。请检查供电后重新读取设备信息。");
+    const minimum=minimumMillivolts(revision);
+    if(mv<minimum)throw failure(`当前 SDK ${revision} 实测 ${(mv/1000).toFixed(3)} V，最低 ${(minimum/1000).toFixed(2)} V；没有开始擦写。`);
+  }
   async function request(client,op,data=[],allowFailed=false){
     const device=client.device;
     const seq=client.nextSequence(),bytes=Uint8Array.of(op,seq,...data);
@@ -36,13 +42,14 @@ const OMSdkOTA=(()=>{
         try{await client.storageState(false);reason=10;}
         catch(error){if(error.code==="DISPLAY_NOT_READY")reason=9;}
       }
-      const message=({1:"电压不足 2.90 V，升级已停止。请更换电池或稳定供电后重试。",
+      let message=({1:`电压低于当前固件的 ${(minimumMillivolts(value.revision)/1000).toFixed(2)} V 门限，升级已停止。请稳定供电后重试。`,
       2:"升级包或当前状态不匹配，已停止。",3:"暂存区或启动记录不兼容，旧数据已保留。请先备份并核对布局。",
       4:"升级数据位置不一致，已停止发送；不会自动重传。",5:"闪存写入或读回失败，升级已停止。",
       6:"设备核对镜像失败，原应用仍保留。",7:"升级提交未确认，请核对设备状态，不要重复提交。",
       8:"升级等待超时，已停止。请重新连接并核对状态。",9:"设备无法挂载内部图库，升级已停止。请保留已有图片和操作记录。",
       10:"设备未确认可用的升级分区或启动记录，已在擦除前停止。",
       11:"升级暂存区已有数据，已在擦除前停止。请先备份设备数据。"}[reason]||"设备升级出错，操作已停止。");
+      if(reason===5 && value.millivolts>0 && value.millivolts<minimumMillivolts(value.revision))message=`设备返回闪存错误，同时实测 ${(value.millivolts/1000).toFixed(3)} V 低于当前 ${(minimumMillivolts(value.revision)/1000).toFixed(2)} V 门限；旧固件可能覆盖了低压错误，尚不能据此判定闪存故障。请稳定供电后核对。`;
       const error=failure(`SDK ${value.revision} · ${value.model===2?"SSD1619":"JD79668"} · ${OMI18n.t(message)}`);error.otaState=client.sdkOtaState;throw error;
     }
     return value;
@@ -71,10 +78,13 @@ const OMSdkOTA=(()=>{
       client.otaActive=true;client.update();
       let phase='开始前检查';
       try{
+        if(client.deviceInfoSupported){
+          const info=await client.readDeviceInfo();requireVoltage(info?.millivolts,client.sdkRevision);
+        }
         await client.waitForDisplay();await client.initialize();
         if(client.payload<66 || client.reportedPayload<28)throw failure("本连接传输容量不足，请使用支持 MTU 协商的浏览器重新连接。");
         const before=await request(client,0x60,[],true);
-        if(before.millivolts<2900)throw failure("电压不足 2.90 V，没有开始升级。");
+        requireVoltage(before.millivolts,before.revision);
         if(before.state!==0 && before.state!==7)throw failure("设备有未结束的升级，请先核对状态或手动取消。");
         if(before.state===7)client.log?.('已读取上次未提交的失败记录；本次点击开始新的升级。');
         phase='准备暂存区';await request(client,0x61,pkg.header);await wait(client,3,progress);
@@ -128,5 +138,5 @@ const OMSdkOTA=(()=>{
     progress?.(100,OMI18n.t("升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
   async function abort(client){return client.operation(async()=>{const state=await request(client,0x65);if(state.state!==0)throw failure("升级已经提交，不能取消。请等待重启并核对设备。");return state;});}
-  return {parse,crc32,supported,request,transfer,confirmBoot,confirmRestoredAddress,abort,inspect,describe};
+  return {parse,crc32,supported,minimumMillivolts,request,transfer,confirmBoot,confirmRestoredAddress,abort,inspect,describe};
 })();

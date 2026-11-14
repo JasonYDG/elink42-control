@@ -87,12 +87,12 @@ const OMScreen = (() => {
     context=tab;if(!hooks)return;
     const type=tab==="calendar"?"calendar":tab==="photo-calendar"?"photo":tab==="course"?$("school-view").value:tab==="todo"?"reminder":tab==="stock"?"stock":null;
     if(type && type!==$("screen-content").value){$("screen-content").value=type;if(type==="stock")$("screen-update").value="snapshot";else if(type==="reminder")$("screen-update").value="auto";persist();}
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.10";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.11";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.10";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.11";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -109,7 +109,7 @@ const OMScreen = (() => {
     if(!file || file.size>6000000)throw Error("请选择不超过6MB的方案 JSON 文件");
     if(tableDirty)throw Error("请先保存课表表格再导入方案");
     const next=parse(JSON.parse(await file.text()),capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.10";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.11";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
