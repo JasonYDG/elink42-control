@@ -80,7 +80,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:url=>(fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>new TextEncoder().encode(String(value)).buffer});})),
+    fetch:url=>(fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer});})),
     Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
@@ -170,22 +170,42 @@ test('unverified trading years suspend automation until the calendar is updated'
  assert.equal(u.fetchCount(),0);assert.match(u.get('stock-timer-state').textContent,/更新交易日历后恢复/);await u.click('stock-stop');
 });
 
-for(const model of [2,5])test("v34 reconnect reports missing vendor DFU for panel "+model,async()=>{
+for(const model of [2,5])for(const revision of [33,34])test(`UI model ${model} v${revision}: migration requires consent and cancellation sends no upgrade commands`,async()=>{
+  const u=ui(model,true,'zh',true,{revision,confirm:false});await u.click('connect');
+  assert.equal(u.get('ota-migration').disabled,false);assert.equal(u.get('sdk-ota-bundled').disabled,true);
+  const before=u.packets.length,pending=u.click('ota-migration');
+  assert.equal(u.lastFetchURL(),'firmware/elink42-v33-sdk19-migration.zip');
+  u.respond(fs.readFileSync(path.join(root,'firmware/elink42-v33-sdk19-migration.zip')));await pending;
+  assert.match(u.get('ota-package').textContent,/33 → 34 → SDK 19/);
+  assert.equal(u.get('ota-start').disabled,true);u.get('ota-consent').checked=true;
+  await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
+  await u.click('ota-start');assert.match(u.get('result').textContent,/已取消 OTA/);
+  assert.match(u.confirmations.at(-1),revision===33?/v33 → 专用 v34 → SDK19/:/只执行 SDK19 第二段/);
+  assert.equal(u.packets.length,before);assert.equal(u.device.gatt.connected,true);
+});
+for(const model of [2,5])test(`UI model ${model}: SDK19 retains its own OTA panel and rejects the legacy migration loader`,async()=>{
+  const u=ui(model,false,'zh',true,{sdkRevision:19});await u.click('connect');
+  assert.equal(u.get('legacy-ota-content').hidden,true);assert.equal(u.get('sdk-ota-panel').hidden,false);
+  assert.equal(u.get('ota-migration').disabled,true);const before=u.packets.length;
+  await u.click('ota-migration');assert.match(u.get('result').textContent,/v33 或专用 v34/);
+  assert.equal(u.fetchCount(),0);assert.equal(u.packets.length,before);
+});
+
+for(const model of [2,5])test("v34 reconnect verifies the retained FE59 receiver for panel "+model,async()=>{
   const u=ui(model,true,'zh',true,{revision:34,voltage:3000});
   const service=u.device.gatt.getPrimaryService;
   let probes=0;
   u.device.gatt.getPrimaryService=async id=>{
-    if(id==='000001bf-5f00-0000-0000-4f4d2d4f5441'){
-      probes++;throw Object.assign(Error(),{name:'NotFoundError'});
-    }
+    if(id==='000001bf-5f00-0000-0000-4f4d2d4f5441')probes++;
     return service(id);
   };
   await u.click('connect');
-  assert.equal(probes,1);
-  assert.match(u.get('ota-service').textContent,new RegExp((model===2?'SSD1619':'JD79668')+' · v34 · 未发现昂瑞微 DFU'));
+  assert.equal(probes,0);
+  assert.match(u.get('ota-service').textContent,new RegExp((model===2?'SSD1619':'JD79668')+' · v34 · V 系列 FE59 接收器已确认'));
+  assert.equal(u.get('ota-migration').disabled,false);
   assert.equal(u.get('sdk-ota-bundled').disabled,true);
   await u.click('ota-inspect');
-  assert.equal(probes,2);
+  assert.equal(probes,0);
   assert.ok(u.device.gatt.connected);
 });
 
@@ -296,7 +316,7 @@ for(const model of [2,5])test(`v33 model ${model} still starts its calendar afte
 for(const revision of [33,34])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
-  if(revision===33)assert.match(u.get('ota-capability').textContent,/没有.*SDK 6/);
+  if(revision===33)assert.match(u.get('ota-capability').textContent,/V33→SDK19.*无需线刷.*不经过 SDK8/);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 for(const model of [2,5])for(const revision of [30,32])test(`UI model ${model} v${revision}: built-in v33 matches the connected panel and requires consent`,async()=>{

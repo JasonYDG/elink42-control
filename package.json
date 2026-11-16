@@ -1,0 +1,9 @@
+{
+  "name": "elink42-control",
+  "version": "0.8.12",
+  "private": true,
+  "scripts": {
+    "dev": "python tools/serve_local.py",
+    "test": "python tools/build_site.py && node --test tests/*.test.cjs"
+  }
+}

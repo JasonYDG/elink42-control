@@ -6,6 +6,7 @@ const {OTA,SdkOTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh
  TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,crypto:require('node:crypto').webcrypto,
  setTimeout:(f,ms)=>setTimeout(f,ms===2000||ms===2500?0:ms),clearTimeout,console,navigator:{}});
 const bytes=Buffer.from(F.legacy.packages[2].data,'base64'),parsed=OTA.parse(bytes);
+const migrationBytes=fs.readFileSync(path.join(root,'firmware','elink42-v33-sdk19-migration.zip')),migrationParsed=OTA.parse(migrationBytes);
 
 test('v34 probes only the OnMicro version characteristic and never authorizes SDK writing',async()=>{
   for(const model of [2,5]){
@@ -57,7 +58,7 @@ function peripheral(model,current,options={}){
  const checksum=()=>{const b=new Uint8Array(8),v=new DataView(b.buffer);v.setUint32(0,offset,true);v.setUint32(4,crc,true);return b;};
  const control={properties:{write:true,notify:true},addEventListener(k,f){controlListener=f;},removeEventListener(){controlListener=null;},async startNotifications(){},async writeValueWithResponse(b){
   commands.push([...b]);const op=b[0];
-  if(op===6){type=b[1];offset=crc=count=0;const v=new Uint8Array(12);new DataView(v.buffer).setUint32(0,type===1?104:238532,true);reply(op,v);}
+  if(op===6){type=b[1];offset=crc=count=0;const v=new Uint8Array(12);new DataView(v.buffer).setUint32(0,type===1?104:current===34?224220:238532,true);reply(op,v);}
   else if(op===1){offset=crc=count=0;if(type===1)command=[];else image=[];reply(op);}
   else if(op===2){prn=b[1];reply(op);}
   else if(op===3)reply(op,checksum());
@@ -84,6 +85,68 @@ function peripheral(model,current,options={}){
  return {client,device,installed,received,commands,appCommands,log};
 }
 const consent={deviceId:'bundle-target',eraseImages:true};
+
+async function confirmMigratedSdk(r,receipt,options={}){
+ const {client,device}=r;
+ client.connect=async target=>{
+  assert.equal(target,device);Object.assign(client,{device,ready:true,connectCancelled:false,board:{id:1,name:P.SDK_MARKER},sdkRevision:options.revision??19,sdkCapabilities:73,config:{model:receipt.model}});device.gatt.connected=true;
+ };
+ client.initialize=async()=>{};
+ client.request=async(bytes,match)=>{
+  assert.equal(bytes[0],0x60);const reply=new Uint8Array(28);reply.set([0x70,bytes[1],1,options.state??0,options.error??0,receipt.model]);
+  const view=new DataView(reply.buffer);view.setUint32(8,options.revision??19,true);view.setUint32(24,options.crc??receipt.crc,true);assert.ok(match(reply));return reply;
+ };
+ return SdkOTA.confirmBoot(client,receipt,options.progress||(()=>{}));
+}
+
+test('signed migration archive pins both bridge and SDK19 images for both panels',async()=>{
+ const bundle=await migrationParsed;assert.equal(bundle.sdkMigration,true);assert.equal(bundle.source.length,migrationBytes.length);
+ assert.equal(bundle.sha256,require('node:crypto').createHash('sha256').update(migrationBytes).digest('hex'));
+ for(const model of [2,5]){
+  assert.deepEqual([bundle.models[model].bridge.revision,bundle.models[model].sdk.revision],[34,19]);
+  assert.deepEqual([bundle.models[model].bridge.size,bundle.models[model].sdk.size],[238532,224220]);
+  assert.equal(bundle.models[model].sdk.sdkMigration,true);assert.equal(bundle.models[model].sdk.crc,A.crc32(bundle.models[model].sdk.bin));
+ }
+});
+for(const model of [2,5])for(const current of [33,34])test(`model ${model}: v${current} migration transfers only its required stages and verifies SDK19`,async()=>{
+ const bundle=await migrationParsed,r=peripheral(model,current),receipt=await r.client.ota(bundle,consent,()=>{});
+ assert.equal(receipt.sdkMigration,true);assert.equal(receipt.status,'sdk-commit-reboot-pending');assert.equal(receipt.crc,A.crc32(bundle.models[model].sdk.bin));
+ assert.deepEqual(r.received.map(p=>p.revision),current===33?[34,19]:[19]);assert.deepEqual(r.installed,current===33?[34]:[]);
+ assert.equal(r.client.busy,false);assert.equal(r.client.otaActive,false);assert.equal(r.client.pending.size,0);
+ const messages=[],state=await confirmMigratedSdk(r,receipt,{progress:(value,text)=>messages.push([value,text])});assert.equal(state.revision,19);assert.equal(state.runningCrc,receipt.crc);assert.equal(state.state,0);assert.equal(state.error,0);
+ assert.deepEqual(messages.at(-1),[100,'迁移完成，已读回版本及应用 CRC；内部图库已清空。']);
+});
+for(const model of [2,5])test(`model ${model}: the other panel's SDK migration image is refused before any write`,async()=>{
+ const bundle=await migrationParsed,r=peripheral(model,34);
+ await assert.rejects(OTA.transfer(r.client,bundle.models[model===2?5:2].sdk,consent),/屏型不匹配/);
+ assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);assert.equal(r.received.length,0);
+});
+test('migration archive rejects extra files, swapped panels and changed routing metadata',async()=>{
+ for(const mutate of [f=>f.set('extra',Uint8Array.of(1)),f=>f.set('model2-sdk19.zip',f.get('model5-sdk19.zip')),f=>f.delete('model5-v34.zip'),f=>{
+  const manifest=JSON.parse(new TextDecoder().decode(f.get('manifest.json')));manifest.target_revision=20;f.set('manifest.json',new TextEncoder().encode(JSON.stringify(manifest)));
+ }]){const files=await A.unzip(migrationBytes);mutate(files);await assert.rejects(OTA.parse(storedZip(files)),/迁移包|整合 OTA/);}
+});
+for(const current of [1,32,35])test(`unsupported migration start v${current} sends no command`,async()=>{
+ const r=peripheral(5,current);await assert.rejects(r.client.ota(await migrationParsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
+});
+for(const current of [33,34])test(`migration low voltage at v${current} stops before erasing`,async()=>{
+ const r=peripheral(2,current,{voltage:2899});await assert.rejects(r.client.ota(await migrationParsed,consent),e=>e.code==='OTA_PRECHECK');
+ assert.equal(r.commands.length,0);assert.equal(r.received.length,0);assert.equal(r.device.gatt.connected,true);
+});
+test('migration first restart mismatch stops before SDK19',async()=>{
+ const r=peripheral(5,33,{badBoot:34});await assert.rejects(r.client.ota(await migrationParsed,consent),/版本不匹配/);
+ assert.deepEqual(r.received.map(p=>p.revision),[34]);assert.equal(r.installed[0],33);
+});
+test('migration changed target after first restart stops before SDK19',async()=>{
+ const r=peripheral(2,33,{changeTarget:34});await assert.rejects(r.client.ota(await migrationParsed,consent),/目标设备发生变化/);assert.deepEqual(r.received.map(p=>p.revision),[34]);
+});
+test('non-quiet v34 stops before the SDK19 second stage',async()=>{
+ const r=peripheral(5,34,{badQuiet:true});await assert.rejects(r.client.ota(await migrationParsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.equal(r.commands.length,0);
+});
+for(const options of [{revision:18},{crc:1},{state:6},{error:3}])test(`SDK migration final readback rejects ${JSON.stringify(options)} without replay`,async()=>{
+ const r=peripheral(2,34),receipt=await r.client.ota(await migrationParsed,consent);
+ await assert.rejects(confirmMigratedSdk(r,receipt,options),/尚未确认/);assert.deepEqual(r.received.map(p=>p.revision),[19]);
+});
 
 const futureFixtures=process.env.OM6626_V34_FIXTURES||path.resolve(__dirname,'../../../build/elink42-v33-ota-fixtures');
 for(const model of [2,5])test(`model ${model}: known v34 test image is refused before gallery erase`,{skip:!fs.existsSync(futureFixtures)},async()=>{
