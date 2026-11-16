@@ -7,7 +7,7 @@ for(const revision of [6,8,9,10,12,14,15,16,17,18,19])for(const panel of ['trico
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.12');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,19);assert.equal(Object.keys(manifest.assets).length,280);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.13');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,19);assert.equal(Object.keys(manifest.assets).length,280);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -37,11 +37,19 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
 });
 test("course-menu editor ships all local runtime files and the real Excel template",()=>{
   const html=fs.readFileSync(path.join(site,"timetable.html"),"utf8");
+  const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   for(const [,url] of html.matchAll(/(?:src|href)="([^"]+)"/g)){
     if(url.startsWith("https://"))continue;
     assert.ok(!url.startsWith("/")&&!url.includes(".."),url);
     assert.ok(fs.existsSync(path.join(site,url.split("?")[0])),url);
+    if(/\.(js|css)\?/.test(url)){
+      const [name,query]=url.split('?'),params=new URLSearchParams(query);
+      assert.equal(params.get('v'),manifest.version,url);assert.equal(params.get('h'),manifest.assets[name].slice(0,12),url);
+    }
   }
+  assert.ok(html.indexOf('src="calendar-font.js?')<html.indexOf('src="school-native.js?'));
+  const workbench=fs.readFileSync(path.join(site,'screen-workbench.js'),'utf8');
+  for(const [,version] of workbench.matchAll(/timetable\.html\?embedded=1&v=([\d.]+)/g))assert.equal(version,manifest.version);
   assert.match(html,/id="excel-file"/);assert.match(html,/id="excel-apply"/);
   assert.match(html,/href="timetable-template\.xlsx" download/);
   assert.equal(fs.readFileSync(path.join(site,"timetable-template.xlsx")).subarray(0,2).toString(),"PK");

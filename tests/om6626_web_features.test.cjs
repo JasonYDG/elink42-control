@@ -6,11 +6,14 @@ const ctx={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,Dat
 const {P,F,A}=vm.runInNewContext(["i18n.js","holidays.js","charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";OMI18n.setLanguage('zh');({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
 const plain=value=>JSON.parse(JSON.stringify(value));
 async function calendarFont(fetcher) {
+ // Unit tests record Canvas calls; real font pixels are checked in preview_pixel_ui.py.
+ const browserCalls=[];let fontSize=20,value='';
+ const rasterContext={fillRect(){value='';},fillText(text){value=text;browserCalls.push({text,font:this.font});},measureText(text){fontSize=Number(this.font.match(/([\d.]+)px/)[1]);return {width:fontSize*(text.codePointAt(0)<128?0.5:1)};},getImageData(){const data=new Uint8ClampedArray(96*96*4).fill(255);if(value&&value!==' '){const width=fontSize*(value.codePointAt(0)<128?0.5:1);for(let y=49-fontSize/2;y<47+fontSize/2;y++)for(let x=33;x<31+width;x++)data.set([0,0,0,255],(y*96+x)*4);}return {data};}};
  const font=vm.runInNewContext(fs.readFileSync(path.join(root,'calendar-font.js'),'utf8')+';OMCalendarFont',{
-  document:{currentScript:{src:'https://elink.test/calendar-font.js'}},URL,Response,DecompressionStream,
+  document:{currentScript:{src:'https://elink.test/calendar-font.js'},createElement:()=>({getContext:()=>rasterContext})},URL,Response,DecompressionStream,
   fetch:fetcher|| (async url=>new Response(fs.readFileSync(path.join(root,new URL(url).pathname.slice(1)))))
  });
- await Promise.all([font.load(10),font.load(12)]);return font;
+ await Promise.all([font.load(10),font.load(12)]);return {...font,browserCalls};
 }
 function pixelCanvas() {
  const pixels=new Uint8ClampedArray(480000).fill(255),colors={white:[255,255,255],black:[0,0,0],'#000':[0,0,0],'#fff':[255,255,255],'#b81928':[184,25,40],'#ffd200':[255,210,0]};
@@ -59,17 +62,44 @@ test('12px stock glyph pixels match the actual C calendar renderer',async()=>{
  assert.equal(font.measure('𠮷'),font.measure('?'));assert.ok(font.measure(font.fit('东方财富证券股份有限公司',104,2,10),2,10)<=104);
 });
 
-test('stock reference layout fits three to five rows with exact panel colors and full footers',async()=>{
+test('packed glyphs match screen drawing and preserve layout at each supported scale',async()=>{
+ const font=await calendarFont(),value='学09V .%';
+ for(const size of [10,12])for(const scale of [1,2,3]){
+  const expected=pixelCanvas(),actual=pixelCanvas();font.draw(expected.drawing,value,11,20,scale,'left',size);
+  let x=11;
+  for(const char of value){
+   const g=font.raster(char.codePointAt(0),0,size,scale);
+   assert.ok(g.w<=40&&g.h<=40&&g.x<=16&&g.advance>0);
+   for(let row=0;row<g.h;row++)for(let col=0;col<g.w;col++)if(g.bits[row*g.pitch+(col>>3)]&(128>>(col&7)))actual.drawing.fillRect(x+g.x+col,20+size*scale/2+g.y+row,1,1);
+   x+=g.advance/64;
+  }
+  assert.deepEqual(actual.pixels,expected.pixels,`${size}px at ${scale}x`);
+ }
+ assert.throws(()=>font.raster('𠮷'.codePointAt(0),0),/点阵字库/);
+ assert.throws(()=>font.raster(65,0,12,1.5),/整数倍/);
+});
+
+test('large text requests browser fonts at the target size while small text stays bitmap',async()=>{
+ const font=await calendarFont();font.raster('学'.codePointAt(0),0,12,1);assert.equal(font.browserCalls.length,0);
+ for(const [base,scale] of [[10,2],[12,2],[10,3],[12,3]]){
+  const glyph=font.raster('学'.codePointAt(0),7,base,scale),call=font.browserCalls.at(-1);
+  assert.match(call.font,new RegExp(`${base*scale}px`));assert.match(call.font,/Microsoft YaHei/);assert.equal(glyph.advance,base*scale*64);assert.equal(glyph.face,7);
+ }
+ const count=font.browserCalls.length;assert.equal(font.raster('学'.codePointAt(0),8,12,3).face,8);assert.equal(font.browserCalls.length,count);
+});
+
+test('stock light header fits three to five rows with exact panel colors and full footers',async()=>{
  const font=await calendarFont(),renderer=vm.runInNewContext(fs.readFileSync(path.join(root,'render.js'),'utf8')+';OMRender',{OMFeatures:F,OMCalendarFont:font,Date});
  const names=['上证指数','深证成指','创业板指','平安银行','东方财富证券股份有限公司'];
  for(const count of [0,3,4,5])for(const model of [2,5]){
   const canvas=pixelCanvas(),quotes=names.slice(0,count).map((name,i)=>({symbol:'sh60000'+i,name,price:i===1?10953.71:3629.28,change:i===3?0.28:-244.27,changePercent:i===3?2.37:-2.18,time:'2026-11-13 14:37:03'}));
   await renderer.stockCalendar(canvas,{quotes},{model,date:new Date('2026-11-13T14:40:00+08:00'),deviceName:'FONT-TEST',millivolts:2930});
   const packed=P.planes(canvas.pixels,false,model),roundtrip=P.rgba(packed);
-  assert.deepEqual(roundtrip,canvas.pixels);const i=(58*400+12)*4;assert.equal(canvas.pixels[i],0);
+  assert.deepEqual(roundtrip,canvas.pixels);
   const sample=(y,x)=>[...canvas.pixels.slice((y*400+x)*4,(y*400+x)*4+3)];
+  assert.deepEqual(sample(58,12),[255,255,255]);assert.deepEqual(sample(77,12),[0,0,0]);
   assert.deepEqual(sample(51,12),model===5?[255,210,0]:[0,0,0]);
-  if(count>=4)assert.deepEqual(sample(84+3*Math.min(63,Math.floor(181/count))+5,312),model===5?[255,210,0]:[255,255,255]);
+  if(count>=4)assert.deepEqual(sample(84+3*Math.min(63,Math.floor(181/count))+5,312),[255,255,255]);
  }
 });
 

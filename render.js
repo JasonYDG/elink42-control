@@ -224,16 +224,16 @@ const OMRender = (() => {
     text(session.date.replaceAll("-","."),388,10,1,"right");
     text(`周${weekday} ${times[0]?times[0].slice(11,16):"--:--"} ${stocks?.stale?"缓存":"更新"}`,388,30,1,"right");
     ctx.fillStyle=options.model===2?COLORS.black:COLORS.yellow;ctx.fillRect(12,51,376,2);
-    ctx.fillStyle=COLORS.black;ctx.fillRect(12,58,376,20);ctx.fillStyle="white";text("名称 / 代码",15,62);
+    ctx.fillStyle=COLORS.black;text("名称 / 代码",15,62);
     text("最新",220,62,1,"right");text("涨跌额",309,62,1,"right");text("涨跌幅",386,62,1,"right");
+    ctx.fillRect(12,77,376,1);
     const height=Math.min(63,Math.floor(181/Math.max(quotes.length,1)));
     quotes.forEach((q,i)=>{
       const y=84+i*height,change=q.change??(q.price!==null&&q.prevClose>0?q.price-q.prevClose:null),up=q.changePercent>0;
-      if(up){ctx.fillStyle=COLORS.red;ctx.fillRect(12,y+2,2,height-8);if(options.model!==2){ctx.fillStyle=COLORS.yellow;ctx.fillRect(312,y+5,76,25);}}
-      ctx.fillStyle=COLORS.black;text(font.fit(q.name,100,2,10),15,y,2,"left",10);text(q.symbol,15,y+24,1,"left",10);
+      ctx.fillStyle=COLORS.black;text(font.fit(q.name,100),15,y+3);text(q.symbol,15,y+23,1,"left",10);
       const signed=value=>value==null?"—":`${value>0?"+":""}${value.toFixed(2)}`;
-      const price=q.price===null?"—":q.price.toFixed(2),scale=font.measure(price,2)<=100?2:1,changeText=signed(change),percentText=signed(q.changePercent)+(q.changePercent==null?"":"%");
-      text(price,220,y+5,scale,"right");
+      const price=q.price===null?"—":q.price.toFixed(2),scale=font.measure(price,2,10)<=100?2:1,changeText=signed(change),percentText=signed(q.changePercent)+(q.changePercent==null?"":"%");
+      text(price,220,y+7,scale,"right",10);
       ctx.fillStyle=change>0?COLORS.red:COLORS.black;text(changeText,309,y+7,font.measure(changeText,2,10)<=82?2:1,"right",10);
       ctx.fillStyle=up?COLORS.red:COLORS.black;text(percentText,386,y+7,font.measure(percentText,2,10)<=72?2:1,"right",10);
       ctx.fillStyle=COLORS.black;if(i<quotes.length-1)ctx.fillRect(12,y+height-1,376,1);

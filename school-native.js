@@ -1,7 +1,7 @@
 "use strict";
 const OMSchool = (() => {
   const script = typeof document === "undefined" ? null : new URL(document.currentScript.src);
-  const faces = [[32,1],[16,1],[13,1],[12,1],[11,1],[10,1],[20],[18],[16],[14],[12],[11],[10],[20,0,600],[13,0,600]];
+  const faces = [[10,3],[12,1],[12,1],[12,1],[10,1],[10,1],[10,2],[12,1],[12,1],[12,1],[12,1],[10,1],[10,1],[10,2],[12,1]];
   let enginePromise, cache;
   const none = 65535, encoder = new TextEncoder();
   const minute = value => value ? Number(value.slice(0,2))*60+Number(value.slice(3)) : none;
@@ -14,23 +14,11 @@ const OMSchool = (() => {
     })().catch(error=>{enginePromise=null;throw error;});
     return enginePromise;
   }
-  function font(face) {const [size,numeric,weight]=faces[face];return `${weight||400} ${size}px ${numeric?'"Bahnschrift"':'"Microsoft YaHei"'}, sans-serif`;}
-  function raster(ctx,code,face,style=font(face)) {
-    const value=String.fromCodePoint(code);ctx.fillStyle="#fff";ctx.fillRect(0,0,96,96);
-    ctx.font=style;ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillStyle="#000";ctx.fillText(value,32,48);
-    const advance=Math.round(ctx.measureText(value).width*64),rgba=ctx.getImageData(0,0,96,96).data;
-    let x0=96,y0=96,x1=-1,y1=-1;
-    for(let y=0;y<96;y++)for(let x=0;x<96;x++)if(rgba[(y*96+x)*4]<160){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
-    const w=x1<0?0:x1-x0+1,h=y1<0?0:y1-y0+1,pitch=Math.ceil(w/8),bits=new Uint8Array(h*pitch);
-    if(!advance || advance>4096 || w>40 || h>40 || (code!==32 && !w) || (w && (x0-32 < -16 || x0-32>16 || Math.abs(y0-48)>40)))throw Error("字体无法在设备上显示："+value);
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(rgba[((y+y0)*96+x+x0)*4]<160)bits[y*pitch+(x>>3)]|=128>>(x&7);
-    return {code,face,w,h,pitch,x:w?x0-32:0,y:h?y0-48:0,advance,bits};
-  }
   async function pack({courses,exams=[],examDays={},deviceName=""}) {
     deviceName=CourseTable.deviceInfo({deviceName}).deviceName;
     const week=CourseTable.parseWeek(courses),entries=CourseTable.normalizeExams(exams),policies=CourseTable.normalizeExamDays(examDays);
     const key=JSON.stringify([courses,entries,policies,deviceName]);if(cache?.key===key)return cache.bytes.slice();
-    await Promise.all(faces.map((_,i)=>document.fonts.load(font(i))));await document.fonts.ready;
+    await Promise.all([OMCalendarFont.load(10),OMCalendarFont.load(12)]);
     const strings=[""], names=new Set(week.flat().map(r=>r.subject).concat(entries.map(r=>r.subject))),sets=faces.map(()=>new Set());
     const add=(face,value)=>{for(const char of value)sets[face].add(char.codePointAt(0));};
     for(const name of names){strings.push(name);for(let face=6;face<=11;face++)add(face,name);}
@@ -39,8 +27,7 @@ const OMSchool = (() => {
     add(11,"设备未读取…时间科目课程考试全天按安排上午下午停保留当天明日后 · 年月日一二三四五六0123456789"+deviceName);
     for(let code=32;code<127;code++)sets[11].add(code);
     add(13,"一周课表");add(14,"上午下午 / 晚间0123456789–");
-    const canvas=document.createElement("canvas");canvas.width=96;canvas.height=96;const ctx=canvas.getContext("2d",{willReadFrequently:true});
-    const glyphs=[];sets.forEach((codes,face)=>[...codes].sort((a,b)=>a-b).forEach(code=>glyphs.push(raster(ctx,code,face))));
+    const glyphs=[];sets.forEach((codes,face)=>[...codes].sort((a,b)=>a-b).forEach(code=>glyphs.push(OMCalendarFont.raster(code,face,...faces[face]))));
     const nc=week.flat().length,ne=entries.length,cb=64,eb=cb+nc*8,gb=eb+ne*12,sb=gb+glyphs.length*16;
     let cursor=sb;const offsets=new Map(),encoded=[];
     for(const name of strings){const bytes=encoder.encode(name+"\0");offsets.set(name,cursor);encoded.push([cursor,bytes]);cursor+=bytes.length;}
@@ -141,5 +128,5 @@ const OMSchool = (() => {
     }
     return {slot,source:Number(external),crc:saved.crc,page};
   }
-  return {pack,frame,render,supported,state,apply,engine,raster};
+  return {pack,frame,render,supported,state,apply,engine};
 })();
