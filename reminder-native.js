@@ -2,7 +2,7 @@
 const OMReminder = (() => {
   const encoder=new TextEncoder(),none=65535,daySeconds=86400;
   const fixed="日程提醒项待办月日周一二三四五六还有天今天逾期待安排尚未设置日期其他提醒没有其他待办暂无今天，轻松一点设备未连接电量未读取…";
-  const sizes=[12,20,24,36],font=face=>`${face===3?600:400} ${sizes[face]}px "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif`;
+  const faces=[[12,1],[10,2],[12,2],[12,3]];
   let cache;
   const supported=client=>client.sdkRevision>=18 && !!(client.sdkCapabilities&256);
   function title(value,max=100){
@@ -59,12 +59,12 @@ const OMReminder = (() => {
   async function pack(options){
     const data=entries(options),device=CourseTable.deviceInfo(options).deviceName||"设备未连接";
     const key=JSON.stringify([data.rows,data.heading,device]);if(cache?.key===key)return cache.bytes.slice();
-    await Promise.all(sizes.map((_,face)=>document.fonts.load(font(face))));await document.fonts.ready;
+    await Promise.all([OMCalendarFont.load(10),OMCalendarFont.load(12)]);
     const sets=[new Set(fixed+device),new Set("日程提醒还有天今天逾期待安排0123456789…"+data.heading),new Set("0123456789月暂无待办…"),new Set("…")];
     for(let code=32;code<127;code++)sets[0].add(String.fromCodePoint(code));
     for(const row of data.rows)for(const char of row.title)for(const face of [0,2,3])sets[face].add(char);
-    const canvas=document.createElement("canvas");canvas.width=canvas.height=96;const ctx=canvas.getContext("2d",{willReadFrequently:true}),glyphs=[],advances=sizes.map(()=>new Map());
-    sets.forEach((chars,face)=>[...chars].map(char=>char.codePointAt(0)).sort((a,b)=>a-b).forEach(code=>{const g=OMSchool.raster(ctx,code,face,font(face));glyphs.push(g);advances[face].set(String.fromCodePoint(code),g.advance/64);}));
+    const glyphs=[],advances=faces.map(()=>new Map());
+    sets.forEach((chars,face)=>[...chars].map(char=>char.codePointAt(0)).sort((a,b)=>a-b).forEach(code=>{const g=OMCalendarFont.raster(code,face,...faces[face]);glyphs.push(g);advances[face].set(String.fromCodePoint(code),g.advance/64);}));
     const measure=face=>value=>[...value].reduce((width,char)=>width+advances[face].get(char),0);
     const breaks=data.rows.map(row=>[lineBreak(row.title,measure(2)),lineBreak(row.title,measure(3)),lineBreak(row.title,measure(2))]);
     const cb=64,eb=64,gb=eb+data.rows.length*12,sb=gb+glyphs.length*16,strings=["",...new Set([data.heading,...data.rows.map(row=>row.title)])],offsets=new Map(),encoded=[];
