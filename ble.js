@@ -317,6 +317,7 @@ class OMClient {
     return this.operation(async () => {
       this.otaActive = true; this.update();
       try {
+        if(pack.sdkMigration)return await OMOTA.upgradeMigration(this,pack,consent,progress);
         if(pack.bundle) return await OMOTA.upgradeBundle(this,pack,consent,progress);
         const verified = await OMOTA.transfer(this, pack, consent, progress);
         return await OMOTA.confirmBoot(this, verified, progress);

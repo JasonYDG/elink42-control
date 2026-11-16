@@ -135,7 +135,7 @@ const OMSdkOTA=(()=>{
        state.state!==0 || state.error!==0 || state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     client.log("重启读回："+(state.model===2?"SSD1619":"JD79668")+" · SDK "+state.revision+" · CRC32 "+state.runningCrc.toString(16).toUpperCase().padStart(8,"0"));
-    progress?.(100,OMI18n.t("升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
+    progress?.(100,OMI18n.t(receipt.sdkMigration?"迁移完成，已读回版本及应用 CRC；内部图库已清空。":"升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
   async function abort(client){return client.operation(async()=>{const state=await request(client,0x65);if(state.state!==0)throw failure("升级已经提交，不能取消。请等待重启并核对设备。");return state;});}
   return {parse,crc32,supported,minimumMillivolts,request,transfer,confirmBoot,confirmRestoredAddress,abort,inspect,describe};

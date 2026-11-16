@@ -86,6 +86,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--host', choices=('127.0.0.1', 'localhost'), default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8289)
     parser.add_argument('--directory', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--quotes-only', action='store_true')
@@ -94,7 +95,7 @@ def main():
     for origin in args.allow_origin:
         if not re.fullmatch(r'http://(?:127\.0\.0\.1|localhost):\d{1,5}', origin):
             parser.error('--allow-origin requires an exact loopback HTTP origin')
-    with ThreadingHTTPServer(('127.0.0.1', args.port), partial(Handler, directory=args.directory.resolve())) as server:
+    with ThreadingHTTPServer((args.host, args.port), partial(Handler, directory=args.directory.resolve())) as server:
         server.allowed_origins = set(args.allow_origin)
         server.quotes_only = args.quotes_only
         print(f'ELINK42 local console: http://127.0.0.1:{server.server_port}/', flush=True)

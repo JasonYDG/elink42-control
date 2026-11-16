@@ -9,6 +9,10 @@ const OMOTA = (() => {
   const LIFECYCLE_FOUNDATION={"2":"a8b16a7d501fd4ff24f7894593c7583694dce9fc84cd846583c4393e69576047","5":"4d7239366ef403cbf7c2b862d2f6685dc2218dcc55761903638a3e51fc99c592"};
   const HARDENED_FOUNDATION={"2":"7ecbfb55245e38986c4375222781233e7a461d90ae7b1621929256771dd827bd","5":"1003eb0e108c4706fd8da1771e9a2d66373b29deab80b01ea4256650672d9630"};
   const BOOT_FOUNDATION={"2":"c9d75ebe2b67ab7a214d3286c17beca498e93987a8267259f9a538b697b30dc0","5":"2508d0af47844252b0f48ea46e84eceb9a66a87fcf16caae616cc5f405bf76d6"};
+  const MIGRATION_IMAGES={
+    2:{bridge:"b3d37881ca1a90c11661a5d6ee8e9469ae68e8f34061270d1f4f526c5f2324b0",bridgeZip:"a0aacd65e1e9197a32cff1f61bff4799e5148d27730b9d910e908ab1f394f90d",sdk:"685c78bf94feede0b853e8dcb9f0193067daa759169e0dcb779eb46d09d2efaf",sdkZip:"7450252fb931fe9b7881847d6947ce1dbf67697e4f3516c2259f441e50356e7d"},
+    5:{bridge:"a176a083d432306afc0d483b1d1d0fd3b4c9b2e4c210eb36a0856e556a38b686",bridgeZip:"91cdc21013315104177d8ce9d545cc74486f0026190e1bcdd66fd88848444aca",sdk:"7f70bc6573ad3a3e1e25f36fd1960f81811f1905ab584ff7261e43be56b530b8",sdkZip:"ec1c70e3cb0001e9083eacaa1455362e3f16196b76c022ca5383acb74317d7f1"}
+  };
   const TWO_STAGE_IMAGES = {"2":{"legacy":"02ca8f71f7b428f6f2e233c1f158d4f8a8d51954bb0e0459033c97966afd61ba","repaired":"cc6cbbcb6ecedb9a661aa128a2f7cf4690403fedc51d7fd660387b1ca77f9419","stable":"80fb31858b2e8427cf2ca45aa7e71545782367f83fee815134b309ab7fccf798","hardened":"25f057aa63fa2db912a212a9c251a8982cc58e18718defdac28cbc963471eafc","boot":"ca6ef84238c69dfbe2d81f006a2efede972ac8f354a9ca70e8d4a922b9426813","target":"94b3cda43b98b9c2601d8bf260a5d98e7d190cdcf44cdcb1f590b86fe129f043"},"5":{"legacy":"b88c776246aa5dbab22ae8db118c3535f36760812a38a600b2c583f9fa62ed1b","repaired":"d1da30f3d31991c5242273ceb913624f808bab6604c98451a94b0437cd22d6e5","stable":"1ef53d54de359f078204437b9e62f89265d16a090c12086f572caa85d8169de4","hardened":"f77e044cc58d1c7c0de95d2825fed87894a1ba5f9343b7c595a07d31d5dcbe2a","boot":"f2db138c05622f0f50782be6e6ecd5d54445277a5ec1adbea785ed0d9fe7618d","target":"595ead5e33da141d30845c7009f87906f4ec5493054f41e189a2bc68ca2d28fb"}};
   const TRANSITION_IMAGES={
     2:["bb8f90fe8980d3ba9d2e9cca65d463e9b6dce7722474a0d7da219fb93c83b4ac","f721222b51c7584937e716066b6dc9f02eabc9d476f761e94160e7a07b312c28"],
@@ -82,6 +86,22 @@ const OMOTA = (() => {
       throw Error(OMI18n.t("固件中的独立 OTA 信任、屏型或标识不符"));
     return {dat, bin, size: bin.length, version: String(revision), revision, model, sha256:imageHash, independent: true,repaired:lifecycle || foundation===REPAIRED_FOUNDATION[model],lifecycle,hardened,boot};
   }
+  async function validateSdkMigration(datInput, binInput, expectedModel) {
+    if (!(datInput instanceof Uint8Array) || !(binInput instanceof Uint8Array) || datInput.length !== 104 || binInput.length !== 224220 || ![2,5].includes(expectedModel))
+      throw Error(OMI18n.t("SDK 迁移包的数据类型、长度或屏型无效"));
+    const dat=datInput.slice(),bin=binInput.slice(),view=new DataView(dat.buffer),digest=await sha(bin),imageHash=hex(digest);
+    if(view.getUint32(0,true)!==0x5A4B4446 || view.getUint32(4,true)!==1 || view.getUint32(8,true)!==0x10001 ||
+       view.getUint32(12,true)!==(0x5A4B0000|(expectedModel<<8)) || view.getUint32(16,true)!==19 || view.getUint32(20,true)!==bin.length ||
+       imageHash!==MIGRATION_IMAGES[expectedModel].sdk || hex(digest.slice().reverse())!==hex(dat.slice(24,56)) || !await signature(dat))
+      throw Error(OMI18n.t("SDK 迁移包不是已签发并固定哈希的 SDK19 正式镜像"));
+    const image=new DataView(bin.buffer),sp=image.getUint32(0,true),reset=image.getUint32(4,true);
+    if(sp<0x20000000 || sp>0x20013EA0 || sp&7 || !(reset&1) || (reset&0xFFFFFFFE)<0x404000 || (reset&0xFFFFFFFE)>=0x404000+bin.length ||
+       image.getUint32(36,true)!==0x404000 || image.getUint32(40,true)!==0x46533252 || image.getUint32(52,true)!==0x6626A100 ||
+       new TextDecoder().decode(bin.slice(216720,216728))!=="EL42APP2" || image.getUint32(216728,true)!==expectedModel ||
+       image.getUint32(216732,true)!==19 || image.getUint32(216736,true)!==2)
+      throw Error(OMI18n.t("SDK 迁移镜像的启动向量或应用身份不符"));
+    return {dat,bin,size:bin.length,version:"SDK 19",revision:19,model:expectedModel,sha256:imageHash,crc:OMArchive.crc32(bin),sdkMigration:true,independent:false};
+  }
   async function single(files) {
     if (files.size !== 3 || !["manifest.json", "firmware.dat", "firmware.bin"].every(n => files.has(n)))
       throw Error(OMI18n.t("OTA ZIP 只接受 manifest.json、firmware.dat、firmware.bin 三个文件"));
@@ -91,9 +111,35 @@ const OMOTA = (() => {
         Object.keys(manifest.manifest).some(k => k !== "application")) throw Error(OMI18n.t("OTA manifest 不是单一应用镜像"));
     return validate(files.get("firmware.dat"), files.get("firmware.bin"));
   }
+  async function parseMigration(files,manifest,source) {
+    if(manifest.format!=="elink42-sdk-migration" || manifest.version!==1 || manifest.bridge_revision!==34 || manifest.target_revision!==19 ||
+       files.size!==6 || !files.has("LICENSES.txt") || Object.keys(manifest.models||{}).sort().join()!=="2,5")
+      throw Error(OMI18n.t("V33→SDK19 迁移包结构无效"));
+    const models={};
+    for(const model of [2,5]) {
+      const rows=manifest.models[model],fixed=MIGRATION_IMAGES[model];
+      if(Object.keys(rows||{}).sort().join()!=="bridge,sdk")throw Error(OMI18n.t("迁移包的双段配对不完整"));
+      const parsed={};
+      for(const stage of ["bridge","sdk"]) {
+        const row=rows[stage],name=`model${model}-${stage==="bridge"?"v34":"sdk19"}.zip`,bytes=files.get(name),revision=stage==="bridge"?34:19,size=stage==="bridge"?SIZE:224220;
+        const fields=stage==="bridge"?"bytes,file,revision,sha256,zip_sha256":"bytes,file,identity_offset,revision,sha256,zip_sha256";
+        if(!bytes || row?.file!==name || row.revision!==revision || row.bytes!==size || Object.keys(row).sort().join()!==fields ||
+           (stage==="sdk" && row.identity_offset!==216720) || hex(await sha(bytes))!==row.zip_sha256 || row.zip_sha256!==fixed[stage+"Zip"])
+          throw Error(OMI18n.t("迁移包内层文件、长度或固定哈希不符"));
+        const inner=await OMArchive.unzip(bytes);
+        const pack=stage==="bridge"?await single(inner):await validateSdkMigration(inner.get("firmware.dat"),inner.get("firmware.bin"),model);
+        if(pack.model!==model || pack.revision!==revision || pack.sha256!==row.sha256 || row.sha256!==fixed[stage] || (stage==="bridge" && !pack.boot))
+          throw Error(OMI18n.t("迁移包签名、屏型或双段版本配对不符"));
+        parsed[stage]=pack;
+      }
+      models[model]=parsed;
+    }
+    return {sdkMigration:true,bundle:true,models,revision:19,version:"33 → 34 → SDK 19",size:source.length,sha256:hex(await sha(source)),independent:false,source};
+  }
   async function parse(buffer) {
     const source=new Uint8Array(buffer).slice(),files=await OMArchive.unzip(source);
     const manifest=files.has("manifest.json")?JSON.parse(new TextDecoder("utf-8",{fatal:true}).decode(files.get("manifest.json"))):null;
+    if(manifest?.format==="elink42-sdk-migration")return parseMigration(files,manifest,source);
     if(manifest?.format!=="elink42-ota-bundle") return single(files);
     if(manifest.version!==7 && manifest.version!==1)
       throw Error(OMI18n.t("旧整合包已停用，请载入内置 v32 两阶段升级包"));
@@ -206,12 +252,17 @@ const OMOTA = (() => {
   async function transfer(client, input, consent, progress = () => {}) {
     target(client); const device = client.device;
     if (consent?.deviceId !== device.id || consent.eraseImages !== true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
-    const pack = await validate(input.dat, input.bin);
+    const pack = input.sdkMigration ? await validateSdkMigration(input.dat,input.bin,input.model) : await validate(input.dat, input.bin);
     if (pack.model !== client.config.model) throw Error(OMI18n.t("OTA 包与当前设备屏型不匹配；没有发送升级命令"));
-    if(client.firmwareRevision) checkRevision(client.firmwareRevision,pack);
-    if(pack.revision>=15 || pack.repaired || client.firmwareRevision>=15) {
+    if(pack.sdkMigration) {
       const current=await readRevision(client);
-      checkRevision(current,pack);
+      if(current!==34) { const error=Error(OMI18n.t("SDK19 第二段只接受已重启确认的 v34；没有发送升级命令"));error.code="OTA_PRECHECK";throw error; }
+    } else {
+      if(client.firmwareRevision) checkRevision(client.firmwareRevision,pack);
+      if(pack.revision>=15 || pack.repaired || client.firmwareRevision>=15) {
+        const current=await readRevision(client);
+        checkRevision(current,pack);
+      }
     }
     if (client.device !== device) throw Error(OMI18n.t("校验期间目标设备发生变化，未发送 OTA 命令"));
     target(client);
@@ -308,7 +359,7 @@ const OMOTA = (() => {
       }
       progress(99, OMI18n.t("固件已校验并提交，等待重启后核对版本"));
       client.disconnect();
-      return {status: "device-verified-reboot-pending", device, independent: pack.independent, revision:pack.revision, model:pack.model};
+      return {status:pack.sdkMigration?"sdk-commit-reboot-pending":"device-verified-reboot-pending",device,independent:pack.independent,revision:pack.revision,model:pack.model,sdkMigration:!!pack.sdkMigration,crc:pack.crc};
     } finally { control.removeEventListener("characteristicvaluechanged", notify); }
   }
   async function confirmBoot(client, pack, progress) {
@@ -336,6 +387,31 @@ const OMOTA = (() => {
       return {status:"boot-verified", revision:pack.revision, model:pack.model};
     }
     throw Error(OMI18n.t("OTA 已提交，但未在两分钟内确认新版本启动；不会重新擦写，请保留供电并核对设备"));
+  }
+  async function upgradeMigration(client,input,consent,progress=()=>{}) {
+    target(client);const device=client.device,model=client.config.model;
+    if(consent?.deviceId!==device.id || consent.eraseImages!==true)throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
+    const bundle=await parse(input.source);
+    if(!bundle.sdkMigration)throw Error(OMI18n.t("这不是 V33→SDK19 双段迁移包"));
+    const current=await readRevision(client);
+    if(![33,34].includes(current)){const error=Error(OMI18n.t("迁移只接受 v33 或新版 v34 起点，未发送升级命令"));error.code="OTA_PRECHECK";throw error;}
+    const quietReceiver=async()=>{
+      if(!await client.readCalendar() || client.config.mode!==0){const error=Error(OMI18n.t("v34 未确认静默状态，已停止；不会自动重发"));error.code="DISPLAY_NOT_READY";throw error;}
+    };
+    if(current===34)await quietReceiver();
+    if(current===33) {
+      const pack=bundle.models[model].bridge;
+      progress(0,OMI18n.t("阶段 1/2 · 安装专用 v34 迁移接收器"));
+      const verified=await transfer(client,pack,consent,(value,text)=>progress(Math.floor(value/2),OMI18n.t("阶段 1/2 · ")+text));
+      await confirmBoot(client,verified,(value,text)=>progress(Math.floor(value/2),OMI18n.t("阶段 1/2 · ")+text));
+      if(client.device!==device || client.config.model!==model || client.firmwareRevision!==34)throw Error(OMI18n.t("第一次重启读回不符，已停止，不发送 SDK19"));
+      await quietReceiver();
+    }
+    if(client.device!==device || client.config.model!==model || !device.gatt.connected)throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
+    const sdk=bundle.models[model].sdk;
+    const receipt=await transfer(client,sdk,consent,(value,text)=>progress(current===33?50+Math.floor(value/2):value,OMI18n.t("阶段 2/2 · SDK19 · ")+text));
+    progress(99,OMI18n.t("SDK19 已提交，等待重启后核对 SDK 身份和运行 CRC"));
+    return receipt;
   }
   async function upgradeBundle(client,input,consent,progress=()=>{}) {
     target(client);const device=client.device,model=client.config.model;
@@ -431,5 +507,5 @@ const OMOTA = (() => {
     if(!current())throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
     return view.getUint32(0,true)===0x20211229 && view.getUint32(4,true)===15 && view.getUint32(8,true)===3?"protocol-3":"unrecognized";
   }
-  return {SERVICE, CONTROL, DATA, VERSION, parse, validate, inspect, transfer, confirmBoot, readRevision,probeOnMicroDfu,upgradeBundle,bundleRoute,pairedRevision};
+  return {SERVICE,CONTROL,DATA,VERSION,parse,validate,validateSdkMigration,inspect,transfer,confirmBoot,readRevision,probeOnMicroDfu,upgradeMigration,upgradeBundle,bundleRoute,pairedRevision};
 })();
