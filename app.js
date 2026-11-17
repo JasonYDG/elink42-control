@@ -90,6 +90,7 @@
     for(const name of Object.keys(sectionViews))$("nav-"+name).disabled=busy;
     for(const button of $("feature-tabs").children)button.disabled=busy;
     $("stock-save").disabled=busy||stockFetching;$("stock-start").disabled=busy||stockFetching;
+    $("stock-import").disabled=busy||stockFetching;
     $("school-view").disabled=$("school-page").disabled=busy;
     $("transfer-status").classList.toggle("busy",busy);
     if(!client.ready)client.offlineRotation=null;
@@ -1002,26 +1003,20 @@
     const symbols=F.stockSymbols($("stock-text").value),key=symbols.join(",");stockFetching=true;$("stock-save").disabled=true;$("stock-state").textContent="正在获取行情…";
     try{
       const local=["127.0.0.1","localhost"].includes(location.hostname);
-      const urls=local?[(stockProxy?"http://127.0.0.1:8290":"")+"/api/stock/quote?symbols="+encodeURIComponent(key)]:
-        ["https://qt.gtimg.cn/q=","https://web.sqt.gtimg.cn/q="].map(base=>base+encodeURIComponent(key));
-      const request=()=>({signal:AbortSignal.timeout(15000),credentials:"omit",redirect:"error",referrerPolicy:"no-referrer"});
-      let response,bytes;
-      for(let attempt=0;attempt<urls.length;attempt++){
-        if(attempt&&automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
-        try{
-          response=await fetch(urls[attempt],request());
-          if(local&&!stockProxy&&location.port==="8289"&&response.status===404){response=await fetch("http://127.0.0.1:8290/api/stock/quote?symbols="+encodeURIComponent(key),request());if(response.ok)stockProxy=true;}
-          if(response.ok)bytes=await response.arrayBuffer();
-          if(attempt+1===urls.length||response.status<500)break;
-          await response.body?.cancel();
-        }catch(error){
-          if(attempt+1===urls.length||!["TypeError","TimeoutError","AbortError"].includes(error.name))throw error;
-        }
+      const proxyUrl="/api/stock/quote?symbols="+encodeURIComponent(key);
+      let quote=await F.stockTransport(local?[(stockProxy?"http://127.0.0.1:8290":"")+proxyUrl]:F.stockUrls(symbols),()=>{
+        if(automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open))return false;
         $("stock-state").textContent="主行情通道暂不可用，正在尝试腾讯备用通道…";
+        return true;
+      });
+      if(!quote){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
+      if(local&&!stockProxy&&location.port==="8289"&&quote.response.status===404){
+        quote=await F.stockTransport(["http://127.0.0.1:8290"+proxyUrl]);
+        if(quote.response.ok)stockProxy=true;
       }
+      const {response,bytes}=quote;
       if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
-      if(bytes.byteLength>32000)throw Error("行情响应过大");
-      const next=F.stockTencent(new TextDecoder("gbk",{fatal:true}).decode(bytes),symbols);
+      const next=F.stockTencent(F.stockText(bytes),symbols);
       if(F.stockSymbols($("stock-text").value).join(",")!==key)throw Error("代码已修改，本次结果未保存，请重新获取。");
       if(automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
       change(data=>{data.stocks=next;});
@@ -1035,6 +1030,32 @@
     finally{stockFetching=false;update();}
   }
   bind("stock-save",refreshStocks,"");
+  bind("stock-local-download",async()=>{
+    const symbols=F.stockSymbols($("stock-text").value);
+    const files=[$("stock-local-download").dataset.template,$("i18n-script").src,$("features-script").src];
+    const [template,...scripts]=await Promise.all(files.map(async url=>{
+      const response=await fetch(url,{signal:AbortSignal.timeout(15000),redirect:"error"});
+      if(!response.ok)throw Error("无法生成本地股票页，请刷新控制台后重试。");
+      return response.text();
+    }));
+    const code=scripts.join("\n");
+    if(/<\/script/i.test(code)||!template.includes("<!-- STOCK_LIBRARIES -->")||!template.includes("STOCK_DEFAULT_CODES"))throw Error("本地股票页模板无效");
+    const html=template.replace("STOCK_DEFAULT_CODES",symbols.join(",")).replace("<!-- STOCK_LIBRARIES -->",()=>`<script>${code}</script>`);
+    download("elink42-stock.html",new Blob([html],{type:"text/html;charset=utf-8"}));
+  },"本地股票页已生成，双击下载的 HTML 文件打开。");
+  $("stock-import").addEventListener("change",event=>action(async()=>{
+    const file=event.target.files[0];event.target.value="";
+    if(!file)return;
+    if(stockFetching||uiBusy||client.busy)throw Error("已有操作正在进行，请完成后再导入行情。");
+    stockFetching=true;update();
+    try{
+      if(file.size>100000)throw Error("行情文件最大 100 KB");
+      const data=JSON.parse(await file.text());
+      if(data?.format!=="elink42-stock-v1"||typeof data.codes!=="string")throw Error("请选择本地股票页导出的行情文件。");
+      const next=F.stockTencent(data.text,F.stockSymbols(data.codes));
+      change(workspace=>{workspace.stocks=next;});
+    }finally{stockFetching=false;update();}
+  },""));
   bind("stock-start",async()=>{
     if($("stock-auto-send").checked&&!client.ready)throw Error("自动同步前请连接目标屏幕");
     if(stockTimer)clearInterval(stockTimer);stockTimer=null;const generation=++stockGeneration;

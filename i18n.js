@@ -1,5 +1,8 @@
 "use strict";
 const OMTranslations = {
+  "下载本地股票页":"Download local stock page",
+  "导入本地行情":"Import local quotes",
+  "下载的 HTML 会带上当前代码。双击打开并刷新，从本地页导出行情文件后，在此导入并预览。":"The downloaded HTML includes your stock codes. Open it to refresh, then export quotes and import them here to preview.",
   "第二步：高风险迁移到 SDK21":"Step 2: high-risk migration to SDK21",
   "高风险：载入 V33→SDK21 迁移包":"High risk: load V33 to SDK21 migration",
   "高风险：V33→SDK21 跨系列迁移仍待实机验收，可能需要有线恢复；会清空内部图库，请先备份。不建议普通用户尝试。":"HIGH RISK: V33 to SDK21 migration still needs physical acceptance and may require wired recovery. The internal gallery is cleared. Back up first. Not recommended for general use.",
