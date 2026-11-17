@@ -11,7 +11,7 @@ for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.18');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,21);assert.equal(Object.keys(manifest.assets).length,286);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.19');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,21);assert.equal(Object.keys(manifest.assets).length,287);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -30,6 +30,7 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
     assert.ok(html.includes('id="ota-bundled"')&&html.includes('id="ota-file"'));
     assert.ok(!/<script[^>]+src="firmware\.js/.test(html));
     assert.ok(html.includes(`data-firmware-src="firmware.js?v=${manifest.version}&h=${manifest.assets['firmware.js'].slice(0,12)}"`));
+    assert.ok(html.includes(`data-template="stock-local.html?v=${manifest.version}&amp;h=${manifest.assets['stock-local.html'].slice(0,12)}"`));
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(url==="data:,")continue;
       if(url.startsWith("https://")){assert.ok(["github.com","gu.qq.com"].includes(new URL(url).hostname),url);continue;}

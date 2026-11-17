@@ -112,6 +112,20 @@ test('seven primary destinations restore the five calendar presets without weath
 });
 
 function liveQuote(){const f=Array(33).fill('');Object.assign(f,{1:'Index',2:'000001',3:'3200',30:'20261113113000',32:'0.5'});return 'v_sh000001="'+f.join('~')+'";';}
+test('importing local quotes revalidates the original data and only changes the stock snapshot',async()=>{
+  const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('connect');await u.click('nav-stock');
+  const before=u.packets.length;u.get('stock-auto-send').checked=true;
+  const record={format:'elink42-stock-v1',codes:'sh000001',text:liveQuote()};
+  const importData=data=>u.file('stock-import',new Blob([JSON.stringify(data)]));
+  await importData(record);
+  const snapshot=JSON.parse(u.local.get('om6626-workspace-v1'));
+  assert.equal(snapshot.stocks.quotes[0].time,'2026-11-13 11:30:00');
+  assert.equal(u.get('stock-text').value,'sh000001');assert.equal(u.rendered.at(-1).kind,'stockCalendar');
+  await importData({...record,codes:'sz000001'});
+  assert.match(u.get('result').textContent,/股票行情字段无效/);
+  assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')),snapshot);
+  assert.equal(u.packets.length,before);assert.equal(u.fetchCount(),0);
+});
 test('stock fetch stores real validated quotes, and failed refresh retains the prior snapshot',async()=>{
   const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
   const pending=u.click('stock-save');assert.equal(u.lastFetchURL(),'/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await pending;

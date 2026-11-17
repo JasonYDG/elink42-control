@@ -191,6 +191,30 @@ const OMFeatures = (() => {
     if(!symbols.length||symbols.length>5||new Set(symbols).size!==symbols.length||symbols.some(s=>!/^(sh|sz|bj)\d{6}$/.test(s)))throw Error("请输入1–5个不重复的A股代码，包含sh、sz或bj前缀，例如sh000001、sz000001。");
     return symbols;
   }
+  function stockUrls(symbols) {
+    const query = encodeURIComponent(symbols.join(","));
+    return ["https://qt.gtimg.cn/q=", "https://web.sqt.gtimg.cn/q="].map(base => base + query);
+  }
+  async function stockTransport(urls, beforeBackup = () => true) {
+    for (let attempt = 0; attempt < urls.length; attempt++) {
+      if (attempt && !beforeBackup()) return null;
+      const last = attempt === urls.length - 1;
+      try {
+        const response = await fetch(urls[attempt], {
+          signal: AbortSignal.timeout(15000), credentials: "omit", redirect: "error", referrerPolicy: "no-referrer"
+        });
+        if (response.ok) return {response, bytes: await response.arrayBuffer()};
+        if (last || response.status < 500) return {response};
+        await response.body?.cancel();
+      } catch (error) {
+        if (last || !["TypeError", "TimeoutError", "AbortError"].includes(error.name)) throw error;
+      }
+    }
+  }
+  function stockText(bytes) {
+    if (bytes.byteLength > 32000) throw Error("行情响应过大");
+    return new TextDecoder("gbk", {fatal:true}).decode(bytes);
+  }
   function stockState(value){
     if(!value||typeof value!=="object"||!Array.isArray(value.symbols)||!Array.isArray(value.quotes)||value.quotes.length>5||typeof value.updated!=="string"||(value.updated&&!Number.isFinite(Date.parse(value.updated)))||typeof value.stale!=="boolean")throw Error("股票行情格式无效");
     stockSymbols(value.symbols.join(","));const seen=new Set();
@@ -228,5 +252,5 @@ const OMFeatures = (() => {
     const phase=!known?"交易日历待更新":weekday===0||weekday===6||calendar.days.some(d=>d[0]===key&&!d[2])?"休市":minute<555?"未开盘":minute<565?"开盘竞价":minute<570?"开盘前":minute<690?"交易中":minute<780?"午间休市":minute<897?"交易中":minute<900?"收盘竞价":"已收盘";
     return {date:key,known:!!known,open:["开盘竞价","交易中","收盘竞价"].includes(phase),phase};
   }
-  return {Store, defaults, validate, template, clone, weather, seniverse, nextJob, dueJobs, placeholders, process, monochrome,defaultTemplates, matrix,stockSymbols,stockState,stockTencent,stockSession};
+  return {Store, defaults, validate, template, clone, weather, seniverse, nextJob, dueJobs, placeholders, process, monochrome,defaultTemplates, matrix,stockSymbols,stockState,stockTencent,stockSession,stockUrls,stockTransport,stockText};
 })();

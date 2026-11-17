@@ -18,6 +18,7 @@ V33_FILES = [f'firmware/elink42-{panel}-v33-ota.zip' for panel in ('tricolor-ssd
 ASSETS += ['screen-workbench.js','tools/serve_local.py','firmware/LICENSES.txt',*SDK_FILES, *(name.replace(f'-v{SDK_REVISION}-', f'-v{previous}-') for previous in (6,7,8,9,10,12,14,15,16,17,18,19,20) for name in SDK_FILES)]
 ASSETS += ['calendar-font.js','fonts/fusion-pixel-10px-monospaced-zh_hans.bdf.gz','fonts/fusion-pixel-12px-monospaced-zh_hans.bdf.gz','fonts/OFL.txt']
 ASSETS += V33_FILES + ['firmware/elink42-v33-sdk21-migration.zip']
+ASSETS += ['stock-local.html']
 
 def firmware_images():
     import base64,re
@@ -47,7 +48,7 @@ def build():
     import re
     assert len(images)==212 and all(re.fullmatch(r'assets/wallpapers/(thumbs/[a-z0-9-]+\.webp|display/[a-z0-9-]+\.png)',p) for p in images)
     files = ASSETS+images
-    assert len(files) == len(set(files)) == 286
+    assert len(files) == len(set(files)) == 287
     firmware=firmware_images()
     OUT.mkdir(parents=True, exist_ok=True)
     assert OUT.resolve().is_relative_to((ROOT / 'build').resolve())
@@ -60,7 +61,7 @@ def build():
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, dest)
         hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
-    manifest = {'version': '0.8.18', 'sdk_revision': SDK_REVISION, 'repository': 'JasonYDG/elink42-control',
+    manifest = {'version': '0.8.19', 'sdk_revision': SDK_REVISION, 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
                 'content': 'web-control-with-bundled-signed-ota', 'firmware_revision': 33, 'firmware_images':firmware,'assets': hashes}
     (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
