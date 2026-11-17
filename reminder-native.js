@@ -2,7 +2,7 @@
 const OMReminder = (() => {
   const encoder=new TextEncoder(),none=65535,daySeconds=86400;
   const fixed="日程提醒项待办月日周一二三四五六还有天今天逾期待安排尚未设置日期其他提醒没有其他待办暂无今天，轻松一点设备未连接电量未读取…";
-  const faces=[[12,1],[10,2],[12,2],[12,3]];
+  const faces=[[12,1],[10,2,500],[12,2,500],[12,3,500]];
   let cache;
   const supported=client=>client.sdkRevision>=18 && !!(client.sdkCapabilities&256);
   function title(value,max=100){

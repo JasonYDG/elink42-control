@@ -159,10 +159,11 @@
     const rotation=client.offlineRotation;
     $("auto-rotation-panel").hidden=!["photo-calendar","image","gallery"].includes(tab);
     $("auto-apply").disabled=!ready || !OMRotation.supported(client) || (!rotation?.active && !OMRotation.presentation(client));
-    $("auto-state").textContent=OMI18n.t(!client.ready?"连接设备后可读取自动换图状态。":!OMRotation.supported(client)?"离线日、周、月换图需要 v24 固件，请先升级。":!rotation?"自动换图状态尚未核实，请重新读取或连接。":rotation.active?"已在设备启用，关闭网页后仍会执行。当前存储源的全部有效图片依次参与轮播。":"尚未启用。启用图片日历或换图时，保存两张以上图片会默认每天更换。");
+    $("auto-state").textContent=OMI18n.t(!client.ready?"连接设备后可读取自动换图状态。":!OMRotation.supported(client)?"离线日、周、月换图需要 v24 固件，请先升级。":!rotation?"自动换图状态尚未核实，请重新读取或连接。":rotation.active?(client.sdkCapabilities&512?"已在设备启用，关闭网页后仍会执行。仅照片区参与轮播，应用区不参与。":"已在设备启用，关闭网页后仍会执行。当前存储源的全部有效图片依次参与轮播。"):"尚未启用。启用图片日历或换图时，保存两张以上图片会默认每天更换。");
     const slot = gallery?.external === external() && gallery.slots.find(s => s.slot === Number($("gallery-slot").value));
     for (const id of ["slot-display", "slot-delete", "slot-background", "slot-remark-save"]) $(id).disabled = !ready || !slot?.valid;
     if(slot?.color&128)$("slot-display").disabled=$("slot-background").disabled=true;
+    if(slot && slot.slot>=gallery.photoCount)$("slot-background").disabled=true;
     $("rotation-save").disabled = !ready || !gallery || gallery.external !== external();
     $("connection-state").textContent = busy ? OMI18n.t("操作中") : client.ready ? OMI18n.t("已连接") : OMI18n.t("未连接");
     $("connection-state").classList.toggle("online", client.ready);
@@ -638,9 +639,9 @@
       log("课表已应用并读回：位置 "+saved.slot+"，页 "+(saved.page+1));client.offlineRotation=null;
     }else if(p.content==="photo"){
       const pixels=OMScreen.background(client.config.model);if(!pixels)throw Error("请先读取或选择背景图片，让预览与屏幕一致");
-      const crc=OMProtocol.crc16(OMProtocol.imageBytes(pixels,client.config.model));let slot=p.slot,row=slot===255?null:await client.operation(()=>client.slotMetadata(slot,!!p.source));
-      if(!row?.valid || row.color!==(client.config.model===5?3:2) || row.crc!==crc){
-        const state=await client.gallery(!!p.source);slot=state.slots.find(s=>!s.valid)?.slot;if(slot===undefined)throw Error("没有空图片位置，原有图片未覆盖");
+      const state=await client.gallery(!!p.source),crc=OMProtocol.crc16(OMProtocol.imageBytes(pixels,client.config.model));let slot=p.slot,row=state.slots.find(s=>s.slot===slot);
+      if(slot>=state.photoCount || !row?.valid || row.color!==(client.config.model===5?3:2) || row.crc!==crc){
+        slot=state.slots.find(s=>s.slot<state.photoCount && s.available && !s.valid)?.slot;if(slot===undefined)throw Error("照片区没有空位置，原有图片未覆盖；应用区不保存轮播照片");
         await client.store(pixels,slot,!!p.source,progress);OMScreen.setBackground(pixels,client.config.model,slot,p.source,p.fit);p=OMScreen.capture();applied=OMScreen.signature(screenData(),p);
       }
       await client.internationalCalendar(p.country,p.language,true,slot,!!p.source,progress,new Date(),p.fit);
@@ -658,7 +659,7 @@
     client.offlineRotation=null;
     if(!OMRotation.supported(client))return;
     const state=gallery?.external===source?gallery:await client.gallery(source);
-    if(state.slots.filter(s=>s.valid && !(s.color&128)).length<2){await OMRotation.read(client);return;}
+    if(slot>=state.photoCount || state.slots.filter(s=>s.slot<state.photoCount && s.valid && !(s.color&128)).length<2){await OMRotation.read(client);return;}
     const frequency=Number($("auto-frequency").value);
     await OMRotation.configure(client,{frequency,slot,source:Number(source),photo});
   }
@@ -675,11 +676,14 @@
     if(state.external!==source)throw Error(OMI18n.t("存储源已切换，请重新读取。"));
     if(client.device!==device || !device.gatt.connected)throw Error(OMI18n.t("目标设备已变化，未保存图片"));
     let slot=Number($("save-slot").value);
+    const application=!["image","photo-calendar"].includes(tab),allowed=application?(state.applicationSlots??state.availableSlots):state.availableSlots.filter(slot=>slot<state.photoCount);
+    if(application && !state.applicationSlots)throw Error("独立保存应用快照需要 SDK20；当前可直接发送画面，不占用照片卡槽。");
     if($("save-auto").checked){
-      const used=state.slots.filter(s=>s.valid).map(s=>s.slot),start=used.length?Math.max(...used)+1:0;
-      slot=Array.from({length:state.count},(_,i)=>(start+i)%state.count).find(i=>!state.slots.find(s=>s.slot===i)?.valid);
+      const used=state.slots.filter(s=>allowed.includes(s.slot)&&s.valid).map(s=>s.slot),start=used.length?Math.max(...used)+1:0;
+      slot=Array.from({length:state.count},(_,i)=>(start+i)%state.count).find(i=>allowed.includes(i)&&!state.slots.find(s=>s.slot===i)?.valid);
       if(slot===undefined)throw Error(OMI18n.t("设备图片已满，请到设备图片页面手动删除不需要的图片；本次没有覆盖或删除。"));
     }
+    if(!allowed.includes(slot))throw Error(application?"请选择应用区的空位置，提醒与行情不占用照片轮播区。":"请选择照片区的空位置，应用区和受保护位置不能保存轮播照片。");
     const saved=await client.store(pixels,slot,source,progress);
     if(prepared)OMScreen.setBackground(pixels,client.config.model,slot,source,"prepared");
     gallery={...state,slots:state.slots.map(s=>s.slot===slot?saved:s)};renderGallery();
@@ -689,7 +693,7 @@
     try{
       if(prepared)await client.internationalCalendar(country,$("calendar-language").value,true,slot,source,progress,new Date(),fit);
       else {await client.slotAction("display",slot,source,progress);await rememberPicture(slot,source);}
-      await defaultRotation(slot,source,prepared);
+      if(!application)await defaultRotation(slot,source,prepared);
       result(OMI18n.t("图片已保存并提交显示，位置 ")+slot);
     }catch(error){throw Error(OMI18n.t("图片已保存到位置 ")+slot+OMI18n.t("；显示或自动换图未确认，请勿重复保存。 ")+error.message);}
   }
@@ -844,13 +848,13 @@
   }
   function renderGallery(){
     const state=gallery,valid=state.slots.filter(s=>s.valid);
-    $("gallery-state").textContent = OMI18n.t(state.external?"外置":"内部")+" · "+OMI18n.t("已存图片 ")+valid.length+" / "+state.count;
+    $("gallery-state").textContent = OMI18n.t(state.external?"外置":"内部")+" · "+(state.applicationSlots?"照片区 "+valid.filter(s=>s.slot<state.photoCount&&!(s.color&128)).length+" / "+state.photoCount+" · 应用区 "+valid.filter(s=>state.applicationSlots.includes(s.slot)).length+" / "+state.applicationSlots.length:OMI18n.t("已存图片 ")+valid.length+" / "+state.count);
     options("gallery-slot", valid.map(s => [s.slot, `${s.slot} · ${s.remark || OMI18n.t("已有图片")}`]));
     $("photo-source").value=String(state.external?1:0);
-    options("photo-slot",state.slots.filter(s=>s.valid && !(s.color&128)).map(s=>[s.slot,`${s.slot} · ${s.remark||OMI18n.t("已有图片")}`]));
+    options("photo-slot",state.slots.filter(s=>s.slot<state.photoCount && s.valid && !(s.color&128)).map(s=>[s.slot,`${s.slot} · ${s.remark||OMI18n.t("已有图片")}`]));
     $("photo-state").textContent=OMI18n.t("Slot pixels are read by the device; this browser preview shows the date layout only.");
     $("gallery-list").replaceChildren();
-    for (const s of valid) row("gallery-list", OMI18n.t("位置 ")+s.slot+" · "+(s.color&128?"课表 / 提醒原生数据":s.remark||OMI18n.t("已有图片")),[button(OMI18n.t("选择"),()=>{$("gallery-slot").value=String(s.slot);slotSelected();})]);
+    for (const s of valid) row("gallery-list", OMI18n.t("位置 ")+s.slot+" · "+(s.color&128?"课表 / 提醒原生数据":state.applicationSlots?.includes(s.slot)?"应用区图像 · "+(s.remark||"不参加照片轮播"):s.remark||OMI18n.t("已有图片")),[button(OMI18n.t("选择"),()=>{$("gallery-slot").value=String(s.slot);slotSelected();})]);
     $("rotation-mode").value = String(state.mode<=2?state.mode:0); $("rotation-interval").value = String(state.interval || 60);
     $("rotation-days").value = [...state.days.slice(1), state.days[0]].join(","); slotSelected(); update();
   }
@@ -873,7 +877,7 @@
     if(name==="display"){await rememberPicture(slot,external());await defaultRotation(slot,external(),false);}
     if(name==="delete" && OMRotation.supported(client)){
       const policy=await OMRotation.read(client);
-      if(policy.active && policy.source===Number(external()) && gallery.slots.filter(s=>s.valid && !(s.color&128)).length<2)
+      if(policy.active && policy.source===Number(external()) && gallery.slots.filter(s=>s.slot<gallery.photoCount && s.valid && !(s.color&128)).length<2)
         await OMRotation.configure(client,{frequency:0,slot,source:Number(external()),photo:policy.photo});
     }
   });

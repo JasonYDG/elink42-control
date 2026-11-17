@@ -19,8 +19,8 @@ const OMRotation=(()=>{
         await client.initialize();const state=await client.storageState(!!source);let count=0;
         for(let index=0;index<state.count;index++){
           const entry=await client.slotMetadata(index,!!source);
-          if(entry.valid && !(entry.color&128)){client.storedFormat(entry);count++;}
-          if(index===slot && !entry.valid)throw Error(OMI18n.t("所选位置没有图片"));
+          if(index<state.photoCount && entry.valid && !(entry.color&128)){client.storedFormat(entry);count++;}
+          if(index===slot && (!entry.valid || index>=state.photoCount || !state.availableSlots.includes(index)))throw Error(OMI18n.t("所选位置不属于可轮播的照片区"));
         }
         if(slot>=state.count || count<2)throw Error(OMI18n.t("至少保存两张图片后才能启用自动换图。"));
         if(client.device!==device || !device.gatt.connected)throw Error(OMI18n.t("目标设备已变化，自动换图未提交"));

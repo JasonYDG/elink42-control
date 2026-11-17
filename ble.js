@@ -440,6 +440,7 @@ class OMClient {
         OMProtocol.integer(slot,0,44,"Slot");
         const state=await this.storageState(external);
         if(slot>=state.count)throw Error(OMI18n.t("Slot exceeds actual capacity"));
+        if(slot>=state.photoCount || !state.availableSlots.includes(slot))throw Error("应用区和受保护位置不能作为照片日历背景");
         this.storedFormat(await this.slotMetadata(slot,external));
       }
       if(photo)await this.write(Uint8Array.of(0x56,slot,external?1:0));
@@ -474,7 +475,12 @@ class OMClient {
       this.log(OMI18n.t(external?"外置图库":"内部图库")+" · "+OMI18n.t("槽位数量")+" "+reply[1]+" · "+OMI18n.t("未挂载"));
       const error = Error(OMI18n.t(external?"外置 Flash 未检测到或布局不兼容，原数据已保留。请核对硬件和图库布局。":"图库未挂载，原有数据已保留。请先备份并核对存储布局；不要直接擦除设备。")); error.code = "DISPLAY_NOT_READY"; throw error;
     }
-    return OMProtocol.storage(reply, external);
+    const state=OMProtocol.storage(reply, external);
+    if(this.sdkCapabilities&512){
+      const seq=this.nextSequence(),layout=await this.request(Uint8Array.of(0x24,0x47,Number(external),seq),b=>b[0]===0x5F&&b[1]===seq,"读取照片区和应用区");
+      return OMProtocol.storageLayout(layout,state);
+    }
+    return {...state,photoCount:state.count,applicationSlots:null,availableSlots:Array.from({length:state.count},(_,i)=>i)};
   }
   async slotMetadata(slot, external) {
     const marker = external ? 0x74 : 0x49;
@@ -491,6 +497,7 @@ class OMClient {
       const state = await this.storageState(external), slots = [];
       for (let slot = 0; slot < state.count; slot++) {
         const row = await this.slotMetadata(slot, external);
+        row.available=state.availableSlots.includes(slot);
         if (row.valid && this.reportedPayload >= 66) {
           const reply = await this.request(Uint8Array.of(external ? 0x54 : 0x4A, slot),
             b => b[0] === (external ? 0x75 : 0x52) && b[1] === slot, OMI18n.t("读取备注"));
@@ -530,6 +537,7 @@ class OMClient {
       await this.initialize();
       const state = await this.storageState(external);
       if (slot >= state.count || state.type !== (this.config.model === 5 ? 3 : 2)) throw Error(OMI18n.t("槽位或色彩格式不符"));
+      if(!state.availableSlots.includes(slot))throw Error("该卡槽属于受保护分区，未写入数据");
       const previous = await this.slotMetadata(slot, external);
       if (previous.valid) throw Error(OMI18n.t("此槽位已有图片。先备份所需内容并手动删除，再保存新图"));
       const start = new Uint8Array(7), view = new DataView(start.buffer);
@@ -562,6 +570,7 @@ class OMClient {
       if (slot >= state.count) throw Error(OMI18n.t("槽位超出实际容量"));
       const row = await this.slotMetadata(slot, external);
       if (!row.valid) throw Error(OMI18n.t("此槽位没有有效图片"));
+      if(action==="background" && slot>=state.photoCount)throw Error("应用区不作为照片日历的轮播背景");
       if (action === "display") {
         this.storedFormat(row);
         await this.command(OMProtocol.time(new Date(), 0));
@@ -602,7 +611,8 @@ class OMClient {
       await this.initialize(); const state = await this.storageState(external);
       const packet = OMProtocol.rotation(mode, interval, days, state.count, external);
       if (mode) {
-        const required = mode === 2 ? [...new Set(days.filter(s => s !== 255))] : [...Array(state.count).keys()];
+        const required = mode === 2 ? [...new Set(days.filter(s => s !== 255))] : [...Array(state.photoCount).keys()];
+        if(required.some(slot=>slot>=state.photoCount || !state.availableSlots.includes(slot)))throw Error("应用区和受保护位置不能参加照片轮播");
         let valid = 0;
         for (const slot of required) {
           const row = await this.slotMetadata(slot, external);

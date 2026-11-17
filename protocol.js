@@ -148,6 +148,13 @@ const OMProtocol = (() => {
     return {slot, valid: bytes[2] === 1, color: bytes[3], width: v.getUint16(4, true), height: v.getUint16(6, true),
       size: v.getUint32(8, true), crc: v.getUint16(12, true)};
   }
+  function storageLayout(bytes, state) {
+    if (!(bytes instanceof Uint8Array) || bytes.length !== 12 || bytes[0] !== 0x5F || bytes[2] !== 1 || bytes[3] !== Number(state.external) || bytes[4] !== state.count || bytes[5] !== Math.min(10,state.count)) throw Error("设备卡槽分区回执无效，未写入数据");
+    const availableSlots=[];
+    for(let slot=0;slot<48;slot++)if(bytes[6+(slot>>3)]&(1<<(slot&7))){if(slot>=state.count)throw Error("卡槽分区超出实际容量");availableSlots.push(slot);}
+    if(Array.from({length:bytes[5]},(_,i)=>i).some(slot=>!availableSlots.includes(slot)))throw Error("照片区包含受保护位置");
+    return {...state,photoCount:bytes[5],availableSlots,applicationSlots:availableSlots.filter(slot=>slot>=bytes[5])};
+  }
   function imageBytes(frame, model) {
     if (model === 5 && frame.packed instanceof Uint8Array && frame.packed.length === 30000) return frame.packed.slice();
     if (model === 2 && frame.black instanceof Uint8Array && frame.red instanceof Uint8Array &&
@@ -178,5 +185,5 @@ const OMProtocol = (() => {
     return bytes;
   }
   return {SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
-    planes, rgba, integer, crc16, remarkBytes, remarkText, storage, metadata, imageBytes, rotation, holidays};
+    planes, rgba, integer, crc16, remarkBytes, remarkText, storage, storageLayout, metadata, imageBytes, rotation, holidays};
 })();
