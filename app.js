@@ -101,28 +101,29 @@
     if(!client.ready)$("ota-service").textContent=OMI18n.t("尚未检测；开始升级时会自动检查。");
     $("ota-inspect").disabled = !otaReady;
     $("ota-file").disabled = busy;
-    $("ota-migration").disabled=true;
+    $("ota-migration").disabled=!otaReady || ![33,35].includes(revision);
     $("ota-bundled").disabled = !otaReady || revision === null || revision >= bundledFirmwareRevision;
     const paired=OMOTA.pairedRevision(revision);
     const bundledLabel=paired?"载入原配无线升级包":bundledRevision()===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
     $("ota-bundled").setAttribute("data-i18n",bundledLabel);$("ota-bundled").textContent=OMI18n.t(bundledLabel);
     $("ota-consent").disabled = busy;
-    const needsTransition=!!otaPackage && (migration ? ![33,34].includes(revision) : otaPackage.bundleVersion===7 ? !OMOTA.bundleRoute(revision) :
+    const needsTransition=!!otaPackage && (migration ? ![33,35].includes(revision) : otaPackage.bundleVersion===7 ? !OMOTA.bundleRoute(revision) :
       !otaPackage.bundle && ((paired && otaPackage.revision!==paired) || (otaPackage.boot && revision!==29 && revision!==31 && revision<30) || (revision>=30 && !otaPackage.boot) || (!otaPackage.boot && otaPackage.hardened && revision!==27 && revision<28) ||
       (revision>=28 && !otaPackage.hardened) || (otaPackage.lifecycle && revision<18) || (otaPackage.repaired && revision<15)));
     const otaModel=otaPackage?.bundle?client.config?.model:otaPackage?.model;
     $("ota-start").disabled = !otaReady || !otaPackage || needsTransition || (!migration && otaPackage.bundle && revision>=otaPackage.revision) || otaModel !== client.config?.model || !!scheduler || !$("ota-consent").checked;
     $("ota-capability").textContent = !client.ready ? OMI18n.t("v1-fixed HEX 已集成全部当前功能；有线刷入即可使用，ZIP 用于后续升级。") :
       client.board.name === OMProtocol.OTA_MARKER ? OMI18n.t("已连接 ELINK 独立固件，可以升级。") : OMI18n.t("当前是旧独立固件：请先有线刷入对应屏型的独立 OTA v1-fixed HEX。");
-    if(migration)$("ota-capability").textContent=OMI18n.t(revision===33?"将依次刷入专用 v34 和 SDK19；每段重启读回，不符即停止。":"当前已是专用 v34，将只执行 SDK19 第二段；不会重刷第一段。");
+    if(migration)$("ota-capability").textContent=OMI18n.t(revision===33?"高风险：将依次刷入专用 v35 和 SDK21；每段重启读回，仍待实机验收。":"当前已是专用 v35，将只执行 SDK21 第二段；高风险，等待实机验收。");
     else if(otaReady && otaPackage?.bundle)
       $("ota-capability").textContent=OMI18n.t(revision===32?"已升级到 v32；再次载入内置 v33 升级包即可完成更新。":"旧版按原路线经配套 v31 或 v30 升至 v32，每次操作最多两次刷写；完成后再次载入内置 v33。锁定旧镜像或启动记录不兼容的版本仍使用对应屏型 HEX。");
     if(otaReady && needsTransition && !migration && !otaPackage.bundle)
       $("ota-capability").textContent=OMI18n.t(otaPackage.hardened?"本修复包需要配套过渡接收器；请使用内置整合包，没有发送升级命令":revision>=28?"当前版本不接受旧底层固件回退；没有发送升级命令":otaPackage.lifecycle?"本修复包需要过渡接收器；请使用新版两阶段整合包，没有发送升级命令":"请先升级 v15 过渡包并读回版本，再升级 v16 修复包；没有发送升级命令");
     if(otaReady && paired)
       $("ota-capability").textContent=OMI18n.t("请先载入原配无线升级包：")+"v"+revision+" → v"+paired+"。"+OMI18n.t("重启核对屏型和版本后，再载入内置包继续升级。");
-    if(otaReady && [33,34].includes(revision) && !otaPackage)
-      $("ota-capability").textContent=OMI18n.t(OMOTA.MIGRATION_STOP);
+    if(otaReady && [33,35].includes(revision) && !otaPackage)
+      $("ota-capability").textContent=OMI18n.t("高风险：V33→V35→SDK21 迁移仍待实机验收；普通 V 升级止于 V33。");
+    if(otaReady && revision===34)$("ota-capability").textContent=OMI18n.t(OMOTA.MIGRATION_STOP);
     if(otaReady && otaPackage?.bundle && !migration && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
     $("sdk-month-style-field").hidden=true;
@@ -518,11 +519,11 @@
         if(digest!==expectedArchiveHash)throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
       }
       const parsed = await OMOTA.parse(raw);
-      if(parsed.sdkMigration || parsed.revision===34)throw Error(OMI18n.t(OMOTA.MIGRATION_STOP));
+      if(parsed.sdkMigration && parsed.revision!==21 || !parsed.sdkMigration && parsed.revision>33)throw Error(OMI18n.t(OMOTA.MIGRATION_STOP));
       otaPackage = parsed;
       if(otaPackage.bundle && !otaPackage.sdkMigration && otaPackage.bundleVersion!==7) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v32 两阶段升级包"));
       $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
-      $("ota-kind").textContent = OMI18n.t(otaPackage.sdkMigration?"双段签名、固定镜像哈希和屏型配对校验通过；v33 执行两段，专用 v34 只执行第二段。":otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v32。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
+      $("ota-kind").textContent = OMI18n.t(otaPackage.sdkMigration?"高风险：双段签名及固定哈希通过；v33 经 v35 直接到 SDK21，仍待实机验收。":otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v32。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
       result(OMI18n.t("固件包校验通过，尚未向设备发送任何 OTA 命令。"));
     } catch (error) { otaPackage=null;$("ota-package").textContent = OMI18n.t("固件包校验未通过；没有发送升级命令"); throw error; }
     finally { uiBusy = false; client.armIdleDisconnect(); update(); }
@@ -561,7 +562,13 @@
   }
   $("ota-file").addEventListener("change", event => action(() => loadFirmware(event.target.files[0]), ""));
   bind("ota-bundled", loadBundledFirmware, "");
-  bind("ota-migration",async()=>{throw Error(OMI18n.t(OMOTA.MIGRATION_STOP));},"");
+  bind("ota-migration",async()=>{
+    if(![33,35].includes(client.firmwareRevision))throw Error(OMI18n.t("请先连接 v33 或专用 v35 设备；旧 v34 迁移已停用"));
+    const name="elink42-v33-sdk21-migration.zip",response=await fetch("firmware/"+name,{cache:"no-store"});
+    if(!response.ok)throw Error(OMI18n.t("本地迁移包读取失败，没有发送升级命令"));
+    const bytes=new Uint8Array(await response.arrayBuffer());
+    await loadFirmware({name,size:bytes.length,arrayBuffer:async()=>bytes.buffer},"234772a1c130baf19faf18ce8935aff191212c1432decf743a97f364edcdb5fb");
+  },"");
   $("ota-consent").addEventListener("change", update);
   async function showMigrationProbe(){
     const device=client.device, model=client.config.model;
@@ -588,14 +595,14 @@
     const consent = {deviceId: client.device.id, eraseImages: $("ota-consent").checked};
     if (!consent.eraseImages) throw Error(OMI18n.t("请完成图库清空确认"));
     const text = OMI18n.msg`目标：${client.device.name || client.device.id}\n固件 SHA-256：${otaPackage.sha256}\n升级会清空设备全部图片，期间不能断电或退出。` +
-      OMI18n.t(migration?(client.firmwareRevision===34?"\n当前是专用 v34，只执行 SDK19 第二段。最终核对 SDK 身份、版本、空闲状态和运行 CRC。确认开始？":"\n将执行 v33 → 专用 v34 → SDK19 两段迁移，不经过厂商 DFU 或 SDK8。每段重启读回，失败即停止，不自动重发。确认开始？"):otaPackage.bundle?"\n最多两次刷写：匹配的 v31 → v32（v29：原配 v30 → v32）。会暂时清零设备时间；过渡期间请勿操作，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
+      OMI18n.t(migration?(client.firmwareRevision===35?"\n高风险：专用 v35 继续 SDK21 第二段；需要具备有线恢复条件。仍待实机验收，确认开始？":"\n高风险：v33 → 专用 v35 → SDK21，会清空图库；需要具备有线恢复条件。仍待实机验收，失败停止、不自动重发。确认开始？"):otaPackage.bundle?"\n最多两次刷写：匹配的 v31 → v32（v29：原配 v30 → v32）。会暂时清零设备时间；过渡期间请勿操作，最终重启显示设备名、MAC 和版本。每次重新核对启动版本，失败即停止。确认开始？":"\n此包为独立固件，保留独立模式。确认开始 OTA？");
     if (!window.confirm(text)) { result(OMI18n.t("已取消 OTA，没有发送升级命令。")); return; }
     const paired=OMOTA.pairedRevision(client.firmwareRevision);
     const receipt=await client.ota(otaPackage, consent, progress);
     if(migration){
       await finishSdkUpdate(receipt);
       gallery=null;otaPackage=null;$("ota-consent").checked=false;$("ota-file").value="";
-      $("ota-package").textContent=OMI18n.t("SDK19 迁移已完成并核对运行 CRC");selectTab($("tab-ota"));update();return;
+      $("ota-package").textContent=OMI18n.t("SDK21 版本、CRC 与图库已核对；高风险试用，仍待实机验收");selectTab($("tab-ota"));update();return;
     }
     if(client.firmwareRevision===34)await showMigrationProbe();
     if(paired && client.firmwareRevision===paired){
