@@ -1000,10 +1000,22 @@
     const symbols=F.stockSymbols($("stock-text").value),key=symbols.join(",");stockFetching=true;$("stock-save").disabled=true;$("stock-state").textContent="正在获取行情…";
     try{
       const local=["127.0.0.1","localhost"].includes(location.hostname);
-      const url=local?(stockProxy?"http://127.0.0.1:8290":"")+"/api/stock/quote?symbols="+encodeURIComponent(key):"https://qt.gtimg.cn/q="+encodeURIComponent(key);
-      const request={signal:AbortSignal.timeout(15000),credentials:"omit",redirect:"error",referrerPolicy:"no-referrer"};
-      let response=await fetch(url,request);
-      if(local&&!stockProxy&&location.port==="8289"&&response.status===404){response=await fetch("http://127.0.0.1:8290/api/stock/quote?symbols="+encodeURIComponent(key),request);if(response.ok)stockProxy=true;}
+      const urls=local?[(stockProxy?"http://127.0.0.1:8290":"")+"/api/stock/quote?symbols="+encodeURIComponent(key)]:
+        ["https://qt.gtimg.cn/q=","https://web.sqt.gtimg.cn/q="].map(base=>base+encodeURIComponent(key));
+      const request=()=>({signal:AbortSignal.timeout(15000),credentials:"omit",redirect:"error",referrerPolicy:"no-referrer"});
+      let response;
+      for(let attempt=0;attempt<urls.length;attempt++){
+        if(attempt&&automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
+        try{
+          response=await fetch(urls[attempt],request());
+          if(attempt+1===urls.length||response.status<500)break;
+          await response.body?.cancel();
+        }catch(error){
+          if(attempt+1===urls.length||!["TypeError","TimeoutError"].includes(error.name))throw error;
+        }
+        $("stock-state").textContent="主行情通道暂不可用，正在尝试腾讯备用通道…";
+      }
+      if(local&&!stockProxy&&location.port==="8289"&&response.status===404){response=await fetch("http://127.0.0.1:8290/api/stock/quote?symbols="+encodeURIComponent(key),request());if(response.ok)stockProxy=true;}
       if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
       const bytes=await response.arrayBuffer();if(bytes.byteLength>32000)throw Error("行情响应过大");
       const next=F.stockTencent(new TextDecoder("gbk",{fatal:true}).decode(bytes),symbols);
@@ -1014,7 +1026,7 @@
         await locked(async()=>{if(tab!=="stock"||client.device?.id!==stockTarget)throw Error("股票同步目标已改变");await applyScreen(OMScreen.capture(),true);});
       }
     }catch(error){
-      const message=error.name==="TypeError"&&/fetch/i.test(error.message)?(["127.0.0.1","localhost"].includes(location.hostname)?"无法连接本地行情接口，请确认本地控制端正在运行":"行情请求被浏览器或网络拦截，请在配套本地控制端获取行情"):error.name==="TimeoutError"?"行情服务响应超时，请稍后重新获取":error.message;
+      const message=error.name==="TypeError"&&/fetch/i.test(error.message)?(["127.0.0.1","localhost"].includes(location.hostname)?"无法连接本地行情接口，请确认本地控制端正在运行":"主、备用行情通道均无法连接，请检查网络或拦截设置，也可使用配套本地控制端"):error.name==="TimeoutError"?"行情服务响应超时，请稍后重新获取":error.message;
       $("stock-state").textContent="获取或同步失败："+message+"。上次行情保留，时间见预览。";throw Error(message);
     }
     finally{stockFetching=false;update();}

@@ -1,5 +1,5 @@
 {
-  "version": "0.8.17",
+  "version": "0.8.18",
   "sdk_revision": 21,
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
@@ -18,7 +18,7 @@
     }
   },
   "assets": {
-    "index.html": "cafcff0e8fc131add7daf43f0f7f6c50e1d922717e71c8ba27793caadd63d6be",
+    "index.html": "19761a3d5a7819999c821abe4abf1d22dc852bd0b8637f568eed3e3ea94d7c4f",
     "style.css": "fd932edc1fdcd89020ecb5905066921873cbafce0304ec2b1f8ddb86cc7e39ea",
     "i18n.js": "85ee8b000cc1aab4da435039661a275656d04b236ee9ec659302e1088b8d6e09",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
@@ -41,9 +41,9 @@
     "render.js": "b702a52a347bd29d13c952993cad2c8ec1102b4f20eaf3d95e7209b41dc33017",
     "wallpapers.js": "5a732dcd5432443b2eebec46bc1474b8e4c181bd3f75b7ac83b8f7aa34dff807",
     "rotation.js": "e0d4aa3009648a36faef8b5199ac362e5005cc4b6deeeb2980d1643a1ccf5def",
-    "app.js": "16597899458b5d3c55742ed7e56d9556ae02db116f07cce67b8fadb1132adf0c",
+    "app.js": "24a0ee4be186565f5fe8e61be0f955c9a90522e7ff9f6bd94cf2391cf00c47a4",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "timetable.html": "be49e8d7ce4e1fd45407ed0e13155445378a8081b6e5ca3723cd525b9b45a802",
+    "timetable.html": "a33fede381ce0cfad8680532639b1456b3e7b2cd1e5f1c33ab0ddcb4d8163a7c",
     "timetable.css": "f30f78336cd5c563115a09f2633131df0aa7491c11ffe2c296ddbe9c6a7e7135",
     "planner.js": "5103de4f25a932bc32e9999e8f9fdcde8bb16698acf735104bb24739c4404d39",
     "course-table.js": "503d7e3cd40624e690e3e29a257aad5b337ade6ea20af47e926a1026b3f4dee4",
@@ -54,7 +54,7 @@
     "timetable-template.xlsx": "a52bf7b75980b898a260bee75fc4320e6c8cbc9e61c90d684b74c00746b8b8b3",
     "vendor/xlsx.full.min.js": "cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41",
     "vendor/xlsx.LICENSE": "4d2a38ac35cda06a555c84074a819d413339cd3691b822cae50f8f322fe01f64",
-    "screen-workbench.js": "65734843eb0af21da38b0413a328b0c4b3e32c4b2f588241bfc1b0287035dd43",
+    "screen-workbench.js": "990aba7085e47610cfc9d4d6e3f29b4e119987e51c07f3ae4e83ac0ad13e19bd",
     "tools/serve_local.py": "2a15d7e22f42fe0d2f21d6cdf35b6d0a78f4a0762839ba6569b5c7d19f858f2e",
     "firmware/LICENSES.txt": "7576de5bd652f36a737d4ce6b6897d0faa59f1b3b8d97ca5058eca7c777b5c63",
     "firmware/elink42-sdk-v21-tricolor-ssd1619.e42ota": "33f330219ee96aaacf0c2e890316d87e7ce269542bf1d07a1e1d7458ec46ab93",
