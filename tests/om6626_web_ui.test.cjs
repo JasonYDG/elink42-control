@@ -80,7 +80,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:(url,options)=>(httpRequests.push({url:String(url),options}),fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer});})),
+    fetch:(url,options)=>(httpRequests.push({url:String(url),options}),fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>{if(value instanceof Error)throw value;return value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer;}});})),
     Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
@@ -91,7 +91,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       setImmediate(()=>{if(scriptRequests===1 && initial.firmwareFailure==='error')script.onerror();else{vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);script.onload();}});
     }}},
     OMSdkPreview:initial.sdkRevision?{async calendar(...args){rendered.push({kind:'sdk-calendar',args});}}:undefined,
-    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});}]))};
+    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});if(k==='stockCalendar')return initial.stockRender?.(...args);}]))};
   // Mock only course pixels here; real date helpers run, and verify-school.py checks actual rendering.
   const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","wallpapers.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
@@ -138,11 +138,12 @@ test('local quote network failures preserve data and explain the missing service
  request=u.click('stock-save');u.respond('',502);await request;assert.match(u.get('stock-state').textContent,/本地控制端暂时无法取得行情/);
 });
 
-for(const failure of ['network','timeout','server'])test(`hosted stock ${failure}: uses one Tencent backup with a fresh timeout`,async()=>{
+for(const failure of ['network','timeout','server','body-network','body-timeout','body-abort'])test(`hosted stock ${failure}: uses one Tencent backup with a fresh timeout`,async()=>{
  const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
  const pending=u.click('stock-save');assert.equal(u.lastFetchURL(),'https://qt.gtimg.cn/q=sh000001');
  const first=u.httpRequests.at(-1).options;
  if(failure==='server')u.respond('',503);
+ else if(failure.startsWith('body-'))u.respond(failure==='body-network'?new TypeError('network error'):Object.assign(Error('timeout'),{name:failure==='body-abort'?'AbortError':'TimeoutError'}));
  else u.failFetch(failure==='timeout'?Object.assign(Error('timeout'),{name:'TimeoutError'}):new TypeError('Failed to fetch'));
  await new Promise(setImmediate);assert.equal(u.lastFetchURL(),'https://web.sqt.gtimg.cn/q=sh000001');
  const second=u.httpRequests.at(-1).options;assert.notEqual(first.signal,second.signal);
@@ -167,6 +168,16 @@ test('stopping automatic stock refresh before failover prevents the backup reque
  const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
  const pending=u.click('stock-start');u.failFetch();await u.click('stock-stop');await pending;
  assert.equal(u.fetchCount(),1);assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,undefined);assert.equal(u.packets.length,0);
+});
+
+test('stopping while the automatic stock preview is pending prevents any BLE push',async()=>{
+ let hold=false,waiting=0,release;const rendering=new Promise(resolve=>{release=resolve;});
+ const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00',stockRender(){if(hold){waiting++;return rendering;}}});
+ await u.click('connect');await u.click('nav-stock');u.get('stock-text').value='sh000001';u.get('stock-auto-send').checked=true;
+ const before=u.packets.length;hold=true;const pending=u.click('stock-start');u.respond(liveQuote());await new Promise(setImmediate);
+ assert.ok(waiting>0);assert.equal(u.get('nav-stock').disabled,true);assert.equal(u.packets.length,before);
+ await u.click('stock-stop');release();await pending;
+ assert.equal(u.packets.length,before);assert.match(u.get('stock-timer-state').textContent,/已停止/);assert.match(u.get('stock-state').textContent,/股票自动同步已停止/);
 });
 
 test('invalid backup quotes do not replace the previous snapshot or trigger another request',async()=>{
