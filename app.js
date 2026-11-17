@@ -629,7 +629,9 @@
   function screenData(){if(!transientWorkspace)store.data=new F.Store(localStorage).data;return store.data;}
   async function applyScreen(p,automaticStock=false){
     if(model()!==client.config?.model)throw Error("预览屏型与已连接设备不一致，请重新连接后核对。");
+    const generation=stockGeneration,target=stockTarget;
     OMScreen.persist();p=OMScreen.capture();await preview();let applied=OMScreen.signature(screenData(),p);
+    if(automaticStock&&(generation!==stockGeneration||target!==stockTarget||tab!=="stock"||!client.ready||client.device?.id!==target))throw Error("股票自动同步已停止或目标已改变");
     if(automaticStock&&!F.stockSession(new Date()).open)throw Error("已离开交易时段，停止自动推送");
     if(!frame || loading || OMScreen.dirty())throw Error("请先保存表格并等待预览完成");
     if(p.update==="snapshot")await client.publish(frame,progress);
@@ -1003,21 +1005,22 @@
       const urls=local?[(stockProxy?"http://127.0.0.1:8290":"")+"/api/stock/quote?symbols="+encodeURIComponent(key)]:
         ["https://qt.gtimg.cn/q=","https://web.sqt.gtimg.cn/q="].map(base=>base+encodeURIComponent(key));
       const request=()=>({signal:AbortSignal.timeout(15000),credentials:"omit",redirect:"error",referrerPolicy:"no-referrer"});
-      let response;
+      let response,bytes;
       for(let attempt=0;attempt<urls.length;attempt++){
         if(attempt&&automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
         try{
           response=await fetch(urls[attempt],request());
+          if(local&&!stockProxy&&location.port==="8289"&&response.status===404){response=await fetch("http://127.0.0.1:8290/api/stock/quote?symbols="+encodeURIComponent(key),request());if(response.ok)stockProxy=true;}
+          if(response.ok)bytes=await response.arrayBuffer();
           if(attempt+1===urls.length||response.status<500)break;
           await response.body?.cancel();
         }catch(error){
-          if(attempt+1===urls.length||!["TypeError","TimeoutError"].includes(error.name))throw error;
+          if(attempt+1===urls.length||!["TypeError","TimeoutError","AbortError"].includes(error.name))throw error;
         }
         $("stock-state").textContent="主行情通道暂不可用，正在尝试腾讯备用通道…";
       }
-      if(local&&!stockProxy&&location.port==="8289"&&response.status===404){response=await fetch("http://127.0.0.1:8290/api/stock/quote?symbols="+encodeURIComponent(key),request());if(response.ok)stockProxy=true;}
       if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
-      const bytes=await response.arrayBuffer();if(bytes.byteLength>32000)throw Error("行情响应过大");
+      if(bytes.byteLength>32000)throw Error("行情响应过大");
       const next=F.stockTencent(new TextDecoder("gbk",{fatal:true}).decode(bytes),symbols);
       if(F.stockSymbols($("stock-text").value).join(",")!==key)throw Error("代码已修改，本次结果未保存，请重新获取。");
       if(automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}

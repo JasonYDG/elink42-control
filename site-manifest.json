@@ -18,7 +18,7 @@
     }
   },
   "assets": {
-    "index.html": "19761a3d5a7819999c821abe4abf1d22dc852bd0b8637f568eed3e3ea94d7c4f",
+    "index.html": "4d70bbe85363c27aa0b6aa2bd1a1aba8bfe93b84b69f098fd33d4e25500e1ac9",
     "style.css": "fd932edc1fdcd89020ecb5905066921873cbafce0304ec2b1f8ddb86cc7e39ea",
     "i18n.js": "85ee8b000cc1aab4da435039661a275656d04b236ee9ec659302e1088b8d6e09",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
@@ -41,7 +41,7 @@
     "render.js": "b702a52a347bd29d13c952993cad2c8ec1102b4f20eaf3d95e7209b41dc33017",
     "wallpapers.js": "5a732dcd5432443b2eebec46bc1474b8e4c181bd3f75b7ac83b8f7aa34dff807",
     "rotation.js": "e0d4aa3009648a36faef8b5199ac362e5005cc4b6deeeb2980d1643a1ccf5def",
-    "app.js": "24a0ee4be186565f5fe8e61be0f955c9a90522e7ff9f6bd94cf2391cf00c47a4",
+    "app.js": "cef5dc339519506a0ba6ed832d389188f2b2343fd00335a5cff8b5627f1863ae",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "timetable.html": "a33fede381ce0cfad8680532639b1456b3e7b2cd1e5f1c33ab0ddcb4d8163a7c",
     "timetable.css": "f30f78336cd5c563115a09f2633131df0aa7491c11ffe2c296ddbe9c6a7e7135",
