@@ -1,5 +1,12 @@
 "use strict";
 const OMTranslations = {
+  "旧版 V 固件：先升级到 v33，再通过 v34 过渡到 SDK19，最后升级 SDK20。":"Older V firmware: upgrade to v33, use the v34 bridge to reach SDK19, then upgrade to SDK20.",
+  "第一步：旧版固件升级到 v33":"Step 1: upgrade older V firmware to v33",
+  "较早版本需先完成原配包或 v32 兼容中转，重连核对后继续升级到 v33；请使用按当前设备匹配的内置升级按钮。":"Earlier versions may need their paired update or a v32 compatibility stage first. Reconnect and verify the version, then continue to v33. Use the built-in update matched to the connected device.",
+  "第二步：v33 过渡到 SDK19":"Step 2: migrate v33 to SDK19",
+  "完成过渡并重连核对 SDK19 后，再使用内置 SDK20。升级及过渡前请备份图库。":"After migration and reconnecting to verify SDK19, use the bundled SDK20 update. Back up the gallery before upgrading or migrating.",
+  "下载三色 SSD1619 的 v33 ZIP":"Download v33 ZIP for three-color SSD1619",
+  "下载四色 JD79668 的 v33 ZIP":"Download v33 ZIP for four-color JD79668",
   "日历设置未保存。请在「设备图片」读取内部图库，查看槽位和状态。":"Calendar settings could not be saved. Read the internal gallery under Device images to check its slots and status.",
   "未挂载":"Not mounted",
   "升级完成":"Update complete",
