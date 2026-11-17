@@ -1,5 +1,10 @@
 "use strict";
 const OMTranslations = {
+  "旧版 V 固件可按兼容路线升至 v33；V33→SDK 迁移暂时停用。":"Older V firmware can follow its compatible route to v33. V33 to SDK migration is temporarily disabled.",
+  "第二步：V33→SDK 迁移暂时停用":"Step 2: V33 to SDK migration temporarily disabled",
+  "旧迁移包已停用":"Old migration package withdrawn",
+  "旧版 V33→V34→SDK19 迁移已停用：迁移后图库可能无法挂载。请保留图片和操作记录，勿继续刷写或清空图库。":"V33 to V34 to SDK19 migration has been withdrawn because the gallery may fail to mount. Keep your images and operation logs. Do not continue flashing or clear the gallery.",
+  "V 系列 FE59 接收器已确认；旧迁移包已停用，请保留图片和操作记录。":"V-series FE59 receiver verified. The old migration has been withdrawn. Keep your images and operation logs.",
   "旧版 V 固件：先升级到 v33，再通过 v34 过渡到 SDK19，最后升级 SDK20。":"Older V firmware: upgrade to v33, use the v34 bridge to reach SDK19, then upgrade to SDK20.",
   "第一步：旧版固件升级到 v33":"Step 1: upgrade older V firmware to v33",
   "较早版本需先完成原配包或 v32 兼容中转，重连核对后继续升级到 v33；请使用按当前设备匹配的内置升级按钮。":"Earlier versions may need their paired update or a v32 compatibility stage first. Reconnect and verify the version, then continue to v33. Use the built-in update matched to the connected device.",

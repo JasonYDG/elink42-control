@@ -1,5 +1,6 @@
 "use strict";
 const OMOTA = (() => {
+  const MIGRATION_STOP = "旧版 V33→V34→SDK19 迁移已停用：迁移后图库可能无法挂载。请保留图片和操作记录，勿继续刷写或清空图库。";
   const SERVICE = "0000fe59-0000-1000-8000-00805f9b34fb";
   const CONTROL = "8ec90001-f315-4f60-9fb8-838830daea50", DATA = "8ec90002-f315-4f60-9fb8-838830daea50";
   // The retained native table uses a 16-bit 0x0003 UUID for its version characteristic.
@@ -250,9 +251,11 @@ const OMOTA = (() => {
     return [15,18,20,23,27].includes(current) ? current+1 : null;
   }
   async function transfer(client, input, consent, progress = () => {}) {
+    if(input.sdkMigration || input.revision===34)throw Object.assign(Error(OMI18n.t(MIGRATION_STOP)),{code:"OTA_PRECHECK"});
     target(client); const device = client.device;
     if (consent?.deviceId !== device.id || consent.eraseImages !== true) throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
     const pack = input.sdkMigration ? await validateSdkMigration(input.dat,input.bin,input.model) : await validate(input.dat, input.bin);
+    if(pack.sdkMigration || pack.revision===34)throw Object.assign(Error(OMI18n.t(MIGRATION_STOP)),{code:"OTA_PRECHECK"});
     if (pack.model !== client.config.model) throw Error(OMI18n.t("OTA 包与当前设备屏型不匹配；没有发送升级命令"));
     if(pack.sdkMigration) {
       const current=await readRevision(client);
@@ -389,29 +392,7 @@ const OMOTA = (() => {
     throw Error(OMI18n.t("OTA 已提交，但未在两分钟内确认新版本启动；不会重新擦写，请保留供电并核对设备"));
   }
   async function upgradeMigration(client,input,consent,progress=()=>{}) {
-    target(client);const device=client.device,model=client.config.model;
-    if(consent?.deviceId!==device.id || consent.eraseImages!==true)throw Error(OMI18n.t("请确认目标设备、备份图片并明确同意清空图库"));
-    const bundle=await parse(input.source);
-    if(!bundle.sdkMigration)throw Error(OMI18n.t("这不是 V33→SDK19 双段迁移包"));
-    const current=await readRevision(client);
-    if(![33,34].includes(current)){const error=Error(OMI18n.t("迁移只接受 v33 或新版 v34 起点，未发送升级命令"));error.code="OTA_PRECHECK";throw error;}
-    const quietReceiver=async()=>{
-      if(!await client.readCalendar() || client.config.mode!==0){const error=Error(OMI18n.t("v34 未确认静默状态，已停止；不会自动重发"));error.code="DISPLAY_NOT_READY";throw error;}
-    };
-    if(current===34)await quietReceiver();
-    if(current===33) {
-      const pack=bundle.models[model].bridge;
-      progress(0,OMI18n.t("阶段 1/2 · 安装专用 v34 迁移接收器"));
-      const verified=await transfer(client,pack,consent,(value,text)=>progress(Math.floor(value/2),OMI18n.t("阶段 1/2 · ")+text));
-      await confirmBoot(client,verified,(value,text)=>progress(Math.floor(value/2),OMI18n.t("阶段 1/2 · ")+text));
-      if(client.device!==device || client.config.model!==model || client.firmwareRevision!==34)throw Error(OMI18n.t("第一次重启读回不符，已停止，不发送 SDK19"));
-      await quietReceiver();
-    }
-    if(client.device!==device || client.config.model!==model || !device.gatt.connected)throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
-    const sdk=bundle.models[model].sdk;
-    const receipt=await transfer(client,sdk,consent,(value,text)=>progress(current===33?50+Math.floor(value/2):value,OMI18n.t("阶段 2/2 · SDK19 · ")+text));
-    progress(99,OMI18n.t("SDK19 已提交，等待重启后核对 SDK 身份和运行 CRC"));
-    return receipt;
+    throw Object.assign(Error(OMI18n.t(MIGRATION_STOP)),{code:"OTA_PRECHECK"});
   }
   async function upgradeBundle(client,input,consent,progress=()=>{}) {
     target(client);const device=client.device,model=client.config.model;
@@ -507,5 +488,5 @@ const OMOTA = (() => {
     if(!current())throw Error(OMI18n.t("升级期间目标设备发生变化，已停止"));
     return view.getUint32(0,true)===0x20211229 && view.getUint32(4,true)===15 && view.getUint32(8,true)===3?"protocol-3":"unrecognized";
   }
-  return {SERVICE,CONTROL,DATA,VERSION,parse,validate,validateSdkMigration,inspect,transfer,confirmBoot,readRevision,probeOnMicroDfu,upgradeMigration,upgradeBundle,bundleRoute,pairedRevision};
+  return {MIGRATION_STOP,SERVICE,CONTROL,DATA,VERSION,parse,validate,validateSdkMigration,inspect,transfer,confirmBoot,readRevision,probeOnMicroDfu,upgradeMigration,upgradeBundle,bundleRoute,pairedRevision};
 })();

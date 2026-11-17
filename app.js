@@ -101,7 +101,7 @@
     if(!client.ready)$("ota-service").textContent=OMI18n.t("尚未检测；开始升级时会自动检查。");
     $("ota-inspect").disabled = !otaReady;
     $("ota-file").disabled = busy;
-    $("ota-migration").disabled=!otaReady || ![33,34].includes(revision);
+    $("ota-migration").disabled=true;
     $("ota-bundled").disabled = !otaReady || revision === null || revision >= bundledFirmwareRevision;
     const paired=OMOTA.pairedRevision(revision);
     const bundledLabel=paired?"载入原配无线升级包":bundledRevision()===32?"载入内置 v32 兼容升级包":"载入内置 v33 升级包";
@@ -122,7 +122,7 @@
     if(otaReady && paired)
       $("ota-capability").textContent=OMI18n.t("请先载入原配无线升级包：")+"v"+revision+" → v"+paired+"。"+OMI18n.t("重启核对屏型和版本后，再载入内置包继续升级。");
     if(otaReady && [33,34].includes(revision) && !otaPackage)
-      $("ota-capability").textContent=OMI18n.t("可载入 V33→SDK19 双段迁移包；无需线刷，不经过 SDK8。");
+      $("ota-capability").textContent=OMI18n.t(OMOTA.MIGRATION_STOP);
     if(otaReady && otaPackage?.bundle && !migration && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
     $("sdk-month-style-field").hidden=true;
@@ -517,7 +517,9 @@
         const digest=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",raw)),b=>b.toString(16).padStart(2,"0")).join("");
         if(digest!==expectedArchiveHash)throw Error(OMI18n.t("内置固件版本或屏型不匹配，已停止"));
       }
-      otaPackage = await OMOTA.parse(raw);
+      const parsed = await OMOTA.parse(raw);
+      if(parsed.sdkMigration || parsed.revision===34)throw Error(OMI18n.t(OMOTA.MIGRATION_STOP));
+      otaPackage = parsed;
       if(otaPackage.bundle && !otaPackage.sdkMigration && otaPackage.bundleVersion!==7) throw Error(OMI18n.t("旧整合包已停用，请载入内置 v32 两阶段升级包"));
       $("ota-package").textContent = OMI18n.msg`${file.name} · ${otaPackage.bundle?OMI18n.t("SSD1619 三色 / JD79668 四色整合包"):otaPackage.model === 5 ? OMI18n.t("JD79668 四色") : OMI18n.t("SSD1619 三色")} · ${otaPackage.size.toLocaleString()} 字节 · 版本 ${otaPackage.version} · SHA-256 ${otaPackage.sha256}`;
       $("ota-kind").textContent = OMI18n.t(otaPackage.sdkMigration?"双段签名、固定镜像哈希和屏型配对校验通过；v33 执行两段，专用 v34 只执行第二段。":otaPackage.bundle?"整合包签名、屏型和配对校验通过；确认一次，最多两次刷写到 v32。":"项目签名和保护区校验通过；升级继续保持独立模式，不恢复原版激活流程。");
@@ -559,13 +561,7 @@
   }
   $("ota-file").addEventListener("change", event => action(() => loadFirmware(event.target.files[0]), ""));
   bind("ota-bundled", loadBundledFirmware, "");
-  bind("ota-migration",async()=>{
-    if(![33,34].includes(client.firmwareRevision))throw Error(OMI18n.t("请先连接 v33 或专用 v34 设备"));
-    const name="elink42-v33-sdk19-migration.zip",response=await fetch("firmware/"+name,{cache:"no-store"});
-    if(!response.ok)throw Error(OMI18n.t("本地迁移包读取失败，没有发送升级命令"));
-    const bytes=new Uint8Array(await response.arrayBuffer());
-    await loadFirmware({name,size:bytes.length,arrayBuffer:async()=>bytes.buffer},"95558a80fb1b0725d5dea067f46ae1c841c515cf9b1728c7696c8751ec4355fb");
-  },"");
+  bind("ota-migration",async()=>{throw Error(OMI18n.t(OMOTA.MIGRATION_STOP));},"");
   $("ota-consent").addEventListener("change", update);
   async function showMigrationProbe(){
     const device=client.device, model=client.config.model;
@@ -573,7 +569,7 @@
     const message=await client.operation(async()=>{
       await OMOTA.inspect(client);
       if(await OMOTA.readRevision(client)!==34 || !await client.readCalendar() || client.config.mode!==0)throw Error(OMI18n.t("v34 身份或静默状态不符"));
-      return OMI18n.t("V 系列 FE59 接收器已确认；可继续 SDK19，不使用厂商 DFU。");
+      return OMI18n.t("V 系列 FE59 接收器已确认；旧迁移包已停用，请保留图片和操作记录。");
     });
     if(client.device===device && client.ready && device.gatt.connected && client.config?.model===model && client.firmwareRevision===34){
       $("ota-service").textContent=(model===2?"SSD1619":"JD79668")+" · v34 · "+message;
