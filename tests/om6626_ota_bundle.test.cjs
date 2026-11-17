@@ -7,6 +7,11 @@ const {OTA,SdkOTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh
  setTimeout:(f,ms)=>setTimeout(f,ms===2000||ms===2500?0:ms),clearTimeout,console,navigator:{}});
 const bytes=Buffer.from(F.legacy.packages[2].data,'base64'),parsed=OTA.parse(bytes);
 const migrationBytes=fs.readFileSync(path.join(root,'firmware','elink42-v33-sdk19-migration.zip')),migrationParsed=OTA.parse(migrationBytes);
+for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']])test(`downloadable v33 ZIP model ${model} is the exact embedded signed package`,async()=>{
+ const raw=fs.readFileSync(path.join(root,'firmware',`elink42-${panel}-v33-ota.zip`));
+ assert.deepEqual(raw,Buffer.from(F.packages[model].data,'base64'));
+ const pack=await OTA.parse(raw);assert.equal(pack.model,model);assert.equal(pack.revision,33);
+});
 
 test('v34 probes only the OnMicro version characteristic and never authorizes SDK writing',async()=>{
   for(const model of [2,5]){

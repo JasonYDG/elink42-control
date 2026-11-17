@@ -2,12 +2,14 @@
 const {test}=require("node:test"),assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto");
 const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-control");
 const migrationFile='firmware/elink42-v33-sdk19-migration.zip';
+const v33Files=['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-'+panel+'-v33-ota.zip');
 const firmwareFiles=new Set(['firmware/LICENSES.txt',migrationFile,...['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-sdk-v7-'+panel+'.e42ota')]);
 for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
+for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.14');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,20);assert.equal(Object.keys(manifest.assets).length,282);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.15');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,20);assert.equal(Object.keys(manifest.assets).length,284);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -60,7 +62,8 @@ test('the one-click SDK update pins the published package for each connected pan
   const manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
   assert.ok(html.includes('id="sdk-ota-panel" data-revision="'+manifest.sdk_revision+'"'));
   const button=html.match(/<button id="sdk-ota-bundled"[^>]+>/)[0];
-  assert.doesNotMatch(html,/<a\b[^>]*(?:\bdownload\b|\.e42ota|\.hex|\/releases\/download\/)/i);
+  const withoutV33Downloads=html.replace(/<a id="download-v33-(?:2|5)"[^>]+>/g,'');
+  assert.doesNotMatch(withoutV33Downloads,/<a\b[^>]*(?:\bdownload\b|\.e42ota|\.hex|\/releases\/download\/)/i);
   for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']]){
     const [file,query]=button.match(new RegExp('data-src-'+model+'="([^"]+)"'))[1].split('?');
     assert.equal(file,'firmware/elink42-sdk-v'+manifest.sdk_revision+'-'+panel+'.e42ota');
@@ -73,16 +76,28 @@ test('the one-click SDK update pins the published package for each connected pan
   }
 });
 
+test('the legacy OTA page exposes both v33 downloads before the SDK migration stage',()=>{
+  const html=fs.readFileSync(path.join(site,'index.html'),'utf8'),manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
+  assert.equal([...html.matchAll(/<a id="download-v33-(?:2|5)"[^>]+>/g)].length,2);
+  assert.match(html,/id="legacy-upgrade-route"[^>]*data-i18n="旧版 V 固件：先升级到 v33，再通过 v34 过渡到 SDK19，最后升级 SDK20。"/);
+  for(const [index,model] of [[0,2],[1,5]]){
+    const link=html.match(new RegExp('<a id="download-v33-'+model+'"[^>]*>'))[0];
+    assert.ok(link.includes(' download '));assert.ok(link.includes('href="'+v33Files[index]+'?'));
+    assert.equal(manifest.assets[v33Files[index]],manifest.firmware_images[model].bundle_sha256);
+    assert.ok(html.indexOf(link)<html.indexOf('id="ota-migration"'));
+  }
+});
+
 test('startup keeps the firmware revision metadata consistent with the on-demand signed payload',()=>{
   const vm=require('node:vm'),firmware=vm.runInNewContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8')+';OMFirmware');
   const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
   assert.equal(Number(app.match(/const bundledFirmwareRevision=(\d+);/)[1]),firmware.revision);
 });
 
-test('standalone firmware is absent from the public source and deployment',()=>{
+test('only the named v33 and migration OTA ZIPs are public, with no raw firmware images',()=>{
   for(const folder of [root,site]){
     const names=fs.readdirSync(folder,{recursive:true}).filter(n=>!n.split(path.sep).some(p=>['.git','build'].includes(p)));
-    assert.ok(!names.some(n=>/\.(hex|zip|bin)$/i.test(n)&&n.split(path.sep).join('/')!==migrationFile));
+    assert.ok(!names.some(n=>/\.(hex|zip|bin)$/i.test(n)&&![migrationFile,...v33Files].includes(n.split(path.sep).join('/'))));
   }
   assert.ok(!/\]\(firmware\//.test(fs.readFileSync(path.join(root,'README.md'),'utf8')));
 });

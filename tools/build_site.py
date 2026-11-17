@@ -15,8 +15,10 @@ ASSETS += ['timetable.html', 'timetable.css', 'planner.js', 'course-table.js', '
 SDK_REVISION = 20
 SDK_FILES = [f'firmware/elink42-sdk-v{SDK_REVISION}-{panel}.e42ota' for panel in ('tricolor-ssd1619','fourcolor-jd79668')]
 MIGRATION_FILE = 'firmware/elink42-v33-sdk19-migration.zip'
+V33_FILES = [f'firmware/elink42-{panel}-v33-ota.zip' for panel in ('tricolor-ssd1619','fourcolor-jd79668')]
 ASSETS += ['screen-workbench.js','tools/serve_local.py','firmware/LICENSES.txt',MIGRATION_FILE,*SDK_FILES, *(name.replace(f'-v{SDK_REVISION}-', f'-v{previous}-') for previous in (6,7,8,9,10,12,14,15,16,17,18,19) for name in SDK_FILES)]
 ASSETS += ['calendar-font.js','fonts/fusion-pixel-10px-monospaced-zh_hans.bdf.gz','fonts/fusion-pixel-12px-monospaced-zh_hans.bdf.gz','fonts/OFL.txt']
+ASSETS += V33_FILES
 
 def firmware_images():
     import base64,re
@@ -31,6 +33,7 @@ def firmware_images():
             assert pack['name']==f'elink42-{name}-v33-ota.zip'
             encoded=base64.b64decode(pack['data'],validate=True)
             assert hashlib.sha256(encoded).hexdigest()==pack['sha256']
+            assert (ROOT/'firmware'/pack['name']).read_bytes()==encoded
             with zipfile.ZipFile(io.BytesIO(encoded))as inner:
                 assert inner.testzip()is None and set(inner.namelist())=={'manifest.json','firmware.dat','firmware.bin'}
                 image,dat=inner.read('firmware.bin'),inner.read('firmware.dat')
@@ -45,7 +48,7 @@ def build():
     import re
     assert len(images)==212 and all(re.fullmatch(r'assets/wallpapers/(thumbs/[a-z0-9-]+\.webp|display/[a-z0-9-]+\.png)',p) for p in images)
     files = ASSETS+images
-    assert len(files) == len(set(files)) == 282
+    assert len(files) == len(set(files)) == 284
     assert hashlib.sha256((ROOT/MIGRATION_FILE).read_bytes()).hexdigest() == '95558a80fb1b0725d5dea067f46ae1c841c515cf9b1728c7696c8751ec4355fb'
     firmware=firmware_images()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -59,7 +62,7 @@ def build():
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / name, dest)
         hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
-    manifest = {'version': '0.8.14', 'sdk_revision': SDK_REVISION, 'repository': 'JasonYDG/elink42-control',
+    manifest = {'version': '0.8.15', 'sdk_revision': SDK_REVISION, 'repository': 'JasonYDG/elink42-control',
                 'pages_url': 'https://jasonydg.github.io/elink42-control/',
                 'content': 'web-control-with-bundled-signed-ota', 'firmware_revision': 33, 'firmware_images':firmware,'assets': hashes}
     (OUT / 'site-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
