@@ -89,14 +89,15 @@ const OMSchool = (() => {
     const format=record?record.format:2,dataCrc=OMArchive.crc32(prepared);
     const old=await client.operation(()=>state(client)),identity=client.device?.id;
     const rotation=await OMRotation.read(client);
-    const reuse=old.format===format && old.valid && old.source===Number(external) && old.crc===OMProtocol.crc16(prepared) && (old.dataCrc===null || old.dataCrc===dataCrc);
+    const reuse=old.format===format && old.valid && old.source===Number(external) && (!(client.sdkCapabilities&512)||old.slot>=10) && old.crc===OMProtocol.crc16(prepared) && (old.dataCrc===null || old.dataCrc===dataCrc);
     const gallery=reuse?null:await client.gallery(external);let cached=null;
-    if(!reuse && client.sdkRevision>=17)for(const row of gallery.slots.filter(row=>row.valid && (row.color&128) && row.crc===OMProtocol.crc16(prepared))){
+    const allowed=reuse?null:gallery.applicationSlots??gallery.availableSlots;
+    if(!reuse && client.sdkRevision>=17)for(const row of gallery.slots.filter(row=>allowed.includes(row.slot) && row.valid && (row.color&128) && row.crc===OMProtocol.crc16(prepared))){
       const checked=await client.operation(()=>state(client,{source:Number(external),slot:row.slot}));
       if(checked.valid && checked.format===format && checked.dataCrc===dataCrc){cached=checked;break;}
     }
-    const slot=reuse?old.slot:cached?cached.slot:gallery.slots.find(row=>!row.valid)?.slot;
-    if(slot===undefined)throw Error("所选图库没有空槽。请先备份并手动清理一个槽位；旧方案和图片未覆盖。");
+    const slot=reuse?old.slot:cached?cached.slot:gallery.slots.find(row=>allowed.includes(row.slot)&&!row.valid)?.slot;
+    if(slot===undefined)throw Error("所选应用区没有空槽。请先备份并手动清理一个应用位置；旧方案和用户图片未覆盖。");
     const saved=reuse?{crc:old.crc}:cached?{crc:cached.crc}:await client.store(record?{reminder:prepared}:{school:prepared},slot,external,progress);
     if(client.device?.id!==identity)throw Error("连接设备已改变，新方案未启用");
     const style=record?8:options.view==="week"?7:6,flags=2|(style<<3),page=record?0:Math.min(15,Math.max(0,options.page||0));

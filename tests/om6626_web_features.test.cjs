@@ -5,10 +5,11 @@ const root=process.env.OM6626_WEB_ROOT||path.resolve(__dirname,"..");
 const ctx={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,console};
 const {P,F,A}=vm.runInNewContext(["i18n.js","holidays.js","charset.js","protocol.js","features.js","archive.js"].map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+";OMI18n.setLanguage('zh');({P:OMProtocol,F:OMFeatures,A:OMArchive})",ctx);
 const plain=value=>JSON.parse(JSON.stringify(value));
-async function calendarFont(fetcher) {
+async function calendarFont(fetcher, edgeValue) {
  // Unit tests record Canvas calls; real font pixels are checked in preview_pixel_ui.py.
  const browserCalls=[];let fontSize=20,value='';
  const rasterContext={fillRect(){value='';},fillText(text){value=text;browserCalls.push({text,font:this.font});},measureText(text){fontSize=Number(this.font.match(/([\d.]+)px/)[1]);return {width:fontSize*(text.codePointAt(0)<128?0.5:1)};},getImageData(){const data=new Uint8ClampedArray(96*96*4).fill(255);if(value&&value!==' '){const width=fontSize*(value.codePointAt(0)<128?0.5:1);for(let y=49-fontSize/2;y<47+fontSize/2;y++)for(let x=33;x<31+width;x++)data.set([0,0,0,255],(y*96+x)*4);}return {data};}};
+ if(edgeValue!==undefined){const original=rasterContext.getImageData;rasterContext.getImageData=function(){const result=original.call(this);result.data.set([edgeValue,edgeValue,edgeValue,255],(48*96+34)*4);return result;};}
  const font=vm.runInNewContext(fs.readFileSync(path.join(root,'calendar-font.js'),'utf8')+';OMCalendarFont',{
   document:{currentScript:{src:'https://elink.test/calendar-font.js'},createElement:()=>({getContext:()=>rasterContext})},URL,Response,DecompressionStream,
   fetch:fetcher|| (async url=>new Response(fs.readFileSync(path.join(root,new URL(url).pathname.slice(1)))))
@@ -86,6 +87,23 @@ test('large text requests browser fonts at the target size while small text stay
   assert.match(call.font,new RegExp(`${base*scale}px`));assert.match(call.font,/Microsoft YaHei/);assert.equal(glyph.advance,base*scale*64);assert.equal(glyph.face,7);
  }
  const count=font.browserCalls.length;assert.equal(font.raster('学'.codePointAt(0),8,12,3).face,8);assert.equal(font.browserCalls.length,count);
+ font.raster('学'.codePointAt(0),2,12,2,600);assert.match(font.browserCalls.at(-1).font,/^600 24px/);assert.equal(font.browserCalls.length,count+1);
+ font.raster('学'.codePointAt(0),2,12,2,500);assert.match(font.browserCalls.at(-1).font,/^500 24px "Noto Sans SC"/);assert.equal(font.browserCalls.length,count+2);
+});
+
+test('browser glyph edges keep half-covered light pixels white instead of thickening strokes',async()=>{
+ for(const [edge,ink] of [[127,true],[128,false],[159,false]]){
+  const font=await calendarFont(undefined,edge),g=font.raster('学'.codePointAt(0),2,12,2,500),col=34-32-g.x,row=48-48-g.y;
+  assert.equal(!!(g.bits[row*g.pitch+(col>>3)]&(128>>(col&7))),ink,`gray ${edge}`);
+ }
+});
+
+test('storage layout keeps ten photo slots and skips vendor holes in the app region',()=>{
+ const state={external:false,count:13},reply=Uint8Array.of(0x5F,7,1,0,13,10,255,23,0,0,0,0),layout=P.storageLayout(reply,state);
+ assert.equal(layout.photoCount,10);assert.deepEqual([...layout.applicationSlots],[10,12]);assert.ok(!layout.availableSlots.includes(11));
+ for(const mutate of [b=>b[3]=1,b=>b[4]=12,b=>b[6]=254,b=>b[11]=128]){const bad=reply.slice();mutate(bad);assert.throws(()=>P.storageLayout(bad,state));}
+ const external=Uint8Array.of(0x5F,9,1,1,45,10,255,255,255,255,255,31);
+ assert.equal(P.storageLayout(external,{external:true,count:45}).applicationSlots.length,35);
 });
 
 test('stock light header fits three to five rows with exact panel colors and full footers',async()=>{

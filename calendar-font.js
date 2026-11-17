@@ -51,8 +51,8 @@ const OMCalendarFont = (() => {
     }
   }
   const has = (value,size=12) => faces.get(size)?.has(value) || false;
-  function browserGlyph(code, size) {
-    const key = `${size}:${code}`;
+  function browserGlyph(code, size, weight = size === 36 ? 600 : 400) {
+    const key = `${size}:${weight}:${code}`;
     if (browserGlyphs.has(key)) return browserGlyphs.get(key);
     if (!browserContext) {
       const canvas = document.createElement("canvas"); canvas.width = canvas.height = 96;
@@ -60,23 +60,23 @@ const OMCalendarFont = (() => {
     }
     const ctx = browserContext, value = String.fromCodePoint(code);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, 96, 96);
-    ctx.font = `${size === 36 ? 600 : 400} ${size}px ${code < 128 ? '"Bahnschrift", ' : ''}"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif`;
+    ctx.font = `${weight} ${size}px ${code < 128 ? '"Bahnschrift", ' : ''}"Noto Sans SC", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif`;
     ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillStyle = "#000"; ctx.fillText(value, 32, 48);
     const advance = Math.round(ctx.measureText(value).width * 64), rgba = ctx.getImageData(0, 0, 96, 96).data;
     let left = 96, top = 96, right = -1, bottom = -1;
-    for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) if (rgba[(y * 96 + x) * 4] < 160) {
+    for (let y = 0; y < 96; y++) for (let x = 0; x < 96; x++) if (rgba[(y * 96 + x) * 4] < 128) {
       left = Math.min(left, x); top = Math.min(top, y); right = Math.max(right, x); bottom = Math.max(bottom, y);
     }
     const w = right < 0 ? 0 : right - left + 1, h = bottom < 0 ? 0 : bottom - top + 1, pitch = Math.ceil(w / 8), bits = new Uint8Array(h * pitch);
     if (!advance || advance > 4096 || w > 40 || h > 40 || (code !== 32 && !w) || (w && (left - 32 < -16 || left - 32 > 16 || Math.abs(top - 48) > 40))) throw Error("字体无法在设备上显示：" + value);
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (rgba[((top + y) * 96 + left + x) * 4] < 160) bits[y * pitch + (x >> 3)] |= 128 >> (x & 7);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (rgba[((top + y) * 96 + left + x) * 4] < 128) bits[y * pitch + (x >> 3)] |= 128 >> (x & 7);
     const g = {w, h, pitch, x: w ? left - 32 : 0, y: h ? top - 48 : 0, advance, bits};
     browserGlyphs.set(key, g); return g;
   }
-  function raster(code, face, size = 12, scale = 1) {
+  function raster(code, face, size = 12, scale = 1, weight) {
     const value = String.fromCodePoint(code);
     if (![1, 2, 3].includes(scale)) throw Error("点阵字形仅支持整数倍缩放");
-    if (scale > 1) return {code, face, ...browserGlyph(code, size * scale)};
+    if (scale > 1) return {code, face, ...browserGlyph(code, size * scale, weight)};
     if (!has(value, size)) throw Error("点阵字库不支持字符：" + value);
     const g = glyph(value, size);
     let left = size, top = size, right = -1, bottom = -1;
