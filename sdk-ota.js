@@ -130,12 +130,36 @@ const OMSdkOTA=(()=>{
     // The identity notification carries one revision byte; the OTA receipt below carries the full value.
     if(client.device!==device || !supported(client) || client.config?.model!==receipt.model || client.sdkRevision!==(receipt.revision & 0xFF))
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
-    const state=await client.operation(async()=>{await client.initialize();return request(client,0x60);});
+    const state=await client.operation(async()=>{
+      if(receipt.sdkMigration)await client.waitForDisplay();
+      else await client.initialize();
+      const state=await request(client,0x60);
+      if(state.state!==0 || state.error!==0 || state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
+        throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
+      if(receipt.sdkMigration){
+        if(receipt.revision!==21 || !(client.sdkCapabilities&1024))throw failure("迁移固件未提供图库初始化保护，已停止；请保留数据。");
+        let reply;
+        for(let page=0;page<64;page++){
+          const seq=client.nextSequence();
+          reply=await client.request(Uint8Array.of(0x24,0x54,seq,1),b=>b[0]===0x5E&&b[1]===seq,"核对迁移图库及升级区");
+          if(client.device!==device || reply.length!==8 || reply[2]!==1 || reply[3]!==receipt.model || reply[4]!==21 || reply[5]!==0 || ![1,2].includes(reply[6]) || reply[7]<44)
+            throw failure("迁移图库或升级区初始化尚未确认；保留数据，未自动重发。");
+          if(reply[6]===1)break;
+          progress?.(99,"正在逐页初始化迁移后的升级区；请保持供电");await client.pause(20);
+        }
+        if(reply[6]!==1)throw failure("迁移初始化未在限定步骤内完成，已停止。");
+        client.reportedPayload=reply[7];client.payload=Math.min(reply[7],client.transferPayload||180);
+        const gallery=await client.storageState(false);
+        if(gallery.photoCount!==10 || !gallery.applicationSlots?.length)throw failure("迁移后的照片区或应用区未确认，已停止。");
+        for(const slot of gallery.availableSlots){const row=await client.slotMetadata(slot,false);if(row.valid)throw failure("迁移图库不是已确认的空目录，已停止以保留数据。");}
+      }
+      return state;
+    });
     if(client.device!==device || !client.ready || !device.gatt.connected ||
        state.state!==0 || state.error!==0 || state.model!==receipt.model || state.revision!==receipt.revision || state.runningCrc!==receipt.crc)
       throw failure("重启后的固件内容尚未确认。没有重新发送升级，请核对设备。");
     client.log("重启读回："+(state.model===2?"SSD1619":"JD79668")+" · SDK "+state.revision+" · CRC32 "+state.runningCrc.toString(16).toUpperCase().padStart(8,"0"));
-    progress?.(100,OMI18n.t(receipt.sdkMigration?"迁移完成，已读回版本及应用 CRC；内部图库已清空。":"升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
+    progress?.(100,OMI18n.t(receipt.sdkMigration?"已核对 SDK21、应用 CRC 和图库卡槽；高风险试用，仍待实机确认。":"升级完成，已读回版本及应用 CRC；图库仍保留。"));return state;
   }
   async function abort(client){return client.operation(async()=>{const state=await request(client,0x65);if(state.state!==0)throw failure("升级已经提交，不能取消。请等待重启并核对设备。");return state;});}
   return {parse,crc32,supported,minimumMillivolts,request,transfer,confirmBoot,confirmRestoredAddress,abort,inspect,describe};

@@ -1,5 +1,10 @@
 "use strict";
 const OMTranslations = {
+  "第二步：高风险迁移到 SDK21":"Step 2: high-risk migration to SDK21",
+  "高风险：载入 V33→SDK21 迁移包":"High risk: load V33 to SDK21 migration",
+  "高风险：V33→SDK21 跨系列迁移仍待实机验收，可能需要有线恢复；会清空内部图库，请先备份。不建议普通用户尝试。":"HIGH RISK: V33 to SDK21 migration still needs physical acceptance and may require wired recovery. The internal gallery is cleared. Back up first. Not recommended for general use.",
+  "旧 V5、V6、V9 等版本的普通升级最高到安全版 V33；跨系列迁移单独提示高风险。":"Normal updates for older V5, V6 and V9 firmware stop at the safe V33 release. Cross-family migration has a separate high-risk warning.",
+
   "旧版 V 固件可按兼容路线升至 v33；V33→SDK 迁移暂时停用。":"Older V firmware can follow its compatible route to v33. V33 to SDK migration is temporarily disabled.",
   "第二步：V33→SDK 迁移暂时停用":"Step 2: V33 to SDK migration temporarily disabled",
   "旧迁移包已停用":"Old migration package withdrawn",

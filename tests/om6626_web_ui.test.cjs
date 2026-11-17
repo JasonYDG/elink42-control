@@ -172,8 +172,7 @@ test('unverified trading years suspend automation until the calendar is updated'
 
 for(const model of [2,5])for(const revision of [33,34])test(`UI model ${model} v${revision}: withdrawn migration cannot fetch or write`,async()=>{
   const u=ui(model,true,'zh',true,{revision});await u.click('connect');
-  assert.equal(u.get('ota-migration').disabled,true);const before=u.packets.length;
-  await u.click('ota-migration');assert.match(u.get('result').textContent,/迁移已停用/);
+  assert.equal(u.get('ota-migration').disabled,revision!==33);const before=u.packets.length;
   assert.equal(u.fetchCount(),0);assert.equal(u.packets.length,before);
   const bytes=fs.readFileSync(path.join(root,'firmware/elink42-v33-sdk19-migration.zip'));
   await u.get('ota-file').listeners.change({target:{files:[{name:'old-migration.zip',size:bytes.length,arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)}]}});
@@ -185,6 +184,14 @@ for(const model of [2,5])test(`UI model ${model}: SDK19 retains its own OTA pane
   assert.equal(u.get('ota-migration').disabled,true);const before=u.packets.length;
   await u.click('ota-migration');assert.match(u.get('result').textContent,/迁移已停用/);
   assert.equal(u.fetchCount(),0);assert.equal(u.packets.length,before);
+});
+for(const model of [2,5])for(const revision of [33,35])test(`UI model ${model} v${revision}: latest migration is explicit and keeps the high risk warning`,async()=>{
+ const u=ui(model,true,'zh',true,{revision,confirm:false});await u.click('connect');assert.equal(u.get('ota-migration').disabled,false);
+ const before=u.packets.length,pending=u.click('ota-migration');assert.equal(u.lastFetchURL(),'firmware/elink42-v33-sdk21-migration.zip');
+ u.respond(fs.readFileSync(path.join(root,'firmware/elink42-v33-sdk21-migration.zip')));await pending;
+ assert.match(u.get('ota-package').textContent,/33 → 35 → SDK 21/);assert.match(u.get('ota-capability').textContent,/高风险/);
+ assert.equal(u.get('ota-start').disabled,true);u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
+ await u.click('ota-start');assert.match(u.confirmations.at(-1),/高风险.*SDK21/);assert.match(u.confirmations.at(-1),/有线恢复/);assert.equal(u.packets.length,before);
 });
 
 for(const model of [2,5])test("v34 reconnect verifies the retained FE59 receiver for panel "+model,async()=>{
@@ -312,7 +319,7 @@ for(const model of [2,5])test(`v33 model ${model} still starts its calendar afte
 for(const revision of [33,34])test(`firmware v${revision} is not prompted or offered a bundled downgrade`,async()=>{
   const u=ui(5,true,"zh",true,{revision});await u.click("connect");
   assert.equal(u.confirmations.length,0);assert.equal(u.get("ota-bundled").disabled,true);
-  if(revision===33)assert.match(u.get('ota-capability').textContent,/迁移已停用/);
+  if(revision===33)assert.match(u.get('ota-capability').textContent,/高风险.*SDK21/);
   await u.click("ota-bundled");assert.match(u.get("result").textContent,/没有更高版本的内置升级包/);
 });
 for(const model of [2,5])for(const revision of [30,32])test(`UI model ${model} v${revision}: built-in v33 matches the connected panel and requires consent`,async()=>{

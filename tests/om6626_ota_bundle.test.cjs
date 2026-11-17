@@ -7,6 +7,12 @@ const {OTA,SdkOTA,Client,P,A,F}=vm.runInNewContext(code+';OMI18n.setLanguage("zh
  setTimeout:(f,ms)=>setTimeout(f,ms===2000||ms===2500?0:ms),clearTimeout,console,navigator:{}});
 const bytes=Buffer.from(F.legacy.packages[2].data,'base64'),parsed=OTA.parse(bytes);
 const migrationBytes=fs.readFileSync(path.join(root,'firmware','elink42-v33-sdk19-migration.zip')),migrationParsed=OTA.parse(migrationBytes);
+const latestBytes=fs.readFileSync(path.join(root,'firmware','elink42-v33-sdk21-migration.zip')),latestParsed=OTA.parse(latestBytes);
+test('latest migration refuses removal of its physical-acceptance risk marker',async()=>{
+ const files=await A.unzip(latestBytes),manifest=JSON.parse(new TextDecoder().decode(files.get('manifest.json')));
+ assert.equal(manifest.risk,'high_until_owner_acceptance');assert.equal(manifest.physical_acceptance,false);
+ delete manifest.risk;files.set('manifest.json',new TextEncoder().encode(JSON.stringify(manifest)));await assert.rejects(OTA.parse(storedZip(files)),/高风险/);
+});
 for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']])test(`downloadable v33 ZIP model ${model} is the exact embedded signed package`,async()=>{
  const raw=fs.readFileSync(path.join(root,'firmware',`elink42-${panel}-v33-ota.zip`));
  assert.deepEqual(raw,Buffer.from(F.packages[model].data,'base64'));
@@ -112,6 +118,23 @@ test('signed migration archive pins both bridge and SDK19 images for both panels
   assert.deepEqual([bundle.models[model].bridge.size,bundle.models[model].sdk.size],[238532,224220]);
   assert.equal(bundle.models[model].sdk.sdkMigration,true);assert.equal(bundle.models[model].sdk.crc,A.crc32(bundle.models[model].sdk.bin));
  }
+});
+for(const model of [2,5])for(const current of [33,35])test(`direct latest migration model ${model} from v${current} uses only v35 and SDK21`,async()=>{
+ const bundle=await latestParsed,r=peripheral(model,current);
+ await assert.rejects(OTA.transfer(r.client,bundle.models[model].bridge,consent),e=>e.code==='OTA_PRECHECK' && /最高为 v33/.test(e.message));
+ assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);
+ const receipt=await r.client.ota(bundle,consent,()=>{});
+ assert.equal(receipt.sdkMigration,true);assert.equal(receipt.revision,21);assert.equal(receipt.crc,A.crc32(bundle.models[model].sdk.bin));
+ assert.deepEqual(r.received.map(p=>p.revision),current===33?[35,21]:[21]);assert.equal(r.client.busy,false);assert.equal(r.client.pending.size,0);
+});
+for(const current of [5,6,9,19,32,34])test(`latest migration refuses v${current} without any application or DFU command`,async()=>{
+ const r=peripheral(2,current);await assert.rejects(r.client.ota(await latestParsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.appCommands.length,0);assert.equal(r.commands.length,0);assert.equal(r.received.length,0);
+});
+for(const options of [{badBoot:35},{changeTarget:35}])test(`latest migration stops after an unconfirmed bridge ${JSON.stringify(options)}`,async()=>{
+ const r=peripheral(5,33,options);await assert.rejects(r.client.ota(await latestParsed,consent),/不匹配|发生变化/);assert.deepEqual(r.received.map(p=>p.revision),[35]);
+});
+for(const current of [33,35])test(`latest migration v${current} low voltage refuses before erase`,async()=>{
+ const r=peripheral(2,current,{voltage:2899});await assert.rejects(r.client.ota(await latestParsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.length,0);assert.equal(r.received.length,0);
 });
 for(const model of [2,5])for(const current of [33,34])test(`model ${model}: withdrawn migration from v${current} sends no device command`,async()=>{
  const bundle=await migrationParsed,r=peripheral(model,current);
