@@ -11,7 +11,7 @@ for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.17');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,21);assert.equal(Object.keys(manifest.assets).length,286);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.18');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,21);assert.equal(Object.keys(manifest.assets).length,286);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -66,8 +66,7 @@ test('the one-click SDK update pins the published package for each connected pan
   const manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
   assert.ok(html.includes('id="sdk-ota-panel" data-revision="'+manifest.sdk_revision+'"'));
   const button=html.match(/<button id="sdk-ota-bundled"[^>]+>/)[0];
-  const withoutV33Downloads=html.replace(/<a id="download-v33-(?:2|5)"[^>]+>/g,'');
-  assert.doesNotMatch(withoutV33Downloads,/<a\b[^>]*(?:\bdownload\b|\.e42ota|\.hex|\/releases\/download\/)/i);
+  assert.doesNotMatch(html,/<a\b[^>]*(?:\bdownload\b|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\/)/i);
   for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']]){
     const [file,query]=button.match(new RegExp('data-src-'+model+'="([^"]+)"'))[1].split('?');
     assert.equal(file,'firmware/elink42-sdk-v'+manifest.sdk_revision+'-'+panel+'.e42ota');
@@ -80,15 +79,17 @@ test('the one-click SDK update pins the published package for each connected pan
   }
 });
 
-test('the legacy OTA page exposes both v33 downloads before the SDK migration stage',()=>{
+test('the OTA page retains one-click updates without direct firmware download links',()=>{
   const html=fs.readFileSync(path.join(site,'index.html'),'utf8'),manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
-  assert.equal([...html.matchAll(/<a id="download-v33-(?:2|5)"[^>]+>/g)].length,2);
+  assert.doesNotMatch(html,/<a\b[^>]*(?:\bid="download-v33-|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\/)/i);
+  for(const id of ['ota-bundled','sdk-ota-bundled','ota-migration'])assert.match(html,new RegExp('<button id="'+id+'"'));
+  assert.match(html,/connect-src[^;]*https:\/\/web\.sqt\.gtimg\.cn/);
+  assert.doesNotMatch(html,/script-src[^;]*(?:qt\.gtimg|sqt\.gtimg)/);
+  assert.ok(html.indexOf('id="ota-bundled"')<html.indexOf('id="ota-migration"'));
+  assert.match(html,/id="migration-risk"[^>]*data-i18n="高风险/);
   assert.match(html,/id="legacy-upgrade-route"[^>]*data-i18n="旧 V5、V6、V9 等版本的普通升级最高到安全版 V33；跨系列迁移单独提示高风险。"/);
   for(const [index,model] of [[0,2],[1,5]]){
-    const link=html.match(new RegExp('<a id="download-v33-'+model+'"[^>]*>'))[0];
-    assert.ok(link.includes(' download '));assert.ok(link.includes('href="'+v33Files[index]+'?'));
     assert.equal(manifest.assets[v33Files[index]],manifest.firmware_images[model].bundle_sha256);
-    assert.ok(html.indexOf(link)<html.indexOf('id="ota-migration"'));
   }
 });
 

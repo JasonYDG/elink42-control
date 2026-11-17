@@ -8,7 +8,7 @@ function firmwareZip(model=5){const info=firmwareMetadata.variants[model===5?"fo
 const transitionFixture=process.env.OM6626_TRANSITION_BUILD;
 const repairFixture=process.env.OM6626_REPAIR_ROOT;
 function ui(model=5,ota=false,language="zh",international=true,initial={}){
-  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map(),session=new Map();let scriptRequests=0,pendingScript,lastFetchURL,fetchCount=0;
+  const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map(),session=new Map(),httpRequests=[];let scriptRequests=0,pendingScript,lastFetchURL,fetchCount=0;
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
   function element(tag="div",id=""){
@@ -80,7 +80,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:url=>(fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer});})),
+    fetch:(url,options)=>(httpRequests.push({url:String(url),options}),fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer});})),
     Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
@@ -96,7 +96,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","wallpapers.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const context=vm.createContext(sandbox),api=vm.runInContext(code,context);
-  return {get,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(){rejectFetch(new TypeError("Failed to fetch"));},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
+  return {get,httpRequests,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(error=new TypeError("Failed to fetch")){rejectFetch(error);},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
@@ -136,6 +136,51 @@ test('local quote network failures preserve data and explain the missing service
  assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
  request=u.click('stock-save');u.respond('',404);await request;assert.match(u.get('stock-state').textContent,/静态预览服务/);
  request=u.click('stock-save');u.respond('',502);await request;assert.match(u.get('stock-state').textContent,/本地控制端暂时无法取得行情/);
+});
+
+for(const failure of ['network','timeout','server'])test(`hosted stock ${failure}: uses one Tencent backup with a fresh timeout`,async()=>{
+ const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ const pending=u.click('stock-save');assert.equal(u.lastFetchURL(),'https://qt.gtimg.cn/q=sh000001');
+ const first=u.httpRequests.at(-1).options;
+ if(failure==='server')u.respond('',503);
+ else u.failFetch(failure==='timeout'?Object.assign(Error('timeout'),{name:'TimeoutError'}):new TypeError('Failed to fetch'));
+ await new Promise(setImmediate);assert.equal(u.lastFetchURL(),'https://web.sqt.gtimg.cn/q=sh000001');
+ const second=u.httpRequests.at(-1).options;assert.notEqual(first.signal,second.signal);
+ for(const options of [first,second]){assert.equal(options.credentials,'omit');assert.equal(options.redirect,'error');assert.equal(options.referrerPolicy,'no-referrer');}
+ u.respond(liveQuote());await pending;
+ assert.equal(u.fetchCount(),2);assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks.quotes[0].price,3200);assert.doesNotMatch(u.get('stock-state').textContent,/失败/);
+});
+
+test('hosted stock primary succeeds without contacting the backup',async()=>{
+ const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ const pending=u.click('stock-save');u.respond(liveQuote());await pending;assert.equal(u.fetchCount(),1);assert.match(u.lastFetchURL(),/^https:\/\/qt\.gtimg\.cn\//);
+});
+
+test('both hosted quote channels fail without changing saved data or sending BLE',async()=>{
+ const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ let pending=u.click('stock-save');u.respond(liveQuote());await pending;const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
+ pending=u.click('stock-save');u.failFetch();await new Promise(setImmediate);u.failFetch();await pending;
+ assert.equal(u.fetchCount(),3);assert.match(u.get('stock-state').textContent,/主、备用行情通道均无法连接/);assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);assert.equal(u.packets.length,0);
+});
+
+test('stopping automatic stock refresh before failover prevents the backup request',async()=>{
+ const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ const pending=u.click('stock-start');u.failFetch();await u.click('stock-stop');await pending;
+ assert.equal(u.fetchCount(),1);assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,undefined);assert.equal(u.packets.length,0);
+});
+
+test('invalid backup quotes do not replace the previous snapshot or trigger another request',async()=>{
+ const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ let pending=u.click('stock-save');u.respond(liveQuote());await pending;const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
+ pending=u.click('stock-save');u.failFetch();await new Promise(setImmediate);u.respond(liveQuote().replace('20261113113000','20260230113000'));await pending;
+ assert.equal(u.fetchCount(),3);assert.match(u.get('stock-state').textContent,/行情时间无效/);assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
+});
+
+for(const response of ['bad-time','wrong-symbol','rate-limit'])test(`hosted ${response} fails closed without a backup request`,async()=>{
+ const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
+ let pending=u.click('stock-save');u.respond(liveQuote());await pending;const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
+ pending=u.click('stock-save');u.respond(response==='bad-time'?liveQuote().replace('20261113113000','20260230113000'):response==='wrong-symbol'?liveQuote().replace('v_sh000001','v_sz000001'):'',response==='rate-limit'?429:200);await pending;
+ assert.equal(u.fetchCount(),2);assert.match(u.get('stock-state').textContent,/失败/);assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
 });
 
 test('existing 8289 static previews discover the local quote service and reuse it',async()=>{
