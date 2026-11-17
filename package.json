@@ -1,6 +1,6 @@
 {
   "name": "elink42-control",
-  "version": "0.8.15",
+  "version": "0.8.16",
   "private": true,
   "scripts": {
     "dev": "python tools/serve_local.py",

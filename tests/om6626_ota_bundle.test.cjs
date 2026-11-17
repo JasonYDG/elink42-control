@@ -113,18 +113,14 @@ test('signed migration archive pins both bridge and SDK19 images for both panels
   assert.equal(bundle.models[model].sdk.sdkMigration,true);assert.equal(bundle.models[model].sdk.crc,A.crc32(bundle.models[model].sdk.bin));
  }
 });
-for(const model of [2,5])for(const current of [33,34])test(`model ${model}: v${current} migration transfers only its required stages and verifies SDK19`,async()=>{
- const bundle=await migrationParsed,r=peripheral(model,current),receipt=await r.client.ota(bundle,consent,()=>{});
- assert.equal(receipt.sdkMigration,true);assert.equal(receipt.status,'sdk-commit-reboot-pending');assert.equal(receipt.crc,A.crc32(bundle.models[model].sdk.bin));
- assert.deepEqual(r.received.map(p=>p.revision),current===33?[34,19]:[19]);assert.deepEqual(r.installed,current===33?[34]:[]);
- assert.equal(r.client.busy,false);assert.equal(r.client.otaActive,false);assert.equal(r.client.pending.size,0);
- const messages=[],state=await confirmMigratedSdk(r,receipt,{progress:(value,text)=>messages.push([value,text])});assert.equal(state.revision,19);assert.equal(state.runningCrc,receipt.crc);assert.equal(state.state,0);assert.equal(state.error,0);
- assert.deepEqual(messages.at(-1),[100,'迁移完成，已读回版本及应用 CRC；内部图库已清空。']);
-});
-for(const model of [2,5])test(`model ${model}: the other panel's SDK migration image is refused before any write`,async()=>{
- const bundle=await migrationParsed,r=peripheral(model,34);
- await assert.rejects(OTA.transfer(r.client,bundle.models[model===2?5:2].sdk,consent),/屏型不匹配/);
+for(const model of [2,5])for(const current of [33,34])test(`model ${model}: withdrawn migration from v${current} sends no device command`,async()=>{
+ const bundle=await migrationParsed,r=peripheral(model,current);
+ await assert.rejects(r.client.ota(bundle,consent),e=>e.code==='OTA_PRECHECK' && /迁移已停用/.test(e.message));
+ for(const stage of ['bridge','sdk'])await assert.rejects(OTA.transfer(r.client,bundle.models[model][stage],consent),e=>e.code==='OTA_PRECHECK');
+ const bridge=bundle.models[model].bridge;
+ await assert.rejects(OTA.transfer(r.client,{dat:bridge.dat,bin:bridge.bin},consent),e=>e.code==='OTA_PRECHECK');
  assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);assert.equal(r.received.length,0);
+ assert.equal(r.client.busy,false);assert.equal(r.client.otaActive,false);assert.equal(r.client.pending.size,0);assert.equal(r.device.gatt.connected,true);
 });
 test('migration archive rejects extra files, swapped panels and changed routing metadata',async()=>{
  for(const mutate of [f=>f.set('extra',Uint8Array.of(1)),f=>f.set('model2-sdk19.zip',f.get('model5-sdk19.zip')),f=>f.delete('model5-v34.zip'),f=>{
@@ -138,19 +134,13 @@ for(const current of [33,34])test(`migration low voltage at v${current} stops be
  const r=peripheral(2,current,{voltage:2899});await assert.rejects(r.client.ota(await migrationParsed,consent),e=>e.code==='OTA_PRECHECK');
  assert.equal(r.commands.length,0);assert.equal(r.received.length,0);assert.equal(r.device.gatt.connected,true);
 });
-test('migration first restart mismatch stops before SDK19',async()=>{
- const r=peripheral(5,33,{badBoot:34});await assert.rejects(r.client.ota(await migrationParsed,consent),/版本不匹配/);
- assert.deepEqual(r.received.map(p=>p.revision),[34]);assert.equal(r.installed[0],33);
-});
-test('migration changed target after first restart stops before SDK19',async()=>{
- const r=peripheral(2,33,{changeTarget:34});await assert.rejects(r.client.ota(await migrationParsed,consent),/目标设备发生变化/);assert.deepEqual(r.received.map(p=>p.revision),[34]);
-});
-test('non-quiet v34 stops before the SDK19 second stage',async()=>{
- const r=peripheral(5,34,{badQuiet:true});await assert.rejects(r.client.ota(await migrationParsed,consent),e=>e.code==='DISPLAY_NOT_READY');assert.equal(r.commands.length,0);
+for(const options of [{badBoot:34},{changeTarget:34},{badQuiet:true}])test(`withdrawn migration rejects before preparation ${JSON.stringify(options)}`,async()=>{
+ const r=peripheral(5,33,options);await assert.rejects(r.client.ota(await migrationParsed,consent),e=>e.code==='OTA_PRECHECK');
+ assert.equal(r.commands.length,0);assert.equal(r.appCommands.length,0);assert.equal(r.received.length,0);
 });
 for(const options of [{revision:18},{crc:1},{state:6},{error:3}])test(`SDK migration final readback rejects ${JSON.stringify(options)} without replay`,async()=>{
- const r=peripheral(2,34),receipt=await r.client.ota(await migrationParsed,consent);
- await assert.rejects(confirmMigratedSdk(r,receipt,options),/尚未确认/);assert.deepEqual(r.received.map(p=>p.revision),[19]);
+ const r=peripheral(2,34),pkg=(await migrationParsed).models[2].sdk,receipt={model:2,revision:19,crc:pkg.crc,device:r.device};
+ await assert.rejects(confirmMigratedSdk(r,receipt,options),/尚未确认/);assert.equal(r.received.length,0);
 });
 
 const futureFixtures=process.env.OM6626_V34_FIXTURES||path.resolve(__dirname,'../../../build/elink42-v33-ota-fixtures');

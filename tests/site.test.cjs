@@ -9,10 +9,12 @@ for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.15');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,20);assert.equal(Object.keys(manifest.assets).length,284);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.16');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,20);assert.equal(Object.keys(manifest.assets).length,283);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
+  assert.equal(manifest.assets[migrationFile],undefined);assert.equal(fs.existsSync(path.join(site,migrationFile)),false);
+  assert.match(fs.readFileSync(path.join(site,"index.html"),"utf8"),/旧迁移包已停用/);
   const files=fs.readdirSync(site,{recursive:true,withFileTypes:true}).filter(p=>p.isFile()).map(p=>path.relative(site,path.join(p.parentPath,p.name)).split(path.sep).join('/')).sort();
   assert.deepEqual(files,[...Object.keys(manifest.assets),"site-manifest.json"].sort());
   for(const [name,hash] of Object.entries(manifest.assets)){
@@ -79,7 +81,7 @@ test('the one-click SDK update pins the published package for each connected pan
 test('the legacy OTA page exposes both v33 downloads before the SDK migration stage',()=>{
   const html=fs.readFileSync(path.join(site,'index.html'),'utf8'),manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
   assert.equal([...html.matchAll(/<a id="download-v33-(?:2|5)"[^>]+>/g)].length,2);
-  assert.match(html,/id="legacy-upgrade-route"[^>]*data-i18n="旧版 V 固件：先升级到 v33，再通过 v34 过渡到 SDK19，最后升级 SDK20。"/);
+  assert.match(html,/id="legacy-upgrade-route"[^>]*data-i18n="旧版 V 固件可按兼容路线升至 v33；V33→SDK 迁移暂时停用。"/);
   for(const [index,model] of [[0,2],[1,5]]){
     const link=html.match(new RegExp('<a id="download-v33-'+model+'"[^>]*>'))[0];
     assert.ok(link.includes(' download '));assert.ok(link.includes('href="'+v33Files[index]+'?'));
