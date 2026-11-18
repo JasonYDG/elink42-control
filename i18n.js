@@ -1,5 +1,7 @@
 "use strict";
 const OMTranslations = {
+  "诗词与名句":"Poetry and maxims",
+  "侧栏月签":"Month spine", "横幅日牌":"Date banner", "双页翻历":"Twin leaves", "一周日签":"Week strip",
   "下载本地股票页":"Download local stock page",
   "导入本地行情":"Import local quotes",
   "下载的 HTML 会带上当前代码。双击打开并刷新，从本地页导出行情文件后，在此导入并预览。":"The downloaded HTML includes your stock codes. Open it to refresh, then export quotes and import them here to preview.",

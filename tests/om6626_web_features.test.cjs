@@ -142,11 +142,12 @@ test('A-share quote parsing preserves nulls and source times and rejects malform
 
 test('built-in wallpapers exclude the reported error screenshot and retain stable image IDs',()=>{
   const rows=vm.runInNewContext(fs.readFileSync(path.join(root,'wallpapers.js'),'utf8')+';OMWallpapers');
-  assert.equal(rows.length,106);assert.equal(rows.filter(r=>r.kind==='calendar').length,62);
-  assert.equal(new Set(rows.map(r=>r.id)).size,106);
+  assert.equal(rows.length,110);assert.equal(rows.filter(r=>r.kind==='calendar').length,66);
+  assert.equal(new Set(rows.map(r=>r.id)).size,110);
   assert.ok(!rows.some(r=>r.id==='full-39'||r.original_sha256==='f2536f21c356d69d148735869b8814922e3a172bf10d5c56f8d0a1b5ff43ab1b'));
   assert.ok(!rows.some(r=>['full-40','full-41'].includes(r.id)||['AAA','BBB'].includes(r.code)));
   assert.ok(rows.every(r=>typeof r.title==='string'&&r.title.length>1&&typeof r.title_en==='string'&&r.title_en.length>1));
+  assert.equal(rows.filter(r=>r.category==='verse').length,4);
   const monthly=rows.filter(r=>r.month);
   assert.deepEqual(Array.from(monthly,r=>r.month).sort((a,b)=>a-b),Array.from({length:12},(_,i)=>i+1));
   assert.ok(monthly.every(r=>r.image.endsWith('-yellow.png')&&r.width===512&&r.height===600));

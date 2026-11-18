@@ -1,6 +1,70 @@
 {
   "images": [
     {
+      "path": "calendar-wallpapers/verse/bamboo.png",
+      "origin": "ImageGen illustration and typeset public-domain quotation",
+      "sha256": "8bd10087e2bc8307a32a29dd8c7fb9a5ddc209040473cc67f09879ea8d690e3a",
+      "size": 13231,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-110",
+      "title": "竹桥侠客",
+      "title_en": "Knight at the Bamboo Bridge",
+      "category": "verse",
+      "quotation": "事了拂衣去，深藏身与名。",
+      "attribution": "李白《侠客行》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/ferry.png",
+      "origin": "ImageGen illustration and typeset public-domain quotation",
+      "sha256": "a863c1e69f762cce58141ee9af74e4cdfcbe1ca8998c9ecfd6d66e0be9b0ac81",
+      "size": 10962,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-111",
+      "title": "烟雨江湖",
+      "title_en": "Ferry at Dawn",
+      "category": "verse",
+      "quotation": "一蓑烟雨任平生。",
+      "attribution": "苏轼《定风波》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/summit.png",
+      "origin": "ImageGen illustration and typeset public-domain quotation",
+      "sha256": "4bc51dbdb097340247a3dd583cb62a80b28ab48dd77a3c826496bcb1cf3a23fb",
+      "size": 11211,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-112",
+      "title": "千里始足下",
+      "title_en": "A Journey Begins",
+      "category": "verse",
+      "quotation": "千里之行，始于足下。",
+      "attribution": "《老子》第六十四章"
+    },
+    {
+      "path": "calendar-wallpapers/verse/sail.png",
+      "origin": "ImageGen illustration and typeset public-domain quotation",
+      "sha256": "a4986b8cc0b0694ea77df964acaa46344335a2f5e3c47f84ccab4d87d3c47987",
+      "size": 9973,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-113",
+      "title": "云帆济海",
+      "title_en": "Sailing Beyond the Waves",
+      "category": "verse",
+      "quotation": "长风破浪会有时，直挂云帆济沧海。",
+      "attribution": "李白《行路难》"
+    },
+    {
       "path": "full-screen/yellow/yellow-crane-moon.png",
       "origin": "built-in imagegen; original output bytes",
       "sha256": "af4ffc69b70d92c5a114fd93c41080657192e5f2a1555d59b9fa82ca9f602112",

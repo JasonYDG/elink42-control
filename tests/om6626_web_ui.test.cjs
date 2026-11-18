@@ -100,12 +100,12 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
-test('seven primary destinations restore the five calendar presets without weather navigation',async()=>{
+test('seven primary destinations restore the nine calendar presets without weather navigation',async()=>{
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),nav=html.match(/<nav class="primary-nav"[^>]*>(.*?)<\/nav>/s)[1];
   assert.deepEqual([...nav.matchAll(/id="nav-([^"]+)"/g)].map(m=>m[1]),['calendar','photo','reminder','course','stock','gallery','settings']);
-  const u=ui();assert.equal(u.get('calendar-presets').children.length,5);
+  const u=ui();assert.equal(u.get('calendar-presets').children.length,9);
   for(const [nav,content] of [['nav-photo','photo'],['nav-reminder','reminder'],['nav-stock','stock'],['nav-course','week'],['nav-calendar','calendar']]){
-    await u.click(nav);assert.equal(u.get('screen-content').value,content);assert.equal(u.get('feature-tabs').hidden,true);
+    await u.click(nav);assert.equal(u.get('screen-content').value,content);if(content==='calendar')assert.equal(u.get('screen-update').value,'auto');assert.equal(u.get('feature-tabs').hidden,true);
   }
   await u.click('nav-settings');assert.doesNotMatch(html,/id="tab-weather"|id="weather-editor"/);assert.equal(u.get('screen-workbench').hidden,true);
   await u.click('nav-course');await u.input('school-view','day','change');assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).screenProfile.content,'day');
@@ -670,8 +670,9 @@ test('a timed-out built-in download releases the UI and late success does not st
 test('wallpaper categories separate months, individual solar terms, holidays and original art',async()=>{
  const u=ui();await u.click('nav-gallery');assert.equal(u.get('library-category-label').hidden,true);
  await u.click('library-calendar');assert.equal(u.get('library-category-label').hidden,false);
- assert.equal(u.get('library-grid').children.length,12);
- for(const [category,count]of [['term',24],['holiday',20],['art',6],['all',62]]){
+ assert.equal(u.get('library-grid').children.length,66);
+ assert.equal(u.get('library-grid').children[0].dataset.wallpaper,'calendar-110');
+ for(const [category,count]of [['verse',4],['month',12],['term',24],['holiday',20],['art',6],['all',66]]){
   await u.input('library-category',category,'change');assert.equal(u.get('library-grid').children.length,count);
  }
  await u.click('library-full');assert.equal(u.get('library-grid').children.length,44);

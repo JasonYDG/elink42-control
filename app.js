@@ -7,7 +7,7 @@
   let otaPackage = null,firmwareRequest=null;
   let sdkPackage=null, pendingIdentityReceipt=null;
   let stockTimer=null,stockFetching=false,stockTarget=null,stockGeneration=0,stockProxy=false;
-  let libraryKind="full",libraryCategory="month",selectedWallpaper=null,libraryObserver=null;
+  let libraryKind="full",libraryCategory="all",selectedWallpaper=null,libraryObserver=null;
   const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",photo:"photo-calendar",reminder:"todo",course:"course",stock:"stock",gallery:"image",settings:"settings"};
   let draft = F.defaultTemplates()[0], editingTodo = null, store;
@@ -130,10 +130,10 @@
     $("sdk-month-style-field").hidden=true;
     for(const button of $("calendar-presets").children){
       const style=Number(button.dataset.style);
-      button.disabled=busy || (client.ready && style>0 && client.sdkRevision<(style===5?8:7));
+      button.disabled=busy || (client.ready && style>0 && client.sdkRevision<(style>=9?22:style===5?8:7));
       button.setAttribute("aria-pressed",String(style===Number($("sdk-month-style").value)));
     }
-    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"选择方案后在右侧查看实际像素效果。";
+    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"四款大字日历支持 SDK 22。选择方案后可切换三色、四色预览。";
     $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
@@ -205,7 +205,7 @@
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
-    OMScreen.device({ready:client.ready,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
+    OMScreen.device({ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -313,10 +313,10 @@
     }
   }
   function setupShell(){
-    for(const [style,name] of [[0,"经典月历"],[1,"月历全览"],[2,"今日侧栏"],[4,"全屏极简"],[5,"单日极简"]]){
+    for(const [style,name] of [[0,"经典月历"],[1,"月历全览"],[2,"今日侧栏"],[4,"全屏极简"],[5,"单日极简"],[9,"侧栏月签"],[10,"横幅日牌"],[11,"双页翻历"],[12,"一周日签"]]){
       const b=document.createElement("button"),canvas=newCanvas(),label=document.createElement("span");
       b.dataset.style=String(style);b.setAttribute("aria-pressed",String(style===0));label.textContent=name;b.append(canvas,label);
-      b.addEventListener("click",()=>{if(b.disabled)return;$("sdk-month-style").value=String(style);$("calendar-language").value="zh";syncCalendar();OMScreen.persist();});
+      b.addEventListener("click",()=>{if(b.disabled)return;$("screen-update").value="auto";$("calendar-date").value="";$("sdk-month-style").value=String(style);$("calendar-language").value="zh";syncCalendar();OMScreen.persist();});
       $("calendar-presets").append(b);
     }
     if(!$("content-editor").parentElement)return;
@@ -342,7 +342,7 @@
     $("preview-model").value=String(client.config.model);
     if(OMScreen.hasProfile()){OMScreen.restore();return;}
     const style=client.config.alternate>>3;
-    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26 && style<6?style:0);
+    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26 && (style<6 || client.sdkRevision>=22 && style>=9 && style<=12)?style:0);
     if(client.sdkRevision>=15 && (client.sdkCapabilities&32) && [6,7].includes(style))$("school-view").value=style===7?"week":"day";
     $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(C.byId(client.config.layout)?client.config.layout:0);
@@ -477,6 +477,7 @@
   bind("calendar-style", () => startCalendar());
   bind("photo-calendar-start",()=>locked(async()=>{await startCalendar(true);await defaultRotation(Number($("photo-slot").value),$("photo-source").value==="1",true);}));
   $("sdk-month-style").addEventListener("change",()=>{
+    $("screen-update").value="auto";$("calendar-date").value="";
     if(Number($("sdk-month-style").value))$("calendar-language").value="zh";
     syncCalendar();
   });
