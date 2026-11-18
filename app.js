@@ -8,6 +8,7 @@
   let sdkPackage=null, pendingIdentityReceipt=null;
   let stockTimer=null,stockFetching=false,stockTarget=null,stockGeneration=0,stockProxy=false;
   let libraryKind="full",libraryCategory="all",selectedWallpaper=null,libraryObserver=null;
+  let wallpaperRequest=null;
   const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",photo:"photo-calendar",reminder:"todo",course:"course",stock:"stock",gallery:"image",settings:"settings"};
   let draft = F.defaultTemplates()[0], editingTodo = null, store;
@@ -225,12 +226,12 @@
         const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
         const style=tab==="calendar"?Number($("sdk-month-style").value)||0:0;
-        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly || style>0 || (tab==="calendar" && [0,2,3].includes(region.id));
+        const sdkLayout=client.ready ? OMProtocol.sdkBoard(client.board) && client.sdkRevision>=6 : sdkOnly || style>0 || [0,2,3].includes(region.id);
         if(sdkLayout){
           const photo=tab==="photo-calendar", info=client.ready?client.deviceInfo:null;
           const name=connectedName();
           await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
-            revision:client.ready?client.sdkRevision:23,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
+            revision:client.ready?client.sdkRevision:undefined,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
           if(token!==previewToken)return;
           if(photo)OMScreen.paintBackground(canvas,chosenModel);
         }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
@@ -305,11 +306,11 @@
   function renderPresets(){
     if(typeof OMSdkPreview==="undefined")return;
     const date=$("calendar-date").value?new Date($("calendar-date").value+"T12:00:00"):C.localDate(C.byId(Number($("calendar-layout").value)).code);
-    const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString(),client.ready?client.sdkRevision:23].join(":");
+    const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString(),client.ready?client.sdkRevision:"latest"].join(":");
     if(key===presetKey)return;presetKey=key;
     for(const button of $("calendar-presets").children){
       const canvas=button.querySelector("canvas"),region=C.byId(Number($("calendar-layout").value));
-      OMSdkPreview.calendar(canvas,{date,country:region.id,model:model(),revision:client.ready?client.sdkRevision:23,flags:(Number(button.dataset.style)<<3)|2}).catch(error=>{presetKey="";$("calendar-preset-note").textContent=error.message;});
+      OMSdkPreview.calendar(canvas,{date,country:region.id,model:model(),revision:client.ready?client.sdkRevision:undefined,flags:(Number(button.dataset.style)<<3)|2}).catch(error=>{presetKey="";$("calendar-preset-note").textContent=error.message;});
     }
   }
   function setupShell(){
@@ -726,15 +727,41 @@
   }
   $("image-file").addEventListener("change",event=>action(async()=>{selectedWallpaper=null;await loadImage(event.target.files[0]);renderLibrary();},OMI18n.t("图片已载入，可调整裁切、旋转和抖动。")));
   function wallpaperLabel(item){return OMI18n.language==="en"?item.title_en:OMI18n.label(item.title);}
-  function renderLibrary(){
+  function loadWallpapers(){
+    if(typeof OMWallpapers!=="undefined")return OMWallpapers;
+    if(!wallpaperRequest)wallpaperRequest=new Promise((resolve,reject)=>{
+      const script=document.createElement("script");
+      script.src=$("wallpaper-library").dataset.catalogSrc;
+      const failed=()=>{script.remove();wallpaperRequest=null;reject(Error(OMI18n.t("图片载入失败，请重试")));};
+      script.onload=()=>typeof OMWallpapers==="undefined"?failed():resolve(OMWallpapers);
+      script.onerror=failed;
+      document.head.append(script);
+    });
+    return wallpaperRequest;
+  }
+  let libraryRender=0;
+  async function renderLibrary(){
+    const generation=++libraryRender;
     libraryObserver?.disconnect();
     $("library-grid").replaceChildren();
     if(tab!=="image" || !$("wallpaper-library").open)return;
+    let wallpapers;
+    try{
+      if(typeof OMWallpapers==="undefined")$("library-state").textContent=OMI18n.t("正在加载图库…");
+      wallpapers=await loadWallpapers();
+    }catch(error){
+      if(generation===libraryRender){
+        $("library-state").textContent=error.message+" ";
+        $("library-state").append(button(OMI18n.t("重试"),renderLibrary,""));
+      }
+      return;
+    }
+    if(generation!==libraryRender)return;
     if(!libraryObserver && typeof IntersectionObserver!=="undefined")libraryObserver=new IntersectionObserver(entries=>{
       for(const entry of entries)if(entry.isIntersecting){const img=entry.target;img.src=img.dataset.src;libraryObserver.unobserve(img);}
     },{root:$("library-grid"),rootMargin:"80px"});
     $("library-category-label").hidden=libraryKind!=="calendar";
-    for(const item of OMWallpapers.filter(p=>p.kind===libraryKind && (libraryKind!=="calendar" || libraryCategory==="all" || p.category===libraryCategory))){
+    for(const item of wallpapers.filter(p=>p.kind===libraryKind && (libraryKind!=="calendar" || libraryCategory==="all" || p.category===libraryCategory))){
       const node=button("",()=>chooseWallpaper(item),OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。"));node.className="wallpaper-card";node.dataset.wallpaper=item.id;
       if(item.quotation)node.title=item.quotation+"　"+item.attribution;
       node.setAttribute("aria-pressed",String(item.id===selectedWallpaper));
@@ -763,7 +790,8 @@
     const source=!!(client.offlineRotation?.active?client.offlineRotation.source:client.config.photoSource);
     const state=await client.gallery(source);
     if(!state.slots.some(s=>!s.valid))throw Error(OMI18n.t("设备图片已满，请到设备图片页面手动删除不需要的图片；本次没有覆盖或删除。"));
-    const candidates=OMWallpapers.filter(p=>p.kind===purpose && !p.reference),index=candidates.findIndex(p=>p.id===selectedWallpaper);
+    const wallpapers=await loadWallpapers();
+    const candidates=wallpapers.filter(p=>p.kind===purpose && !p.reference),index=candidates.findIndex(p=>p.id===selectedWallpaper);
     const item=candidates[(index+1)%candidates.length];
     $("gallery-source").value=String(Number(source));$("save-auto").checked=true;selectTab($("tab-image"));await chooseWallpaper(item);await savePicture(true,state);
   }),"");

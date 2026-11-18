@@ -10,6 +10,7 @@ const repairFixture=process.env.OM6626_REPAIR_ROOT;
 function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map(),session=new Map(),httpRequests=[];let scriptRequests=0,pendingScript,lastFetchURL,fetchCount=0;
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
+  const catalogRequests=[];
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
   function element(tag="div",id=""){
     const attrs={},classes=new Set();
@@ -23,6 +24,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   for(const match of html.matchAll(/<(\w+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)){
     const [whole,tag,attrs,id]=match,e=element(tag,id);e.value=(attrs.match(/\bvalue="([^"]*)"/)||[])[1]||"";e.checked=/\bchecked\b/.test(attrs);
     e.open=/\bopen\b/.test(attrs);e.dataset.firmwareSrc=(attrs.match(/data-firmware-src="([^"]*)"/)||[])[1];
+    e.dataset.catalogSrc=attrs.match(/data-catalog-src="([^"]*)"/)?.[1];
     if(tag==="select")e.value=(html.slice(match.index+whole.length).split("</select>")[0].match(/<option value="([^"]*)"/)||[])[1]||"";
     if(tag==="textarea")e.value=html.slice(match.index+whole.length).split("</textarea>")[0];
     elements.set(id,e);
@@ -86,6 +88,11 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
     document:{currentScript:{src:"http://localhost/school-native.js"},getElementById:get,querySelectorAll:()=>tabs,createElement:tag=>element(tag),documentElement:{dataset:{}},head:{append(script){
+      if(/^wallpapers\.js\?/.test(script.src)){
+        catalogRequests.push(script.src);
+        setImmediate(()=>{if(initial.catalogFailure && catalogRequests.length===1)script.onerror();else{vm.runInContext(fs.readFileSync(path.join(root,'wallpapers.js'),'utf8'),context);script.onload();}});
+        return;
+      }
       scriptRequests++;assert.match(script.src,/^firmware\.js(?:\?|$)/);
       if(scriptRequests===1 && initial.firmwareFailure==='timeout'){pendingScript=script;return;}
       setImmediate(()=>{if(scriptRequests===1 && initial.firmwareFailure==='error')script.onerror();else{vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);script.onload();}});
@@ -93,10 +100,10 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     OMSdkPreview:initial.sdkRevision?{async calendar(...args){rendered.push({kind:'sdk-calendar',args});}}:undefined,
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});if(k==='stockCalendar')return initial.stockRender?.(...args);}]))};
   // Mock only course pixels here; real date helpers run, and verify-school.py checks actual rendering.
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","wallpapers.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const context=vm.createContext(sandbox),api=vm.runInContext(code,context);
-  return {get,httpRequests,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(error=new TypeError("Failed to fetch")){rejectFetch(error);},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
+  return {get,httpRequests,catalogRequests,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(error=new TypeError("Failed to fetch")){rejectFetch(error);},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
@@ -632,13 +639,17 @@ test("country holiday summaries show local upcoming holidays and China overrides
 });
 
 test('homepage works without the firmware payload and creates wallpaper cards only after opening the library',async()=>{
- const u=ui(5,true,'zh',true,{revision:33,noBuiltin:true});
+ const u=ui(5,true,'zh',true,{revision:33,noBuiltin:true,catalogFailure:true});
  assert.equal(u.get('library-grid').children.length,0);assert.equal(u.scriptRequests(),0);
+ assert.equal(u.catalogRequests.length,0);
  await u.click('connect');assert.match(u.get('firmware-state').textContent,/v33/);assert.equal(u.scriptRequests(),0);
- await u.click('nav-gallery');assert.equal(u.get('library-grid').children.length,44);
+ await u.click('nav-gallery');assert.equal(u.get('library-grid').children.length,0);
+ assert.match(u.get('library-state').textContent,/重试/);
+ await u.get('library-state').children.at(-1).click();assert.equal(u.get('library-grid').children.length,44);
  u.get('wallpaper-library').open=false;await u.get('wallpaper-library').listeners.toggle();assert.equal(u.get('library-grid').children.length,0);
  u.get('wallpaper-library').open=true;await u.get('wallpaper-library').listeners.toggle();assert.equal(u.get('library-grid').children.length,44);
  await u.click('nav-calendar');assert.equal(u.get('library-grid').children.length,0);assert.equal(u.scriptRequests(),0);
+ assert.equal(u.catalogRequests.length,2);
 });
 
 test('the signed built-in is fetched only on demand and reused after successful verification',async()=>{

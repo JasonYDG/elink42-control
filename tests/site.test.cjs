@@ -3,7 +3,7 @@ const {test}=require("node:test"),assert=require("node:assert/strict"),fs=requir
 const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-control");
 const migrationFile='firmware/elink42-v33-sdk19-migration.zip';
 const latestMigrationFile='firmware/elink42-v33-sdk21-migration.zip';
-test('connected SDK 22 uses its released large-date glyphs and disconnected previews use the new bitmaps',async()=>{
+test('calendar previews match each SDK revision\'s large-date glyphs and photo sidebar',async()=>{
   const vm=require('node:vm');
   const preview=vm.runInNewContext(fs.readFileSync(path.join(root,'sdk-preview.js'),'utf8')+';OMSdkPreview',{
     document:{currentScript:{src:'https://localhost/sdk-preview.js?v=test'}},URL,WebAssembly,Uint8Array,TextEncoder,
@@ -17,17 +17,35 @@ test('connected SDK 22 uses its released large-date glyphs and disconnected prev
       assert.notDeepEqual(current,Buffer.from(await preview.frame({...options,flags,revision:22})));
     }
     assert.deepEqual(Buffer.from(await preview.frame({...options,flags:42,revision:22})),Buffer.from(await preview.frame({...options,flags:42})));
+    const photo=Buffer.from(await preview.frame({...options,flags:3}));
+    const old=Buffer.from(await preview.frame({...options,flags:3,revision:23}));
+    const ink=(bytes,x,y)=>{
+      const i=y*400+x;
+      return model===5 ? (bytes[i>>2]>>(6-2*(i%4)))&3 : bytes[i>>3]&(128>>(i%8)) ? 1 : 0;
+    };
+    let headerInk=0;
+    for(let y=0;y<300;y++){
+      assert.equal(ink(photo,256,y),1);
+      assert.equal(ink(old,256,y),0);
+      for(let x=257;x<400;x++){
+        if(y<29)headerInk+=ink(photo,x,y)===0;
+        else assert.equal(ink(photo,x,y),ink(old,x,y));
+      }
+    }
+    assert.ok(headerInk>100 && headerInk<143*29/2);
+    assert.equal(ink(photo,257,0),1);
+    assert.equal(ink(old,257,0),0);
   }
 });
 const v33Files=['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-'+panel+'-v33-ota.zip');
 const firmwareFiles=new Set(['firmware/LICENSES.txt',migrationFile,...['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-sdk-v7-'+panel+'.e42ota')]);
-for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
+for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
 firmwareFiles.add(latestMigrationFile);
 for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.21');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,23);assert.equal(Object.keys(manifest.assets).length,316);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.22');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,24);assert.equal(Object.keys(manifest.assets).length,319);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -45,6 +63,8 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
     assert.ok(!html.includes("downloads.html")&&html.includes("sdk-ota-file"));
     assert.ok(html.includes('id="ota-bundled"')&&html.includes('id="ota-file"'));
     assert.ok(!/<script[^>]+src="firmware\.js/.test(html));
+    assert.deepEqual([...html.matchAll(/<script\b[^>]*\bsrc="([^"?]+)/g)].map(m=>m[1]),['i18n.js','features.js','console.js']);
+    assert.ok(html.includes(`data-catalog-src="wallpapers.js?v=${manifest.version}&h=${manifest.assets['wallpapers.js'].slice(0,12)}"`));
     assert.ok(html.includes(`data-firmware-src="firmware.js?v=${manifest.version}&h=${manifest.assets['firmware.js'].slice(0,12)}"`));
     assert.ok(html.includes(`data-template="stock-local.html?v=${manifest.version}&amp;h=${manifest.assets['stock-local.html'].slice(0,12)}"`));
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
