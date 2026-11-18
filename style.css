@@ -268,7 +268,7 @@ main { max-width:1560px; margin:24px auto; padding:0 28px; grid-template-columns
 .preview-panel .check { font-size:11px; gap:6px; }
 .preview-panel .check select { font-size:12px; min-height:36px; padding:4px 8px; }
 .preview-wrap { padding:26px 8px; border-radius:8px; background:var(--surface); }
-#preview { cursor:pointer; image-rendering:pixelated; width:400px; box-shadow:0 6px 20px #34312d0c; }
+#preview { cursor:pointer; image-rendering:auto; width:400px; box-shadow:0 6px 20px #34312d0c; }
 .screen-interaction-note { font-size:11px; color:var(--muted); line-height:1.7; margin:14px 0; }
 #screen-apply { width:100%; margin-top:4px; }
 .preview-caption { font-size:10px; padding:6px 0 0; gap:6px; }
