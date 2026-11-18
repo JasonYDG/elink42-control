@@ -13,8 +13,11 @@ const OMSdkPreview = (() => {
     return instance.exports;
   }
 
-  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 23}) {
-    const version = revision === 11 ? 10 : [6, 7, 8, 9, 10].includes(revision) ? revision : revision === 22 && (flags >> 3) >= 9 ? 22 : 23;
+  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 24}) {
+    let version = 24;
+    if (revision >= 6 && revision <= 11) version = Math.min(revision, 10);
+    // SDK 12–23 share the photo sidebar in the existing SDK 22 engine.
+    else if ((revision < 24 && (flags & 1)) || (revision === 22 && (flags >> 3) >= 9)) version = 22;
     if (!engines.has(version)) engines.set(version, load(version).catch(error => { engines.delete(version); throw error; }));
     const engine = await engines.get(version);
     const name = new Uint8Array(engine.memory.buffer, engine.preview_name(), 20);
