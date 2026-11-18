@@ -3,15 +3,31 @@ const {test}=require("node:test"),assert=require("node:assert/strict"),fs=requir
 const root=path.resolve(__dirname,".."),site=path.join(root,"build/elink42-control");
 const migrationFile='firmware/elink42-v33-sdk19-migration.zip';
 const latestMigrationFile='firmware/elink42-v33-sdk21-migration.zip';
+test('connected SDK 22 uses its released large-date glyphs and disconnected previews use the new bitmaps',async()=>{
+  const vm=require('node:vm');
+  const preview=vm.runInNewContext(fs.readFileSync(path.join(root,'sdk-preview.js'),'utf8')+';OMSdkPreview',{
+    document:{currentScript:{src:'https://localhost/sdk-preview.js?v=test'}},URL,WebAssembly,Uint8Array,TextEncoder,
+    fetch:async url=>({ok:true,arrayBuffer:async()=>fs.readFileSync(path.join(site,path.basename(url.pathname)))})
+  });
+  for(const model of [2,5]){
+    const options={date:new Date(2026,10,18,12),country:0,model};
+    for(const flags of [74,82,90,98]){
+      const current=Buffer.from(await preview.frame({...options,flags}));
+      assert.deepEqual(current,Buffer.from(await preview.frame({...options,flags,revision:23})));
+      assert.notDeepEqual(current,Buffer.from(await preview.frame({...options,flags,revision:22})));
+    }
+    assert.deepEqual(Buffer.from(await preview.frame({...options,flags:42,revision:22})),Buffer.from(await preview.frame({...options,flags:42})));
+  }
+});
 const v33Files=['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-'+panel+'-v33-ota.zip');
 const firmwareFiles=new Set(['firmware/LICENSES.txt',migrationFile,...['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-sdk-v7-'+panel+'.e42ota')]);
-for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
+for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
 firmwareFiles.add(latestMigrationFile);
 for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.20');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,22);assert.equal(Object.keys(manifest.assets).length,297);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.21');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,23);assert.equal(Object.keys(manifest.assets).length,316);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);

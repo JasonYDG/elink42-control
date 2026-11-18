@@ -5,7 +5,7 @@ const OMSdkPreview = (() => {
   const engines = new Map();
 
   async function load(revision) {
-    const asset = new URL(revision < 12 ? `sdk${revision}-preview.wasm` : "sdk-preview.wasm", script);
+    const asset = new URL(revision < 12 || revision === 22 ? `sdk${revision}-preview.wasm` : "sdk-preview.wasm", script);
     asset.search = script.search || "?calendar=12";
     const response = await fetch(asset);
     if (!response.ok) throw Error(OMI18n.t("无法加载日历预览"));
@@ -13,8 +13,8 @@ const OMSdkPreview = (() => {
     return instance.exports;
   }
 
-  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 12}) {
-    const version = revision === 11 ? 10 : [6, 7, 8, 9, 10].includes(revision) ? revision : 12;
+  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 23}) {
+    const version = revision === 11 ? 10 : [6, 7, 8, 9, 10].includes(revision) ? revision : revision === 22 && (flags >> 3) >= 9 ? 22 : 23;
     if (!engines.has(version)) engines.set(version, load(version).catch(error => { engines.delete(version); throw error; }));
     const engine = await engines.get(version);
     const name = new Uint8Array(engine.memory.buffer, engine.preview_name(), 20);

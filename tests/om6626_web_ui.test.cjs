@@ -80,7 +80,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   }});
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
-    fetch:(url,options)=>(httpRequests.push({url:String(url),options}),fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url)),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>{if(value instanceof Error)throw value;return value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer;}});})),
+    fetch:(url,options)=>(httpRequests.push({url:String(url),options}),fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url.split("?")[0])),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>{if(value instanceof Error)throw value;return value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer;}});})),
     Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
@@ -670,9 +670,9 @@ test('a timed-out built-in download releases the UI and late success does not st
 test('wallpaper categories separate months, individual solar terms, holidays and original art',async()=>{
  const u=ui();await u.click('nav-gallery');assert.equal(u.get('library-category-label').hidden,true);
  await u.click('library-calendar');assert.equal(u.get('library-category-label').hidden,false);
- assert.equal(u.get('library-grid').children.length,66);
+ assert.equal(u.get('library-grid').children.length,74);
  assert.equal(u.get('library-grid').children[0].dataset.wallpaper,'calendar-110');
- for(const [category,count]of [['verse',4],['month',12],['term',24],['holiday',20],['art',6],['all',66]]){
+ for(const [category,count]of [['verse',12],['month',12],['term',24],['holiday',20],['art',6],['all',74]]){
   await u.input('library-category',category,'change');assert.equal(u.get('library-grid').children.length,count);
  }
  await u.click('library-full');assert.equal(u.get('library-grid').children.length,44);

@@ -2,9 +2,9 @@
   "images": [
     {
       "path": "calendar-wallpapers/verse/bamboo.png",
-      "origin": "ImageGen illustration and typeset public-domain quotation",
-      "sha256": "8bd10087e2bc8307a32a29dd8c7fb9a5ddc209040473cc67f09879ea8d690e3a",
-      "size": 13231,
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "ac547c670e009cc237a3b72d416620281e3d1b073ac7d3958fd1ec02ee2bf79b",
+      "size": 13176,
       "dimensions": [
         512,
         600
@@ -18,9 +18,9 @@
     },
     {
       "path": "calendar-wallpapers/verse/ferry.png",
-      "origin": "ImageGen illustration and typeset public-domain quotation",
-      "sha256": "a863c1e69f762cce58141ee9af74e4cdfcbe1ca8998c9ecfd6d66e0be9b0ac81",
-      "size": 10962,
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "e9d9cf7e190fd8c01caeffb11e49cb0ad5ca5a3f6cc009af438cd0bb603e9054",
+      "size": 10651,
       "dimensions": [
         512,
         600
@@ -34,9 +34,9 @@
     },
     {
       "path": "calendar-wallpapers/verse/summit.png",
-      "origin": "ImageGen illustration and typeset public-domain quotation",
-      "sha256": "4bc51dbdb097340247a3dd583cb62a80b28ab48dd77a3c826496bcb1cf3a23fb",
-      "size": 11211,
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "688544e26134469463548154dee871d7dfb88806ce97b0e6c531b84c802cbe77",
+      "size": 10677,
       "dimensions": [
         512,
         600
@@ -50,9 +50,9 @@
     },
     {
       "path": "calendar-wallpapers/verse/sail.png",
-      "origin": "ImageGen illustration and typeset public-domain quotation",
-      "sha256": "a4986b8cc0b0694ea77df964acaa46344335a2f5e3c47f84ccab4d87d3c47987",
-      "size": 9973,
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "8d0995625adc2602fedd47fa19859d28a7b13341b1a7f4993fe4804b67cda155",
+      "size": 10145,
       "dimensions": [
         512,
         600
@@ -63,6 +63,134 @@
       "category": "verse",
       "quotation": "长风破浪会有时，直挂云帆济沧海。",
       "attribution": "李白《行路难》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/tower.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "cc3bd700a2aa610fe246048bbb7f16052224d3e359591a04dd9eb8f3e8d6754c",
+      "size": 9234,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-114",
+      "title": "更上一层楼",
+      "title_en": "One More Storey",
+      "category": "verse",
+      "quotation": "欲穷千里目，更上一层楼。",
+      "attribution": "王之涣《登鹳雀楼》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/plum.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "f514bd512ffeab8478dbcb9f7fbbafb7ee7f618b8ca292c147bf33155ba66ad1",
+      "size": 9277,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-115",
+      "title": "凌寒独自开",
+      "title_en": "Plum Blossom in the Cold",
+      "category": "verse",
+      "quotation": "墙角数枝梅，凌寒独自开。",
+      "attribution": "王安石《梅花》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/pines.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "237d9a05d418981bab0545c87db3dfef0b4345e4e3264e8a84e11abe8635c1d3",
+      "size": 8102,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-116",
+      "title": "一览众山小",
+      "title_en": "Above the Mountain Peaks",
+      "category": "verse",
+      "quotation": "会当凌绝顶，一览众山小。",
+      "attribution": "杜甫《望岳》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/cranes.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "47a49031a93035e75da5d9e1e47910f0ebfc35e8cdcba0f9ae4ca3b0900afc02",
+      "size": 7379,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-117",
+      "title": "晴空一鹤",
+      "title_en": "Crane in the Autumn Sky",
+      "category": "verse",
+      "quotation": "晴空一鹤排云上，便引诗情到碧霄。",
+      "attribution": "刘禹锡《秋词》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/waterfall.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "1cc8f757e31a3c65a5b94f2d125f5ba57ab40bab19204d69038297e1f3fa18d0",
+      "size": 8683,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-118",
+      "title": "飞流直下",
+      "title_en": "The Falls of Mount Lu",
+      "category": "verse",
+      "quotation": "飞流直下三千尺，疑是银河落九天。",
+      "attribution": "李白《望庐山瀑布》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/moon.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "96661aa6a284806eea4182e4b228a99fdd5e8871cc6bc152589aa3235fbbb6f4",
+      "size": 8518,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-119",
+      "title": "明月松间照",
+      "title_en": "Moonlight Through the Pines",
+      "category": "verse",
+      "quotation": "明月松间照，清泉石上流。",
+      "attribution": "王维《山居秋暝》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/spring.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "5b90edd8ec049223c82ceff82ada51e01cef694668ddd2be650b078ca0e4e7a8",
+      "size": 9125,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-120",
+      "title": "春晓闻啼",
+      "title_en": "Birdsong at Spring Dawn",
+      "category": "verse",
+      "quotation": "春眠不觉晓，处处闻啼鸟。",
+      "attribution": "孟浩然《春晓》"
+    },
+    {
+      "path": "calendar-wallpapers/verse/snow.png",
+      "origin": "ImageGen illustration with a Ma Shan Zheng brush inscription",
+      "sha256": "4a3fd9a9917b99298d2600727e1d33773532395975b33a536e814edc7272eea5",
+      "size": 7606,
+      "dimensions": [
+        512,
+        600
+      ],
+      "id": "calendar-121",
+      "title": "独钓寒江雪",
+      "title_en": "Fishing the Snowbound River",
+      "category": "verse",
+      "quotation": "孤舟蓑笠翁，独钓寒江雪。",
+      "attribution": "柳宗元《江雪》"
     },
     {
       "path": "full-screen/yellow/yellow-crane-moon.png",

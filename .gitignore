@@ -54,3 +54,5 @@ firmware/*
 !firmware/elink42-v33-sdk21-migration.zip
 !firmware/elink42-sdk-v22-tricolor-ssd1619.e42ota
 !firmware/elink42-sdk-v22-fourcolor-jd79668.e42ota
+!firmware/elink42-sdk-v23-tricolor-ssd1619.e42ota
+!firmware/elink42-sdk-v23-fourcolor-jd79668.e42ota

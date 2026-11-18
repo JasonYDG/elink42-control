@@ -133,7 +133,7 @@
       button.disabled=busy || (client.ready && style>0 && client.sdkRevision<(style>=9?22:style===5?8:7));
       button.setAttribute("aria-pressed",String(style===Number($("sdk-month-style").value)));
     }
-    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"四款大字日历支持 SDK 22。选择方案后可切换三色、四色预览。";
+    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"四款大字日历支持 SDK 22，点阵大字需要 SDK 23。";
     $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
@@ -230,7 +230,7 @@
           const photo=tab==="photo-calendar", info=client.ready?client.deviceInfo:null;
           const name=connectedName();
           await OMSdkPreview.calendar(canvas,{date,country:Number($("calendar-layout").value),model:chosenModel,
-            revision:client.ready?client.sdkRevision:12,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
+            revision:client.ready?client.sdkRevision:23,flags:(style<<3)|(photo?1:0)|($("calendar-language").value==="zh"?2:0),millivolts:info?.millivolts,deviceName:name});
           if(token!==previewToken)return;
           if(photo)OMScreen.paintBackground(canvas,chosenModel);
         }else OMRender.calendar(canvas,{code:region.code,date,language:$("calendar-language").value,photo:tab==="photo-calendar",bitmap:null,slot:$("photo-slot").value,model:chosenModel});
@@ -305,11 +305,11 @@
   function renderPresets(){
     if(typeof OMSdkPreview==="undefined")return;
     const date=$("calendar-date").value?new Date($("calendar-date").value+"T12:00:00"):C.localDate(C.byId(Number($("calendar-layout").value)).code);
-    const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString()].join(":");
+    const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString(),client.ready?client.sdkRevision:23].join(":");
     if(key===presetKey)return;presetKey=key;
     for(const button of $("calendar-presets").children){
       const canvas=button.querySelector("canvas"),region=C.byId(Number($("calendar-layout").value));
-      OMSdkPreview.calendar(canvas,{date,country:region.id,model:model(),revision:16,flags:(Number(button.dataset.style)<<3)|2}).catch(error=>{presetKey="";$("calendar-preset-note").textContent=error.message;});
+      OMSdkPreview.calendar(canvas,{date,country:region.id,model:model(),revision:client.ready?client.sdkRevision:23,flags:(Number(button.dataset.style)<<3)|2}).catch(error=>{presetKey="";$("calendar-preset-note").textContent=error.message;});
     }
   }
   function setupShell(){
@@ -736,10 +736,12 @@
     $("library-category-label").hidden=libraryKind!=="calendar";
     for(const item of OMWallpapers.filter(p=>p.kind===libraryKind && (libraryKind!=="calendar" || libraryCategory==="all" || p.category===libraryCategory))){
       const node=button("",()=>chooseWallpaper(item),OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。"));node.className="wallpaper-card";node.dataset.wallpaper=item.id;
+      if(item.quotation)node.title=item.quotation+"　"+item.attribution;
       node.setAttribute("aria-pressed",String(item.id===selectedWallpaper));
       const img=document.createElement("img");img.alt="";img.loading="lazy";img.decoding="async";img.width=item.kind==="calendar"?128:160;img.height=item.kind==="calendar"?150:120;
       const label=document.createElement("span");label.textContent=wallpaperLabel(item);node.append(img,label);$("library-grid").append(node);
-      if(libraryObserver){img.dataset.src=item.thumbnail;libraryObserver.observe(img);}else img.src=item.thumbnail;
+      const thumb=item.thumbnail+(item.quotation?"?h="+item.original_sha256.slice(0,12):"");
+      if(libraryObserver){img.dataset.src=thumb;libraryObserver.observe(img);}else img.src=thumb;
     }
     for(const kind of ["full","calendar"])$("library-"+kind).setAttribute("aria-pressed",String(kind===libraryKind));
     $("library-state").textContent=OMI18n.t("点击缩略图载入预览，保存后才会发送到屏幕。");update();
@@ -747,7 +749,7 @@
   async function chooseWallpaper(item){
     loading=true;update();
     try{
-      const response=await fetch(item.image);if(!response.ok)throw Error(OMI18n.t("图片载入失败，请重试"));
+      const response=await fetch(item.image+(item.quotation?"?h="+item.original_sha256.slice(0,12):""));if(!response.ok)throw Error(OMI18n.t("图片载入失败，请重试"));
       const blob=await response.blob();Object.defineProperty(blob,"name",{value:wallpaperLabel(item)+".png"});
       await loadImage(blob,item.kind);selectedWallpaper=item.id;$("wallpaper-library").open=false;renderLibrary();
     }finally{loading=false;update();}
