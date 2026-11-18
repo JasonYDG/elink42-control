@@ -11,7 +11,7 @@ const OMScreen = (() => {
     if(typeof p.reminderTitle!=="string" || !p.reminderTitle.trim() || p.reminderTitle.length>24)throw Error("提醒日历标题无效");
     if(typeof p.reminderId!=="string" || p.reminderId.length>80)throw Error("提醒选择无效");
     if(value.version!==undefined && value.version!==1 || !types.includes(p.content) || !["auto","snapshot"].includes(p.update) ||
-       ![0,2,3].includes(p.country) || !["zh","en"].includes(p.language) || ![0,1,2,4,5].includes(p.style) ||
+       ![0,2,3].includes(p.country) || !["zh","en"].includes(p.language) || ![0,1,2,4,5,9,10,11,12].includes(p.style) ||
        !integer(p.page,0,15) || ![0,1].includes(p.source) || !(p.slot===255 || integer(p.slot,0,44)) ||
        !["prepared","contain"].includes(p.fit) || ![0,3,4,5].includes(p.frequency))throw Error("屏幕方案设置超出范围");
     if(p.date)CourseTable.dateValue(p.date);
@@ -73,26 +73,31 @@ const OMScreen = (() => {
     $("plan-state").textContent=tableDirty?"课表有未保存修改：请先保存表格，再应用或导出。":same?"最近确认 "+new Date(saved.at).toLocaleTimeString()+" · "+saved.name:hooks.read().screenProfile?"方案已在本机保存 · 有修改待应用":"初始方案 · 调整后自动保存";
     $("screen-apply").textContent=state.runtime?.bootId && saved?.bootId && state.runtime.bootId!==saved.bootId?"恢复方案到屏幕":p.update==="snapshot"?"发送当前画面":"应用并自动更新";
     const scene=["calendar","photo-calendar","course","todo","stock"].includes(context),ready=state.ready&&!state.busy;
-    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
+    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && p.style>=9 && !(state.revision>=22)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
     for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
     $("screen-update").disabled=!!state.busy||p.content==="stock";
     $("calendar-date").disabled=!!state.busy||p.update==="auto";
-    $("screen-update-note").textContent=p.content==="stock"?"行情由网页获取并发送；自动同步需保持本页开启和目标蓝牙连接，仅在交易时段执行。":p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
+    $("screen-update-note").textContent=p.content==="stock"?"行情由网页获取并发送；自动同步需保持本页开启和目标蓝牙连接，仅在交易时段执行。":p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=22)?"此款离线日历需要 SDK 22，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
   }
   function device(state){last=state;if(hooks)status();}
   function contextChanged(tab){
     context=tab;if(!hooks)return;
     const type=tab==="calendar"?"calendar":tab==="photo-calendar"?"photo":tab==="course"?$("school-view").value:tab==="todo"?"reminder":tab==="stock"?"stock":null;
-    if(type && type!==$("screen-content").value){$("screen-content").value=type;if(type==="stock")$("screen-update").value="snapshot";else if(type==="reminder")$("screen-update").value="auto";persist();}
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.19";
+    if(type && type!==$("screen-content").value){
+      $("screen-content").value=type;
+      if(type==="stock")$("screen-update").value="snapshot";
+      else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
+      persist();
+    }
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.20";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.19";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.20";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -109,7 +114,7 @@ const OMScreen = (() => {
     if(!file || file.size>6000000)throw Error("请选择不超过6MB的方案 JSON 文件");
     if(tableDirty)throw Error("请先保存课表表格再导入方案");
     const next=parse(JSON.parse(await file.text()),capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.19";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.20";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -138,7 +143,7 @@ const OMScreen = (() => {
     hooks=callbacks;
     $("todo-title").addEventListener("input",persist);
     for(const id of ["todo-mode","todo-selected"])$(id).addEventListener("change",()=>{persist();hooks.preview();});
-    $("screen-content").addEventListener("change",()=>{const p=capture();fields(p);persist();hooks.show(p.content);if(["day","week"].includes(p.content))openCourse();});
+    $("screen-content").addEventListener("change",()=>{if(["calendar","photo"].includes($("screen-content").value))$("screen-update").value="auto";const p=capture();fields(p);persist();hooks.show(p.content);if(["day","week"].includes(p.content))openCourse();});
     $("school-view").addEventListener("change",()=>{$("screen-content").value=$("school-view").value;persist();hooks.preview();});
     for(const id of ["screen-update","school-page","calendar-date","sdk-month-style","calendar-layout","calendar-language","photo-country","photo-language","photo-fit","photo-slot","gallery-source","auto-frequency"])
       $(id).addEventListener("change",()=>{const p=capture();fields(p);persist();hooks.preview();});
