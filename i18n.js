@@ -982,6 +982,41 @@ Object.assign(OMTranslations, {
   "重启核对屏型和版本后，再载入内置包继续升级。":"After the panel and revision are confirmed on restart, load the next bundled update.",
   "v33 已是内置旧系列的最新版本。当前没有可从此版本安装 SDK 6 的无线包。":"v33 is the latest bundled legacy release. No wireless update from this version to SDK 6 is available."
 });
+Object.assign(OMTranslations, {
+  "日历": "Calendars",
+  "图片日历": "Photo calendar",
+  "提醒日历": "Reminders",
+  "课程日历": "Timetable",
+  "股票日历": "Stock calendar",
+  "图库": "Gallery",
+  "设置": "Settings",
+  "选择日历方案": "Calendar layouts",
+  "股票同步工具": "Stock Sync",
+  "下载 Windows 股票工具": "Download Stock Sync for Windows",
+  "用 Windows 电脑获取行情，通过蓝牙推送到 4.2 或 2.13 英寸屏幕。": "Fetch quotes on your Windows PC and send them over Bluetooth to a 4.2″ or 2.13″ display.",
+  "在工具中选择屏型，扫描设备，再点击获取并推送。交易时段自动推送需要保持程序运行。": "Choose the panel, scan for your display, then fetch and send. Keep the app running for scheduled updates during trading hours.",
+  "浏览器行情预览": "Preview quotes in the browser",
+  "请使用桌面工具推送股票行情。": "Use the desktop app to send stock quotes to your display.",
+  "月视图": "Month layouts",
+  "周视图": "Week layouts",
+  "日视图": "Day layouts",
+  "经典月历": "Classic month",
+  "网格月历": "Grid month",
+  "极简月历": "Minimal month",
+  "今日焦点月历": "Today & month",
+  "七日周历": "Seven-day week",
+  "极简日签": "Minimal day",
+  "横幅日签": "Banner day",
+  "翻页日签": "Flip day",
+  "蜂巢日签": "Honeycomb day",
+  "屏幕预览": "Screen preview",
+  "选择版式后可预览并应用到屏幕。": "Choose a layout to preview and apply to your display.",
+  "当前固件可使用经典月历，其他布局可断开连接后预览。": "This firmware supports Classic month. Disconnect to preview other layouts.",
+  "应用并自动更新": "Apply and update automatically",
+  "发送当前画面": "Send current frame",
+  "恢复方案到屏幕": "Restore display plan",
+  "预览与屏幕同为 400 × 300。修改自动保存在本机，点击应用后才更新设备。": "Preview at 400 × 300. Changes are saved locally and sent when you apply them."
+});
 const OMI18n = (() => {
   const characters = Object.fromEntries("财財猫貓鲤鯉纳納达達侠俠鹤鶴风風宝寶剑劍烟煙云雲见見游遊桥橋飞飛鸿鴻狮獅远遠宁寧壮壯丽麗乐樂鹰鷹银銀栖棲鸟鳥叶葉听聽麦麥鹭鷺莲蓮枫楓采採万萬与與专專两兩个個临臨为為亚亞产產仅僅从從价價会會传傳体體侧側储儲儿兒关關内內册冊写寫况況准準减減击擊划劃删刪别別办辦务務动動劳勞区區协協单單卫衛历歷压壓双雙发發变變台臺号號启啟响響唤喚围圍国國图圖坏壞处處备備复復学學实實宪憲宽寬对對导導将將尔爾层層属屬师師带帶庆慶库庫应應开開强強当當录錄径徑态態惊驚户戶执執护護报報择擇损損换換据據数數斋齋断斷无無旧舊时時显顯暂暫机機权權条條来來构構标標样樣检檢横橫气氣汉漢没沒浅淺测測浏瀏温溫湾灣满滿灯燈点點状狀独獨现現电電画畫盖蓋码碼确確离離种種称稱稣穌稳穩笺箋签簽简簡类類紧緊红紅约約级級纪紀纵縱线線细細终終绑綁结結给給络絡绝絕统統继繼绪緒续續编編缩縮网網联聯脑腦脚腳节節获獲蓝藍蛰蟄补補装裝观觀览覽计計认認议議记記许許设設证證识識诊診试試话話诞誕询詢详詳语語说說请請读讀课課调調败敗资資转轉轮輪载載较較辑輯输輸边邊迁遷过過运運这這进進连連适適选選释釋钟鐘钥鑰销銷锁鎖错錯镜鏡长長闭閉闲閒间間阈閾队隊际際随隨难難静靜页頁项項顺順须須预預频頻题題颜顏马馬驱驅验驗黄黃".match(/../gu).map(pair=>[...pair]));
   const traditional = text => text.replace(/[\u3400-\u9fff]/gu, char=>characters[char] ?? char);

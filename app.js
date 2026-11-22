@@ -6,7 +6,8 @@
   let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
   let otaPackage = null,firmwareRequest=null;
   let sdkPackage=null, pendingIdentityReceipt=null;
-  let stockTimer=null,stockFetching=false,stockTarget=null,stockGeneration=0,stockProxy=false;
+  const presetButtons=[];
+  let stockFetching=false,stockProxy=false;
   let libraryKind="full",libraryCategory="all",selectedWallpaper=null,libraryObserver=null;
   let wallpaperRequest=null;
   const bundledFirmwareRevision=33;
@@ -23,7 +24,7 @@
     store = new F.Store({getItem: () => null, setItem() {}});
     result(OMI18n.t("工作区读取失败；原数据保留，本次修改无法持久保存，请查看日志。"), true);
   }
-  const client = new OMClient(update, log, () => tab === "ota" || uiBusy || scheduler !== null || !!stockTimer&&!!stockTarget, message => {
+  const client = new OMClient(update, log, () => tab === "ota" || uiBusy || scheduler !== null, message => {
     gallery = null; result(message); window.alert(message);
   });
   for (const event of ["pointerdown", "keydown", "input", "wheel"])
@@ -44,7 +45,7 @@
     return client.device.name || "";
   }
   const settingsMap = {theme: "theme", "font-size": "fontSize", "urgent-hours": "urgentHours", dither: "dither",
-    "dither-strength": "strength", brightness: "brightness", contrast: "contrast", gamma: "gamma", "red-threshold": "redThreshold", "packet-bytes": "packetBytes", "packet-delay": "packetDelay", "stock-interval":"stockInterval"};
+    "dither-strength": "strength", brightness: "brightness", contrast: "contrast", gamma: "gamma", "red-threshold": "redThreshold", "packet-bytes": "packetBytes", "packet-delay": "packetDelay"};
   function change(callback) { store.change(callback); refreshLists(); preview(); }
   function options(id, rows, empty = OMI18n.t("请选择")) {
     const control = $(id), before = control.value; control.replaceChildren();
@@ -90,7 +91,7 @@
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
     for(const name of Object.keys(sectionViews))$("nav-"+name).disabled=busy;
     for(const button of $("feature-tabs").children)button.disabled=busy;
-    $("stock-save").disabled=busy||stockFetching;$("stock-start").disabled=busy||stockFetching;
+    $("stock-save").disabled=busy||stockFetching;
     $("stock-import").disabled=busy||stockFetching;
     $("school-view").disabled=$("school-page").disabled=busy;
     $("transfer-status").classList.toggle("busy",busy);
@@ -129,12 +130,12 @@
     if(otaReady && otaPackage?.bundle && !migration && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
     $("sdk-month-style-field").hidden=true;
-    for(const button of $("calendar-presets").children){
+    for(const button of presetButtons){
       const style=Number(button.dataset.style);
       button.disabled=busy || (client.ready && style>0 && !(client.sdkRevision>=OMProtocol.calendarStyleRevision(style)));
       button.setAttribute("aria-pressed",String(style===Number($("sdk-month-style").value)));
     }
-    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"蜂巢日签随 SDK 28 正式发布。底部显示节气倒计时，本月每天一格，加高的一格是今天。";
+    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?OMI18n.t("当前固件可使用经典月历，其他布局可断开连接后预览。"):OMI18n.t("选择版式后可预览并应用到屏幕。");
     $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
@@ -292,7 +293,8 @@
     $("screen-date-settings").hidden=section==="stock";
     document.documentElement.dataset.section=section;
     if($("transfer-status").parentElement)(section==="settings"||tab==="gallery"?$("content-editor").parentElement:$("preview-panel")).append($("transfer-status"));
-    $("scene-title").textContent={calendar:"日历",photo:"图片日历",reminder:"提醒日历",course:"课程日历",stock:"股票日历",gallery:"图库",settings:"设置"}[section];
+    const title={calendar:"日历",photo:"图片日历",reminder:"提醒日历",course:"课程日历",stock:"股票日历",gallery:"图库",settings:"设置"}[section];
+    $("scene-title").dataset.i18n=title;$("scene-title").textContent=OMI18n.t(title);
     for(const name of Object.keys(sectionViews))$("nav-"+name).setAttribute("aria-pressed",String(name===section));
     renderLibrary();
     if(tab==="calendar")renderPresets();
@@ -308,17 +310,28 @@
     const date=$("calendar-date").value?new Date($("calendar-date").value+"T12:00:00"):C.localDate(C.byId(Number($("calendar-layout").value)).code);
     const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString(),client.ready?client.sdkRevision:"latest"].join(":");
     if(key===presetKey)return;presetKey=key;
-    for(const button of $("calendar-presets").children){
+    for(const button of presetButtons){
       const canvas=button.querySelector("canvas"),region=C.byId(Number($("calendar-layout").value));
       OMSdkPreview.calendar(canvas,{date,country:region.id,model:model(),revision:client.ready?client.sdkRevision:undefined,flags:(Number(button.dataset.style)<<3)|2}).catch(error=>{presetKey="";$("calendar-preset-note").textContent=error.message;});
     }
   }
   function setupShell(){
-    for(const [style,name] of [[0,"经典月历"],[1,"月历全览"],[2,"今日侧栏"],[4,"全屏极简"],[5,"单日极简"],[9,"侧栏月签"],[10,"横幅日牌"],[11,"双页翻历"],[12,"一周日签"],[14,"蜂巢 · 红底白字"]]){
-      const b=document.createElement("button"),canvas=newCanvas(),label=document.createElement("span");
-      b.dataset.style=String(style);b.setAttribute("aria-pressed",String(style===0));label.textContent=name;b.append(canvas,label);
-      b.addEventListener("click",()=>{if(b.disabled)return;$("screen-update").value="auto";$("calendar-date").value="";$("sdk-month-style").value=String(style);$("calendar-language").value="zh";syncCalendar();OMScreen.persist();});
-      $("calendar-presets").append(b);
+    const groups = [
+      ["月视图", [[0, "经典月历"], [1, "网格月历"], [4, "极简月历"], [2, "今日焦点月历"]]],
+      ["周视图", [[12, "七日周历"]]],
+      ["日视图", [[5, "极简日签"], [10, "横幅日签"], [11, "翻页日签"], [14, "蜂巢日签"]]]
+    ];
+    for(const [title,styles] of groups){
+      const section=document.createElement("section"),heading=document.createElement("h3"),grid=document.createElement("div");
+      heading.dataset.i18n=title;heading.textContent=OMI18n.t(title);grid.className="preset-grid";
+      section.append(heading,grid);$("calendar-presets").append(section);
+      for(const [style,name] of styles){
+        const b=document.createElement("button"),canvas=newCanvas(),label=document.createElement("span");
+        b.dataset.style=String(style);b.setAttribute("aria-pressed",String(style===0));
+        label.dataset.i18n=name;label.textContent=OMI18n.t(name);b.append(canvas,label);
+        b.addEventListener("click",()=>{if(b.disabled)return;$("screen-update").value="auto";$("calendar-date").value="";$("sdk-month-style").value=String(style);$("calendar-language").value="zh";syncCalendar();OMScreen.persist();});
+        grid.append(b);presetButtons.push(b);
+      }
     }
     if(!$("content-editor").parentElement)return;
     const main=document.querySelector("main"),oldAside=main.querySelector("aside"),header=document.querySelector("header"),rail=document.createElement("aside");
@@ -630,12 +643,11 @@
     uiBusy=true;update();try{return await callback();}finally{uiBusy=false;update();}
   }
   function screenData(){if(!transientWorkspace)store.data=new F.Store(localStorage).data;return store.data;}
-  async function applyScreen(p,automaticStock=false){
+  async function applyScreen(p){
     if(model()!==client.config?.model)throw Error("预览屏型与已连接设备不一致，请重新连接后核对。");
-    const generation=stockGeneration,target=stockTarget;
-    OMScreen.persist();p=OMScreen.capture();await preview();let applied=OMScreen.signature(screenData(),p);
-    if(automaticStock&&(generation!==stockGeneration||target!==stockTarget||tab!=="stock"||!client.ready||client.device?.id!==target))throw Error("股票自动同步已停止或目标已改变");
-    if(automaticStock&&!F.stockSession(new Date()).open)throw Error("已离开交易时段，停止自动推送");
+    OMScreen.persist();p=OMScreen.capture();
+    if(p.content==="stock")throw Error(OMI18n.t("请使用桌面工具推送股票行情。"));
+    await preview();let applied=OMScreen.signature(screenData(),p);
     if(!frame || loading || OMScreen.dirty())throw Error("请先保存表格并等待预览完成");
     if(p.update==="snapshot")await client.publish(frame,progress);
     else if(p.content==="reminder"){
@@ -1028,19 +1040,16 @@
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) $("preview").addEventListener(event, () => { drag = null; });
   $("compatibility").textContent = supported ? OMI18n.t("浏览器支持蓝牙，连接由你点击发起。") : OMI18n.t("此浏览器不支持网页蓝牙，仍可选图和预览。连接设备请使用支持 Web Bluetooth 的浏览器。");
-  async function refreshStocks({automatic=false,generation=stockGeneration}={}){
+  async function refreshStocks(){
     if(stockFetching)return;
-    if(automatic&&(!F.stockSession(new Date()).open||generation!==stockGeneration))return;
     const symbols=F.stockSymbols($("stock-text").value),key=symbols.join(",");stockFetching=true;$("stock-save").disabled=true;$("stock-state").textContent="正在获取行情…";
     try{
       const local=["127.0.0.1","localhost"].includes(location.hostname);
       const proxyUrl="/api/stock/quote?symbols="+encodeURIComponent(key);
       let quote=await F.stockTransport(local?[(stockProxy?"http://127.0.0.1:8290":"")+proxyUrl]:F.stockUrls(symbols),()=>{
-        if(automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open))return false;
         $("stock-state").textContent="主行情通道暂不可用，正在尝试腾讯备用通道…";
         return true;
       });
-      if(!quote){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
       if(local&&!stockProxy&&location.port==="8289"&&quote.response.status===404){
         quote=await F.stockTransport(["http://127.0.0.1:8290"+proxyUrl]);
         if(quote.response.ok)stockProxy=true;
@@ -1049,11 +1058,7 @@
       if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
       const next=F.stockTencent(F.stockText(bytes),symbols);
       if(F.stockSymbols($("stock-text").value).join(",")!==key)throw Error("代码已修改，本次结果未保存，请重新获取。");
-      if(automatic&&(generation!==stockGeneration||!F.stockSession(new Date()).open)){$("stock-state").textContent="自动更新已暂停，本次结果未替换上次行情。";return;}
       change(data=>{data.stocks=next;});
-      if(F.stockSession(new Date()).open&&$("stock-auto-send").checked&&stockTarget&&tab==="stock"&&client.ready&&client.device.id===stockTarget&&!client.busy&&!uiBusy&&!next.stale){
-        await locked(async()=>{if(tab!=="stock"||client.device?.id!==stockTarget)throw Error("股票同步目标已改变");await applyScreen(OMScreen.capture(),true);});
-      }
     }catch(error){
       const message=error.name==="TypeError"&&/fetch/i.test(error.message)?(["127.0.0.1","localhost"].includes(location.hostname)?"无法连接本地行情接口，请确认本地控制端正在运行":"主、备用行情通道均无法连接，请检查网络或拦截设置，也可使用配套本地控制端"):error.name==="TimeoutError"?"行情服务响应超时，请稍后重新获取":error.message;
       $("stock-state").textContent="获取或同步失败："+message+"。上次行情保留，时间见预览。";throw Error(message);
@@ -1087,24 +1092,6 @@
       change(workspace=>{workspace.stocks=next;});
     }finally{stockFetching=false;update();}
   },""));
-  bind("stock-start",async()=>{
-    if($("stock-auto-send").checked&&!client.ready)throw Error("自动同步前请连接目标屏幕");
-    if(stockTimer)clearInterval(stockTimer);stockTimer=null;const generation=++stockGeneration;
-    stockTarget=$("stock-auto-send").checked?client.device.id:null;
-    const minutes=Number($("stock-interval").value);if(![5,15,30,60].includes(minutes))throw Error("刷新间隔无效");
-    let nextRefresh=0;
-    const tick=async()=>{
-      if(generation!==stockGeneration)return;
-      const session=F.stockSession(new Date());
-      $("stock-timer-state").textContent=session.open?`${session.phase} · 每${minutes}分钟更新；自动推送限当前股票页和所选屏幕。`:`${session.phase} · 自动获取与推送已暂停，${session.known?"开市后":"更新交易日历后"}恢复。`;
-      if(!session.open){nextRefresh=0;return;}
-      if(client.busy||uiBusy||stockFetching||Date.now()<nextRefresh)return;
-      nextRefresh=Date.now()+minutes*60000;await refreshStocks({automatic:true,generation});
-    };
-    stockTimer=setInterval(()=>action(tick,""),30000);await tick();
-  },"");
-  bind("stock-stop",()=>{stockGeneration++;if(stockTimer)clearInterval(stockTimer);stockTimer=null;stockTarget=null;$("stock-timer-state").textContent="自动更新已停止。";},"");
-  for(const id of ["stock-interval","stock-auto-send"])$(id).addEventListener("change",()=>{stockGeneration++;if(stockTimer)clearInterval(stockTimer);stockTimer=null;stockTarget=null;$("stock-timer-state").textContent="设置已更改，点击开始自动更新后生效。";client.armIdleDisconnect();});
   setupShell();applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   OMI18n.onChange=()=>{
     for(const id of ["compatibility","nfc-state","result","photo-state","scheduler-state","ota-package","ota-kind","ota-service","gallery-state"])$(id).textContent=OMI18n.t($(id).textContent);
