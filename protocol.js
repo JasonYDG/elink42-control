@@ -184,6 +184,13 @@ const OMProtocol = (() => {
     });
     return bytes;
   }
-  return {SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
+  // The retired local prototype used id 13. Keep existing saved plans usable.
+  const calendarStyle = style => style === 13 ? 14 : style;
+  function calendarStyleRevision(style) {
+    if (style >= 13) return 25;
+    if (style >= 9) return 22;
+    return style === 5 ? 8 : 7;
+  }
+  return {calendarStyle, calendarStyleRevision, SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
     planes, rgba, integer, crc16, remarkBytes, remarkText, storage, storageLayout, metadata, imageBytes, rotation, holidays};
 })();

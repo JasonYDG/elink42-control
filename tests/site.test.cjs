@@ -39,13 +39,13 @@ test('calendar previews match each SDK revision\'s large-date glyphs and photo s
 });
 const v33Files=['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-'+panel+'-v33-ota.zip');
 const firmwareFiles=new Set(['firmware/LICENSES.txt',migrationFile,...['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-sdk-v7-'+panel+'.e42ota')]);
-for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
+for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24,28])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
 firmwareFiles.add(latestMigrationFile);
 for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.22');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,24);assert.equal(Object.keys(manifest.assets).length,319);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.26');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,28);assert.equal(Object.keys(manifest.assets).length,321);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);

@@ -107,10 +107,11 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     get(id).value=value;await get(id).listeners[event]?.({target:get(id)});await new Promise(setImmediate);},async file(id,file){await get(id).listeners.change({target:{files:[file]}});await new Promise(setImmediate);}};
 }
 
-test('seven primary destinations restore the nine calendar presets without weather navigation',async()=>{
+test('seven primary destinations restore the ten calendar presets without weather navigation',async()=>{
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),nav=html.match(/<nav class="primary-nav"[^>]*>(.*?)<\/nav>/s)[1];
   assert.deepEqual([...nav.matchAll(/id="nav-([^"]+)"/g)].map(m=>m[1]),['calendar','photo','reminder','course','stock','gallery','settings']);
-  const u=ui();assert.equal(u.get('calendar-presets').children.length,9);
+  const u=ui();assert.equal(u.get('calendar-presets').children.length,10);
+  assert.deepEqual(u.get('calendar-presets').children.filter(b=>Number(b.dataset.style)>=13).map(b=>b.dataset.style),['14']);
   for(const [nav,content] of [['nav-photo','photo'],['nav-reminder','reminder'],['nav-stock','stock'],['nav-course','week'],['nav-calendar','calendar']]){
     await u.click(nav);assert.equal(u.get('screen-content').value,content);if(content==='calendar')assert.equal(u.get('screen-update').value,'auto');assert.equal(u.get('feature-tabs').hidden,true);
   }

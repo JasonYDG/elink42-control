@@ -405,7 +405,7 @@ class OMClient {
     this.calendarProtocol=reply.length===7 ? 2 : 0;
     if(this.calendarProtocol){
       const style=reply[1]>>3;
-      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128) || style>=9 && style<=12 && this.sdkRevision>=22) && (reply[1]&7)===2);
+      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128) || style>=9 && style<=14 && this.sdkRevision>=OMProtocol.calendarStyleRevision(style)) && (reply[1]&7)===2);
       if(!validFlags || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
       Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
       this.log(OMI18n.msg`日历读回：国家=${reply[3]}，模式=${reply[4]}，标志=${reply[1]}，槽位=${reply[5]}`);
@@ -413,14 +413,15 @@ class OMClient {
     return this.calendarProtocol===2;
   }
   async internationalCalendar(country, language, photo, slot, external, progress, date = new Date(), fit="contain", style=0) {
+    style=OMProtocol.calendarStyle(style);
     OMProtocol.integer(country,0,5,OMI18n.t("Country"));
     if (!["en","zh"].includes(language) || typeof photo!=="boolean" || typeof external!=="boolean") throw Error(OMI18n.t("Invalid calendar settings"));
     if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
     if (style===5 && !(this.sdkRevision>=8)) throw Error(OMI18n.t("单日极简需要 SDK 8。"));
-    if (![0,1,2,4,5,6,7,8,9,10,11,12].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
-    if(style>=9 && !(this.sdkRevision>=22))throw Error("全屏大字日历需要 SDK 22 或更新固件。");
+    if (![0,1,2,4,5,6,7,8,9,10,11,12,14].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if(style>=9 && !(this.sdkRevision>=OMProtocol.calendarStyleRevision(style)))throw Error("全屏大字日历需要 SDK "+OMProtocol.calendarStyleRevision(style)+" 或更新固件。");
     if ([6,7].includes(style) && !(this.sdkRevision>=16 && (this.sdkCapabilities&32))) throw Error("课表自动更新需要 SDK 16；当前版本可发送预览画面。");
     if(style===8 && !(this.sdkRevision>=17 && (this.sdkCapabilities&128)))throw Error("离线提醒需要 SDK 17；当前版本可发送预览画面。");
     if(style && (!(this.sdkRevision>=7) || photo || language!=="zh"))throw Error(OMI18n.t("新全屏样式需要 SDK 7 和中文。"));
