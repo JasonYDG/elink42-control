@@ -1,5 +1,5 @@
 {
-  "version": "0.8.27",
+  "version": "0.8.28",
   "sdk_revision": 28,
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
@@ -18,7 +18,7 @@
     }
   },
   "assets": {
-    "index.html": "04fc7c2589feff192ca172831acdd6ec4cb7a359b26601f8fcee49c3e4c76765",
+    "index.html": "8d2fb4ccaa038e113ef88d6aeb304706bd7ea623b96db0dbbd7ce672757b4796",
     "style.css": "fc5688dee6eee12e001168ed5379b9fadfddf54356dbc14810369cf0f17cfb18",
     "i18n.js": "570a3ee9c6923ebf6c93b901c1fb50143b820022450afeac7cc9e37aa6f6d60a",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
@@ -44,7 +44,7 @@
     "rotation.js": "e0d4aa3009648a36faef8b5199ac362e5005cc4b6deeeb2980d1643a1ccf5def",
     "app.js": "09afff0e907453c0f27b584c47b040c8d8b2c84bab0e77a92e3060ff33384c32",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "timetable.html": "f65128362e9f41c8bf4b888b8878f6529cb33e9c98724976c1e8254aca0074fc",
+    "timetable.html": "fae200cd9a47a7848a09afe30a6cecf869d9fd9fd6ab2072b7af84112962fb31",
     "timetable.css": "f30f78336cd5c563115a09f2633131df0aa7491c11ffe2c296ddbe9c6a7e7135",
     "planner.js": "5103de4f25a932bc32e9999e8f9fdcde8bb16698acf735104bb24739c4404d39",
     "course-table.js": "503d7e3cd40624e690e3e29a257aad5b337ade6ea20af47e926a1026b3f4dee4",
@@ -55,7 +55,7 @@
     "timetable-template.xlsx": "a52bf7b75980b898a260bee75fc4320e6c8cbc9e61c90d684b74c00746b8b8b3",
     "vendor/xlsx.full.min.js": "cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41",
     "vendor/xlsx.LICENSE": "4d2a38ac35cda06a555c84074a819d413339cd3691b822cae50f8f322fe01f64",
-    "screen-workbench.js": "ba744edba205bf2a86ca182b0a138f33407b41aab5576eb9737c994b4a7363ba",
+    "screen-workbench.js": "fcbdc43757d5171f273f49e43b7632ea6b240cb48a2b17a4496bef4fd02f950a",
     "tools/serve_local.py": "2a15d7e22f42fe0d2f21d6cdf35b6d0a78f4a0762839ba6569b5c7d19f858f2e",
     "firmware/LICENSES.txt": "cea9a9243ec4d5aae35c3d1e5a16998da09d25873920f3f534023810bdd1dbd1",
     "firmware/elink42-sdk-v28-tricolor-ssd1619.e42ota": "52fc56350eb8399101f214ff1ad2135fe565fe2483a483be00c13808b4d3313c",
@@ -103,6 +103,7 @@
     "firmware/elink42-v33-sdk21-migration.zip": "234772a1c130baf19faf18ce8935aff191212c1432decf743a97f364edcdb5fb",
     "stock-local.html": "ec63a56b0637d42ed8668fa865aa8a3e81102ceb92a4172e797c18cba2d2da78",
     "downloads/ElinkStockSync-1.0.0.exe": "e16b71b921d6cafc92ed356417d7a8108d237189ec940a662c79f134a2cece59",
+    "downloads/ElinkStockSync-1.0.1.exe": "3e855861dea277a327fcf8271cf4ce551ee48c355edb5de98ac40adb86a0125d",
     "assets/wallpapers/display/calendar-100.png": "1289640c877d7c286ccc6f09c1934a2554d76c39a3db42a95ec4648752db5298",
     "assets/wallpapers/display/calendar-101.png": "e99683f99c08beb09f5c60cb4dbe59bd368231b400a32dc3b45a7cc5e21b1b75",
     "assets/wallpapers/display/calendar-102.png": "f02708036d88b8131f0497faaf56bcba10625e10ca9bc4249a493234f596ea09",
@@ -339,6 +340,6 @@
     "assets/wallpapers/thumbs/full-63-yellow.webp": "2a43887eadced565b2b32070fac4983269d3db951981b73bc244c3c937ecfe81",
     "assets/wallpapers/thumbs/full-64-yellow.webp": "7bdce64b497204865673c8605bd5497e5e930784eddd877199c92074b45f41bc",
     "assets/wallpapers/thumbs/full-65-yellow.webp": "eb9fba8cbcd29115e7170baeee2987c17c610dd50e9eb7f43f442fe237778af0",
-    "console.js": "369ed683c74e3f5d257a0321b22eb3e562a99dbeb631b28ae4b604c6ee88ee08"
+    "console.js": "6254955151aa0c096ace54f32e4188ce096b3a4d90665d8f3ae13012b8f11b60"
   }
 }
