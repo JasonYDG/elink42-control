@@ -274,7 +274,14 @@ const OMProtocol = (() => {
     });
     return bytes;
   }
-  return {SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
+  // The retired local prototype used id 13. Keep existing saved plans usable.
+  const calendarStyle = style => style === 13 ? 14 : style;
+  function calendarStyleRevision(style) {
+    if (style >= 13) return 25;
+    if (style >= 9) return 22;
+    return style === 5 ? 8 : 7;
+  }
+  return {calendarStyle, calendarStyleRevision, SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
     planes, rgba, integer, crc16, remarkBytes, remarkText, storage, storageLayout, metadata, imageBytes, rotation, holidays};
 })();
 
@@ -686,7 +693,7 @@ class OMClient {
     this.calendarProtocol=reply.length===7 ? 2 : 0;
     if(this.calendarProtocol){
       const style=reply[1]>>3;
-      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128) || style>=9 && style<=12 && this.sdkRevision>=22) && (reply[1]&7)===2);
+      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128) || style>=9 && style<=14 && this.sdkRevision>=OMProtocol.calendarStyleRevision(style)) && (reply[1]&7)===2);
       if(!validFlags || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
       Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
       this.log(OMI18n.msg`日历读回：国家=${reply[3]}，模式=${reply[4]}，标志=${reply[1]}，槽位=${reply[5]}`);
@@ -694,14 +701,15 @@ class OMClient {
     return this.calendarProtocol===2;
   }
   async internationalCalendar(country, language, photo, slot, external, progress, date = new Date(), fit="contain", style=0) {
+    style=OMProtocol.calendarStyle(style);
     OMProtocol.integer(country,0,5,OMI18n.t("Country"));
     if (!["en","zh"].includes(language) || typeof photo!=="boolean" || typeof external!=="boolean") throw Error(OMI18n.t("Invalid calendar settings"));
     if(!["contain","prepared"].includes(fit))throw Error(OMI18n.t("Invalid calendar settings"));
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
     if (style===5 && !(this.sdkRevision>=8)) throw Error(OMI18n.t("单日极简需要 SDK 8。"));
-    if (![0,1,2,4,5,6,7,8,9,10,11,12].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
-    if(style>=9 && !(this.sdkRevision>=22))throw Error("全屏大字日历需要 SDK 22 或更新固件。");
+    if (![0,1,2,4,5,6,7,8,9,10,11,12,14].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if(style>=9 && !(this.sdkRevision>=OMProtocol.calendarStyleRevision(style)))throw Error("全屏大字日历需要 SDK "+OMProtocol.calendarStyleRevision(style)+" 或更新固件。");
     if ([6,7].includes(style) && !(this.sdkRevision>=16 && (this.sdkCapabilities&32))) throw Error("课表自动更新需要 SDK 16；当前版本可发送预览画面。");
     if(style===8 && !(this.sdkRevision>=17 && (this.sdkCapabilities&128)))throw Error("离线提醒需要 SDK 17；当前版本可发送预览画面。");
     if(style && (!(this.sdkRevision>=7) || photo || language!=="zh"))throw Error(OMI18n.t("新全屏样式需要 SDK 7 和中文。"));
@@ -1599,8 +1607,8 @@ const OMSdkPreview = (() => {
     return instance.exports;
   }
 
-  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 24}) {
-    let version = 24;
+  async function frame({date, country, flags, model, millivolts = 0, deviceName = "", revision = 28}) {
+    let version = 28;
     if (revision >= 6 && revision <= 11) version = Math.min(revision, 10);
     // SDK 12–23 share the photo sidebar in the existing SDK 22 engine.
     else if ((revision < 24 && (flags & 1)) || (revision === 22 && (flags >> 3) >= 9)) version = 22;
@@ -2906,12 +2914,12 @@ const OMScreen = (() => {
   function normalise(value={}) {
     if(!value || typeof value!=="object" || Array.isArray(value))throw Error("屏幕方案格式无效");
     const p={version:1,content:value.content??"calendar",update:value.update??"auto",country:value.country??0,
-      language:value.language??"zh",style:value.style??0,date:value.date??"",page:value.page??0,source:value.source??0,
+      language:value.language??"zh",style:OMProtocol.calendarStyle(value.style??0),date:value.date??"",page:value.page??0,source:value.source??0,
       slot:value.slot??255,fit:value.fit??"contain",frequency:value.frequency??0,reminderTitle:value.reminderTitle??"日程提醒",reminderId:value.reminderId??"",background:value.background??null,confirmed:value.confirmed??null};
     if(typeof p.reminderTitle!=="string" || !p.reminderTitle.trim() || p.reminderTitle.length>24)throw Error("提醒日历标题无效");
     if(typeof p.reminderId!=="string" || p.reminderId.length>80)throw Error("提醒选择无效");
     if(value.version!==undefined && value.version!==1 || !types.includes(p.content) || !["auto","snapshot"].includes(p.update) ||
-       ![0,2,3].includes(p.country) || !["zh","en"].includes(p.language) || ![0,1,2,4,5,9,10,11,12].includes(p.style) ||
+       ![0,2,3].includes(p.country) || !["zh","en"].includes(p.language) || ![0,1,2,4,5,9,10,11,12,14].includes(p.style) ||
        !integer(p.page,0,15) || ![0,1].includes(p.source) || !(p.slot===255 || integer(p.slot,0,44)) ||
        !["prepared","contain"].includes(p.fit) || ![0,3,4,5].includes(p.frequency))throw Error("屏幕方案设置超出范围");
     if(p.date)CourseTable.dateValue(p.date);
@@ -2972,14 +2980,15 @@ const OMScreen = (() => {
     if(!hooks)return;const p=capture(),saved=p.confirmed,same=saved?.signature===signature(hooks.read(),p),state=last||{};
     $("plan-state").textContent=tableDirty?"课表有未保存修改：请先保存表格，再应用或导出。":same?"最近确认 "+new Date(saved.at).toLocaleTimeString()+" · "+saved.name:hooks.read().screenProfile?"方案已在本机保存 · 有修改待应用":"初始方案 · 调整后自动保存";
     $("screen-apply").textContent=state.runtime?.bootId && saved?.bootId && state.runtime.bootId!==saved.bootId?"恢复方案到屏幕":p.update==="snapshot"?"发送当前画面":"应用并自动更新";
+    const requiredSDK=OMProtocol.calendarStyleRevision(p.style);
     const scene=["calendar","photo-calendar","course","todo","stock"].includes(context),ready=state.ready&&!state.busy;
-    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && p.style>=9 && !(state.revision>=22)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
+    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
     for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
     $("screen-update").disabled=!!state.busy||p.content==="stock";
     $("calendar-date").disabled=!!state.busy||p.update==="auto";
-    $("screen-update-note").textContent=p.content==="stock"?"行情由网页获取并发送；自动同步需保持本页开启和目标蓝牙连接，仅在交易时段执行。":p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=22)?"此款离线日历需要 SDK 22，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
+    $("screen-update-note").textContent=p.content==="stock"?"行情由网页获取并发送；自动同步需保持本页开启和目标蓝牙连接，仅在交易时段执行。":p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
   }
   function device(state){last=state;if(hooks)status();}
@@ -2992,12 +3001,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.22";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.26";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.22";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.26";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -3014,7 +3023,7 @@ const OMScreen = (() => {
     if(!file || file.size>6000000)throw Error("请选择不超过6MB的方案 JSON 文件");
     if(tableDirty)throw Error("请先保存课表表格再导入方案");
     const next=parse(JSON.parse(await file.text()),capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.22";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.26";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -3198,10 +3207,10 @@ const OMScreen = (() => {
     $("sdk-month-style-field").hidden=true;
     for(const button of $("calendar-presets").children){
       const style=Number(button.dataset.style);
-      button.disabled=busy || (client.ready && style>0 && client.sdkRevision<(style>=9?22:style===5?8:7));
+      button.disabled=busy || (client.ready && style>0 && !(client.sdkRevision>=OMProtocol.calendarStyleRevision(style)));
       button.setAttribute("aria-pressed",String(style===Number($("sdk-month-style").value)));
     }
-    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"四款大字日历支持 SDK 22，点阵大字需要 SDK 23。";
+    $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?"当前固件可使用经典月历，其他布局可断开连接后预览。":"蜂巢日签随 SDK 28 正式发布。底部显示节气倒计时，本月每天一格，加高的一格是今天。";
     $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
@@ -3381,7 +3390,7 @@ const OMScreen = (() => {
     }
   }
   function setupShell(){
-    for(const [style,name] of [[0,"经典月历"],[1,"月历全览"],[2,"今日侧栏"],[4,"全屏极简"],[5,"单日极简"],[9,"侧栏月签"],[10,"横幅日牌"],[11,"双页翻历"],[12,"一周日签"]]){
+    for(const [style,name] of [[0,"经典月历"],[1,"月历全览"],[2,"今日侧栏"],[4,"全屏极简"],[5,"单日极简"],[9,"侧栏月签"],[10,"横幅日牌"],[11,"双页翻历"],[12,"一周日签"],[14,"蜂巢 · 红底白字"]]){
       const b=document.createElement("button"),canvas=newCanvas(),label=document.createElement("span");
       b.dataset.style=String(style);b.setAttribute("aria-pressed",String(style===0));label.textContent=name;b.append(canvas,label);
       b.addEventListener("click",()=>{if(b.disabled)return;$("screen-update").value="auto";$("calendar-date").value="";$("sdk-month-style").value=String(style);$("calendar-language").value="zh";syncCalendar();OMScreen.persist();});
@@ -3409,8 +3418,8 @@ const OMScreen = (() => {
   function restoreDevicePresentation() {
     $("preview-model").value=String(client.config.model);
     if(OMScreen.hasProfile()){OMScreen.restore();return;}
-    const style=client.config.alternate>>3;
-    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26 && (style<6 || client.sdkRevision>=22 && style>=9 && style<=12)?style:0);
+    const style=OMProtocol.calendarStyle(client.config.alternate>>3);
+    $("sdk-month-style").value=String(client.sdkRevision>=7 && client.config.alternate!==26 && (style<6 || style>=9 && style<=14 && client.sdkRevision>=OMProtocol.calendarStyleRevision(style))?style:0);
     if(client.sdkRevision>=15 && (client.sdkCapabilities&32) && [6,7].includes(style))$("school-view").value=style===7?"week":"day";
     $("preview-model").value = String(client.config.model);
     $("calendar-layout").value = String(C.byId(client.config.layout)?client.config.layout:0);
