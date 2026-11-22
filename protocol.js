@@ -185,7 +185,7 @@ const OMProtocol = (() => {
     return bytes;
   }
   // The retired local prototype used id 13. Keep existing saved plans usable.
-  const calendarStyle = style => style === 13 ? 14 : style;
+  const calendarStyle = style => style === 9 ? 10 : style === 13 ? 14 : style;
   function calendarStyleRevision(style) {
     if (style >= 13) return 25;
     if (style >= 9) return 22;

@@ -275,7 +275,9 @@ main { max-width:1560px; margin:24px auto; padding:0 28px; grid-template-columns
 #auto-rotation-panel { grid-area:rotation; }
 #transfer-status { grid-area:status; padding:12px 18px; }
 #transfer-status #result { margin-top:8px; }
-.calendar-presets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.calendar-presets { display:grid; gap:18px; }
+.calendar-presets h3 { margin:0 0 7px; font-size:14px; color:var(--muted); }
+.preset-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .calendar-presets button { padding:8px; display:flex; flex-direction:column; align-items:stretch; gap:7px; font-size:12px; text-align:left; border:1px solid var(--line); background:var(--panel); border-radius:8px; }
 .calendar-presets canvas { width:100%; box-shadow:none; border:1px solid var(--line); }
 .calendar-presets canvas { max-width:150px; margin-inline:auto; }
@@ -331,7 +333,7 @@ html[data-section=gallery] .workspace { grid-template-areas:"editor preview" "ro
   .preview-panel>.panel-heading>.check { display:none; }
   .preview-caption { flex-wrap:nowrap; }
   .preview-caption #preview-label { overflow-wrap:anywhere; }
-  .calendar-presets { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .preset-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
   html[data-section=settings] .workspace { display:flex; }
   .status-panel.busy { z-index:6; }
 }
@@ -342,7 +344,9 @@ html[data-section=gallery] .workspace { grid-template-areas:"editor preview" "ro
   header .device-name { max-width:145px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
   header button { padding:8px; }
   .panel { padding:14px; }
-  .calendar-presets { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .preset-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .screen-workbench .fields { grid-template-columns:1fr; }
   .preview-wrap { padding:10px 4px; }
 }
+
+.desktop-download{display:inline-block;padding:.65em 1em;border-radius:8px;background:#975333;color:white;font-weight:650;text-decoration:none}.desktop-download:hover,.desktop-download:focus-visible{background:#794329;color:white}

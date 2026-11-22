@@ -45,7 +45,7 @@ for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.26');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,28);assert.equal(Object.keys(manifest.assets).length,321);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.27');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,28);assert.equal(Object.keys(manifest.assets).length,322);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -103,7 +103,13 @@ test('the one-click SDK update pins the published package for each connected pan
   const manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
   assert.ok(html.includes('id="sdk-ota-panel" data-revision="'+manifest.sdk_revision+'"'));
   const button=html.match(/<button id="sdk-ota-bundled"[^>]+>/)[0];
-  assert.doesNotMatch(html,/<a\b[^>]*(?:\bdownload\b|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\/)/i);
+  for(const [anchor] of html.matchAll(/<a\b[^>]+>/g)){
+    if(anchor.includes('id="stock-desktop-download"')){
+      assert.match(anchor,/href="downloads\/ElinkStockSync-1\.0\.0\.exe\?v=[\d.]+&h=[a-f\d]{12}" download/);
+      continue;
+    }
+    assert.doesNotMatch(anchor,/\bdownload\b|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\//i);
+  }
   for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']]){
     const [file,query]=button.match(new RegExp('data-src-'+model+'="([^"]+)"'))[1].split('?');
     assert.equal(file,'firmware/elink42-sdk-v'+manifest.sdk_revision+'-'+panel+'.e42ota');
@@ -147,7 +153,7 @@ test("weather controls are absent and no firmware source, private keys or raw im
   const html=fs.readFileSync(path.join(root,"index.html"),"utf8");
   assert.doesNotMatch(html,/id="(?:tab-weather|weather-editor|weather-key|weather-fetch)"/);
   assert.doesNotMatch(html.match(/<select id="job-kind">([\s\S]*?)<\/select>/)[1],/value="weather"/);
-  assert.match(html,/id="nav-stock"[^>]*>股票日历/);
+  assert.match(html,/id="nav-stock"[^>]*data-i18n="股票日历">Stock calendar/);
   assert.match(html,/data-hosting="github-pages"/);assert.match(html,/connect-src 'self' data: https:\/\/uapis.cn/);
   for(const p of fs.readdirSync(root,{recursive:true})){
     if(p.split(path.sep).some(part=>[".git","build"].includes(part)))continue;
