@@ -45,7 +45,7 @@ for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.27');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,28);assert.equal(Object.keys(manifest.assets).length,322);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.28');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,28);assert.equal(Object.keys(manifest.assets).length,323);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
@@ -105,7 +105,7 @@ test('the one-click SDK update pins the published package for each connected pan
   const button=html.match(/<button id="sdk-ota-bundled"[^>]+>/)[0];
   for(const [anchor] of html.matchAll(/<a\b[^>]+>/g)){
     if(anchor.includes('id="stock-desktop-download"')){
-      assert.match(anchor,/href="downloads\/ElinkStockSync-1\.0\.0\.exe\?v=[\d.]+&h=[a-f\d]{12}" download/);
+      assert.match(anchor,/href="downloads\/ElinkStockSync-1\.0\.1\.exe\?v=[\d.]+&h=[a-f\d]{12}" download/);
       continue;
     }
     assert.doesNotMatch(anchor,/\bdownload\b|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\//i);

@@ -122,7 +122,7 @@ test('seven primary destinations group nine calendar presets without weather nav
 
 test('stock delivery uses the desktop download and a connected browser can only preview quotes',async()=>{
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
-  assert.match(html,/id="stock-desktop-download"[^>]*href="downloads\/ElinkStockSync-1\.0\.0\.exe\?[^"]+" download/);
+  assert.match(html,/id="stock-desktop-download"[^>]*href="downloads\/ElinkStockSync-1\.0\.1\.exe\?[^"]+" download/);
   assert.doesNotMatch(html,/id="stock-(auto-send|start|interval)"/);
   const u=ui(5,false,'zh',true);await u.click('connect');await u.click('nav-stock');
   assert.equal(u.get('screen-apply').hidden,true);
