@@ -11,7 +11,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const html=fs.readFileSync(path.join(root,"index.html"),"utf8"),elements=new Map(),packets=[],rendered=[],downloads=[],local=new Map(),session=new Map(),httpRequests=[];let scriptRequests=0,pendingScript,lastFetchURL,fetchCount=0;
   const pixels=new Uint8ClampedArray(480000).fill(255);pixels.set([184,25,40,255]);
   const catalogRequests=[];
-  const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){}};
+  const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){},fillRect(){},fillText(){},measureText(text){return {width:String(text).length*8};}};
   function element(tag="div",id=""){
     const attrs={},classes=new Set();
     return {id,tagName:tag,children:[],value:"",checked:false,disabled:false,hidden:false,textContent:"",listeners:{},dataset:{},files:[],
@@ -100,7 +100,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     OMSdkPreview:initial.sdkRevision?{async calendar(...args){rendered.push({kind:'sdk-calendar',args});}}:undefined,
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});if(k==='stockCalendar')return initial.stockRender?.(...args);}]))};
   // Mock only course pixels here; real date helpers run, and verify-school.py checks actual rendering.
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","regional-calendar.js","region-record.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const context=vm.createContext(sandbox),api=vm.runInContext(code,context);
   return {get,httpRequests,catalogRequests,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(error=new TypeError("Failed to fetch")){rejectFetch(error);},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
@@ -754,4 +754,30 @@ test('UI stable v24 offers the matching v31 to v32 bundle while the OTA idle tim
  const u=ui(5,true,'zh',true,{revision:24});await u.click('connect');
  u.get('ota-consent').checked=true;await u.get('ota-consent').listeners.change();assert.equal(u.get('ota-start').disabled,false);
  assert.match(u.get('ota-capability').textContent,/v31.*v32/);assert.equal(u.idleTimers.size,0);assert.equal(u.device.gatt.connected,true);
+});
+
+test('calendar profiles round trip without device writes or changes to personal settings',async()=>{
+  const u=ui(),state=()=>JSON.parse(u.local.get('om6626-workspace-v1'));
+  const upload=data=>u.file('workspace-import',new Blob([JSON.stringify(data)]));
+  const choose=key=>u.input('region-profile',key,'change');
+  assert.deepEqual(u.get('region-profile').children.map(item=>item.value),['CN','SG','TW','DE']);
+  for(const [code,id] of [['SG','2'],['TW','3'],['CN','0']]){
+    await choose(code);assert.equal(u.get('calendar-layout').value,id);assert.equal(u.get('calendar-language').value,'zh');
+  }
+  await choose('DE');const originals=state();
+  assert.equal(originals.activeRegion,'DE');
+  const day={month:11,day:3,off:true,name:'Lokaler Feiertag'};
+  const profile={format:'elink42-region-v1',code:'DE-NW',name:'Nordrhein-Westfalen',locale:'de-DE',timeZone:'Europe/Berlin',weekStart:1,weekend:[0,6],years:{2027:[day]}};
+  await upload(profile);
+  assert.equal(state().activeRegion,'custom:DE-NW');assert.deepEqual(state().regionProfiles['DE-NW'],profile);
+  assert.deepEqual(state().todos,originals.todos);assert.deepEqual(state().settings,originals.settings);
+  await upload({format:'elink42-region-year-v1',code:'DE-NW',year:2028,entries:[day]});
+  assert.equal(u.get('holiday-year').value,'2028');assert.deepEqual(state().regionProfiles['DE-NW'].years,{2027:[day],2028:[day]});
+  const raw=JSON.stringify(state());
+  await upload({...profile,years:{2027:[day,day]}});assert.equal(JSON.stringify(state()),raw);
+  await u.click('region-export');await u.click('region-year-export');await u.click('workspace-export');
+  assert.ok(u.downloads.some(d=>d.name==='elink42-region-DE-NW.json'));assert.ok(u.downloads.some(d=>d.name==='elink42-DE-NW-2028.json'));
+  const backup=state();await choose('SG');await upload(backup);
+  assert.equal(u.get('region-profile').value,'custom:DE-NW');assert.deepEqual(state().regionProfiles,backup.regionProfiles);
+  assert.equal(u.packets.length,0);
 });
