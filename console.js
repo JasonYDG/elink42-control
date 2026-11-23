@@ -1639,6 +1639,9 @@ const OMSdkOTA=(()=>{
   function crcUpdate(crc,bytes){for(const byte of bytes){crc^=byte;for(let i=0;i<8;i++)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}return crc>>>0;}
   const crc32=bytes=>(crcUpdate(0xFFFFFFFF,bytes)^0xFFFFFFFF)>>>0;
   function failure(message){const error=Error(OMI18n.t(message));error.code="OTA_PRECHECK";return error;}
+  function checkRevision(revision){
+    if(revision===30)throw failure("SDK 30 已撤回，请选择 SDK 31 或后续版本。");
+  }
   async function parse(input){
     const bytes=input instanceof Uint8Array?input:new Uint8Array(input);
     if(bytes.length<268 || bytes.length>64+MAX || new TextDecoder().decode(bytes.subarray(0,8))!==MAGIC)
@@ -1647,6 +1650,7 @@ const OMSdkOTA=(()=>{
     if(![2,5].includes(model) || revision<2 || revision>65535 || size!==bytes.length-64 ||
        view.getUint32(20,true)!==0x4000 || view.getUint32(60,true)!==crc32(bytes.subarray(0,60)))
       throw failure("升级包头或长度不正确，请重新取得完整文件。");
+    checkRevision(revision);
     const image=bytes.slice(64),crc=view.getUint32(24,true);
     const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",image));
     if(crc32(image)!==crc || digest.some((b,i)=>b!==bytes[28+i]))throw failure("升级包内容校验失败，没有向设备写入。");
@@ -1706,6 +1710,7 @@ const OMSdkOTA=(()=>{
     throw failure("设备准备或校验超时；原应用仍保留，请重新连接核对。");
   }
   async function transfer(client,pkg,progress){
+    checkRevision(pkg.revision);
     const device=client.device;
     if(!supported(client) || pkg.model!==client.config?.model || pkg.revision<client.sdkRevision)
       throw failure("升级包与当前 SDK 版本或屏型不匹配，没有开始写入。");
@@ -3001,12 +3006,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.28";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.30";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.28";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.30";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -3023,7 +3028,7 @@ const OMScreen = (() => {
     if(!file || file.size>6000000)throw Error("请选择不超过6MB的方案 JSON 文件");
     if(tableDirty)throw Error("请先保存课表表格再导入方案");
     const next=parse(JSON.parse(await file.text()),capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.28";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.30";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
