@@ -78,7 +78,7 @@ const OMSchool = (() => {
     if(!supported(client) && !(client.sdkRevision>=17 && (client.sdkCapabilities&128)))throw Error("原生应用记录需要 SDK 16/17；旧固件可发送当前画面。");
     if(reference && (client.sdkRevision<17 || ![0,1].includes(reference.source) || !Number.isInteger(reference.slot) || reference.slot<0 || reference.slot>44))throw Error("应用记录查询参数无效");
     const seq=client.nextSequence(),r=await client.request(reference?Uint8Array.of(0x24,0x50,reference.source,reference.slot,seq):client.sdkRevision>=17?Uint8Array.of(0x24,0x50,seq,1):Uint8Array.of(0x24,0x50,seq),b=>b[0]===0x5C&&b[1]===seq,"核对设备应用记录");
-    if(r.length!==(client.sdkRevision>=17?15:11) || ![0,2,...(client.sdkRevision>=17?[3]:[]),...(client.sdkRevision>=18?[4]:[])].includes(r[2]) || r[4]>1 || r[5]>15 && r[2]!==0)throw Error("设备应用记录读回无效");
+    if(r.length!==(client.sdkRevision>=17?15:11) || ![0,2,...(client.sdkRevision>=17?[3]:[]),...(client.sdkRevision>=18?[4]:[]),...(client.sdkRevision>=32 && (client.sdkCapabilities&2048)?[5]:[])].includes(r[2]) || r[4]>1 || r[5]>15 && r[2]!==0)throw Error("设备应用记录读回无效");
     if(reference && (r[3]!==reference.slot || r[4]!==reference.source))throw Error("应用记录查询位置读回不符");
     return {format:r[2],slot:r[3],source:r[4],page:r[5],flags:r[6],mode:r[7],crc:r[8]|r[9]<<8,valid:!!r[10],dataCrc:r.length===15?new DataView(r.buffer,r.byteOffset,r.byteLength).getUint32(11,true):null};
   }
@@ -98,9 +98,9 @@ const OMSchool = (() => {
     }
     const slot=reuse?old.slot:cached?cached.slot:gallery.slots.find(row=>allowed.includes(row.slot)&&!row.valid)?.slot;
     if(slot===undefined)throw Error("所选应用区没有空槽。请先备份并手动清理一个应用位置；旧方案和用户图片未覆盖。");
-    const saved=reuse?{crc:old.crc}:cached?{crc:cached.crc}:await client.store(record?{reminder:prepared}:{school:prepared},slot,external,progress);
+    const saved=reuse?{crc:old.crc}:cached?{crc:cached.crc}:await client.store(format===5?{region:prepared}:record?{reminder:prepared}:{school:prepared},slot,external,progress);
     if(client.device?.id!==identity)throw Error("连接设备已改变，新方案未启用");
-    const style=record?8:options.view==="week"?7:6,flags=2|(style<<3),page=record?0:Math.min(15,Math.max(0,options.page||0));
+    const style=record?(record.style??8):options.view==="week"?7:6,flags=2|(style<<3),page=record?0:Math.min(15,Math.max(0,options.page||0));
     try {
       await client.operation(async()=>{
         client.requireRefreshStatus();await client.waitForDisplay();await client.command(OMProtocol.time(options.date,0,OMCalendar.zone(OMCalendar.byId(country)?.code||"CN",options.date)));
@@ -114,7 +114,7 @@ const OMSchool = (() => {
       if(client.device?.id===identity && client.device?.gatt.connected){
         try{await client.operation(async()=>{
           await client.waitForDisplay();await client.command(OMProtocol.time(options.date,0,OMCalendar.zone(OMCalendar.byId(country)?.code||"CN",options.date)));
-          await client.write([2,3,4].includes(old.format)?Uint8Array.of(0x57,old.slot,old.source,old.page):Uint8Array.of(0x56,old.slot,old.source));
+          await client.write([2,3,4,5].includes(old.format)?Uint8Array.of(0x57,old.slot,old.source,old.page):Uint8Array.of(0x56,old.slot,old.source));
           const seq=client.nextSequence();const r=await client.request(Uint8Array.of(0x24,0x4A,oldCountry,old.flags,seq),b=>b.length===7&&b[0]===0x55&&b[2]===0x4A,"恢复原显示设置");
           if(r[1]!==old.flags || r[5]!==old.slot || r[6]!==old.source)throw Error("原设置读回不符");
           if(rotation.frequency)await client.command(Uint8Array.of(0x26,rotation.frequency,rotation.photo?1:0));
@@ -124,7 +124,7 @@ const OMSchool = (() => {
       }
       error.message+=(restored?"；已恢复原显示设置":"；旧记录保留，恢复原显示未确认，请重新连接后核对")+"。新记录槽 "+slot;throw error;
     }
-    if([2,3,4].includes(old.format) && old.valid && (old.slot!==slot || old.source!==Number(external))){
+    if((format===5?old.format===5:[2,3,4].includes(old.format)) && old.valid && (old.slot!==slot || old.source!==Number(external))){
       try{await client.slotAction("delete",old.slot,!!old.source,progress);}catch(error){client.log("新方案已启用，旧记录未清理："+error.message);}
     }
     return {slot,source:Number(external),crc:saved.crc,page};

@@ -405,7 +405,7 @@ class OMClient {
     this.calendarProtocol=reply.length===7 ? 2 : 0;
     if(this.calendarProtocol){
       const style=reply[1]>>3;
-      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128) || style>=9 && style<=14 && this.sdkRevision>=OMProtocol.calendarStyleRevision(style)) && (reply[1]&7)===2);
+      const validFlags=reply[1]<=7 || (([1,2,3,4].includes(style) && this.sdkRevision>=7 || style===5 && this.sdkRevision>=8 || [6,7].includes(style) && this.sdkRevision>=15 && (this.sdkCapabilities&32) || style===8 && this.sdkRevision>=17 && (this.sdkCapabilities&128) || style===15 && this.sdkRevision>=32 && (this.sdkCapabilities&2048) || style>=9 && style<=14 && this.sdkRevision>=OMProtocol.calendarStyleRevision(style)) && (reply[1]&7)===2);
       if(!validFlags || reply[3]>=6 || reply[4]>3 || reply[6]>1)throw Error(OMI18n.t("Invalid calendar settings"));
       Object.assign(this.config,{alternate:reply[1],layout:reply[3],mode:reply[4],photoSlot:reply[5],photoSource:reply[6]});
       this.log(OMI18n.msg`日历读回：国家=${reply[3]}，模式=${reply[4]}，标志=${reply[1]}，槽位=${reply[5]}`);
@@ -420,7 +420,8 @@ class OMClient {
     const region=OMCalendar.byId(country);
     if(!region)throw Error(OMI18n.t("Invalid calendar settings"));
     if (style===5 && !(this.sdkRevision>=8)) throw Error(OMI18n.t("单日极简需要 SDK 8。"));
-    if (![0,1,2,4,5,6,7,8,9,10,11,12,14].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if (![0,1,2,4,5,6,7,8,9,10,11,12,14,15].includes(style)) throw Error(OMI18n.t("Invalid calendar settings"));
+    if(style===15 && !OMRegional.supported(this))throw Error("地区月历需要 SDK 32");
     if(style>=9 && !(this.sdkRevision>=OMProtocol.calendarStyleRevision(style)))throw Error("全屏大字日历需要 SDK "+OMProtocol.calendarStyleRevision(style)+" 或更新固件。");
     if ([6,7].includes(style) && !(this.sdkRevision>=16 && (this.sdkCapabilities&32))) throw Error("课表自动更新需要 SDK 16；当前版本可发送预览画面。");
     if(style===8 && !(this.sdkRevision>=17 && (this.sdkCapabilities&128)))throw Error("离线提醒需要 SDK 17；当前版本可发送预览画面。");
@@ -432,7 +433,7 @@ class OMClient {
       if (!await this.readCalendar()) throw Error(OMI18n.t("Calendar configuration requires firmware revision 6 or later. Update firmware and reload this page."));
       await this.waitForDisplay();
       await this.command(OMProtocol.time(date,0,OMCalendar.zone(code,date)));
-      if(this.sdkRevision>=16 && (style<6 || style>=9)){
+      if(this.sdkRevision>=16 && (style<6 || style>=9 && style!==15)){
         const rotation=await this.request(Uint8Array.of(0x24,0x49,0x52),b=>b[0]===0x58,"核对自动换图");
         if(rotation.length!==6 || ![0,3,4,5].includes(rotation[2]))throw Error("自动换图状态无效");
         if(rotation[2])await this.command(Uint8Array.of(0x26,0,photo?1:0));
@@ -530,9 +531,10 @@ class OMClient {
     });
   }
   async store(frame, slot, external, progress) {
-    const school=frame?.school||frame?.reminder;
+    const school=frame?.school||frame?.reminder||frame?.region;
+    if(frame?.region && !OMRegional.supported(this))throw Error("地区月历需要 SDK 32");
     const outline=frame?.reminder && school instanceof Uint8Array && String.fromCharCode(...school.subarray(0,7))==="ELREM02";
-    if(school && (!(school instanceof Uint8Array) || school.length!==30000 || (frame.reminder?!(this.sdkRevision>=(outline?18:17) && (this.sdkCapabilities&(outline?256:128))):!(this.sdkRevision>=15 && (this.sdkCapabilities&32)))))throw Error(OMI18n.t("原生记录格式或固件能力不匹配"));
+    if(school && (!(school instanceof Uint8Array) || school.length!==30000 || (frame.region?!OMRegional.supported(this):frame.reminder?!(this.sdkRevision>=(outline?18:17) && (this.sdkCapabilities&(outline?256:128))):!(this.sdkRevision>=15 && (this.sdkCapabilities&32)))))throw Error(OMI18n.t("原生记录格式或固件能力不匹配"));
     const bytes = school?school.slice():OMProtocol.imageBytes(frame, this.config?.model), crc = OMProtocol.crc16(bytes);
     OMProtocol.integer(slot, 0, 44, OMI18n.t("槽位"));
     return this.operation(async () => {

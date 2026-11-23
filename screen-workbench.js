@@ -48,7 +48,7 @@ const OMScreen = (() => {
   function signature(data,p){
     const clean={...p,confirmed:null};let h=2166136261;
     const rendering=["fontSize","urgentHours","dither","strength","brightness","contrast","gamma","redThreshold"].map(key=>data.settings[key]);
-    for(const c of JSON.stringify([clean,data.courses,data.exams||[],data.examDays||{},data.todos,data.stocks,rendering]))h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;
+    for(const c of JSON.stringify([clean,data.courses,data.exams||[],data.examDays||{},data.todos,data.stocks,rendering,...(p.content==="calendar" && data.activeRegion ? [data.activeRegion,data.regionProfiles?.[data.activeRegion.slice(7)]] : [])]))h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;
     return h.toString(16);
   }
   function persist(){
@@ -74,13 +74,15 @@ const OMScreen = (() => {
     $("screen-apply").textContent=OMI18n.t(state.runtime?.bootId && saved?.bootId && state.runtime.bootId!==saved.bootId?"恢复方案到屏幕":p.update==="snapshot"?"发送当前画面":"应用并自动更新");
     const requiredSDK=OMProtocol.calendarStyleRevision(p.style);
     const scene=["calendar","photo-calendar","course","todo"].includes(context),ready=state.ready&&!state.busy;
-    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
+    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && state.regional && !state.regionSupported) || (p.content==="calendar" && !state.regional && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
     for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
     $("screen-update").disabled=!!state.busy||p.content==="stock";
     $("calendar-date").disabled=!!state.busy||p.update==="auto";
     $("screen-update-note").textContent=p.content==="stock"?OMI18n.t("请使用桌面工具推送股票行情。"):p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
+    if(p.content==="calendar" && state.regional && p.update==="auto" && state.ready && !state.regionSupported)
+      $("screen-update-note").textContent="此地区方案离线换日需要 SDK 32，可在设置中升级。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
   }
   function device(state){last=state;if(hooks)status();}
@@ -93,12 +95,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.30";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.31";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.30";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.31";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -114,8 +116,27 @@ const OMScreen = (() => {
   async function importPlan(file){
     if(!file || file.size>6000000)throw Error("请选择不超过6MB的方案 JSON 文件");
     if(tableDirty)throw Error("请先保存课表表格再导入方案");
-    const next=parse(JSON.parse(await file.text()),capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.30";pendingDay=null;}
+    const input=JSON.parse(await file.text());
+    if(input?.format===OMRegional.format || input?.format===OMRegional.annualFormat ||
+       (input && input.format===undefined && input.version===undefined && Array.isArray(input.entries))){
+      let profile,year;
+      const data=OMFeatures.clone(hooks.read());
+      if(input.format===OMRegional.format)profile=input;
+      else {
+        const code=input.format===undefined?"CN":input.code;
+        if(!OMRegional.validCode(code))throw Error("年度配置地区代码无效");
+        const base=data.regionProfiles?.[code] || OMRegional.preset(code);
+        year=input.year;
+        profile={...base,years:{...base.years,[year]:OMRegional.annual(year,input.entries)}};
+      }
+      OMRegional.install(data,profile);
+      if(hooks.read().regionProfiles?.[profile.code])hooks.download("elink42-before-region-import.json",OMFeatures.clone(hooks.read()));
+      hooks.save(data);hooks.regionChanged(data.activeRegion,year);
+      $("plan-state").textContent=profile.name+" · 地区方案已导入，点击应用后写入设备。";
+      return year;
+    }
+    const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.31";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){

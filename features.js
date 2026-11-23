@@ -14,6 +14,7 @@ const OMFeatures = (() => {
   function validate(data) {
     if (!data || data.version !== 1) throw Error(OMI18n.t("备份版本不支持"));
     if(data.screenProfile!==undefined && typeof OMScreen!=="undefined")OMScreen.normalise(data.screenProfile);
+    if(data.regionProfiles!==undefined || data.activeRegion!==undefined)OMRegional.checkWorkspace(data);
     if(data.stocks!==undefined)stockState(data.stocks);
     if (!Array.isArray(data.todos) || data.todos.length > 200 || !Array.isArray(data.templates) || data.templates.length > 60 ||
         !Array.isArray(data.jobs) || data.jobs.length > 200 || !Array.isArray(data.devices) || data.devices.length > 100 ||

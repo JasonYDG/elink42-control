@@ -61,6 +61,25 @@
     const div = document.createElement("div"), label = document.createElement("span"); div.className = "list-row";
     label.textContent = text; div.append(label, ...buttons); $(container).append(div);
   }
+  function activeRegion(){return OMRegional.get(store.data);}
+  function usesRegionRecord(){return OMRegional.nativeId(activeRegion())===null;}
+  function regionOptions(){
+    const keys=["CN","SG","TW","DE",...Object.keys(store.data.regionProfiles||{}).map(code=>"custom:"+code)];
+    options("region-profile",keys.map(key=>{
+      const p=OMRegional.get(store.data,key);
+      const name=key.startsWith("custom:")?OMI18n.t("自定义")+" · "+p.name:OMI18n.t(({CN:"中国",SG:"新加坡",TW:"台湾",DE:"德国"})[key]);
+      return [key,name];
+    }));
+    $("region-profile").value=OMRegional.selection(store.data);
+  }
+  function selectRegion(key,year){
+    const p=OMRegional.get(store.data,key),id=OMRegional.nativeId(p)??0;
+    store.change(data=>{data.activeRegion=key;data.settings.calendarCountry=id;data.settings.calendarLanguage="zh";
+      if(data.screenProfile){data.screenProfile.country=id;data.screenProfile.language="zh";data.screenProfile.confirmed=null;}});
+    $("calendar-layout").value=String(id);$("calendar-language").value="zh";$("photo-country").value=String(id);$("photo-language").value="zh";
+    regionOptions();showRegionYear(year??OMRegional.localDate(p).getFullYear());
+    selectTab($("tab-calendar"));calendarInfo();OMScreen.persist();preview();
+  }
   function bundledRevision() {
     const revision=client.firmwareRevision;
     return OMOTA.pairedRevision(revision) ?? (revision!==null && (revision<30 || revision===31) ? 32 : bundledFirmwareRevision);
@@ -129,6 +148,10 @@
     if(otaReady && revision===34)$("ota-capability").textContent=OMI18n.t(OMOTA.MIGRATION_STOP);
     if(otaReady && otaPackage?.bundle && !migration && [1,2].includes(revision))
       $("ota-capability").textContent=OMI18n.t("v1/v2 的启动记录检查不兼容；请使用对应屏型 HEX，未发送升级命令");
+    const regional=tab==="calendar" && usesRegionRecord();
+    $("region-profile").disabled=busy;
+    $("region-year-save").disabled=$("region-export").disabled=$("region-year-export").disabled=busy;
+    $("calendar-presets").hidden=regional;
     $("sdk-month-style-field").hidden=true;
     for(const button of presetButtons){
       const style=Number(button.dataset.style);
@@ -136,12 +159,13 @@
       button.setAttribute("aria-pressed",String(style===Number($("sdk-month-style").value)));
     }
     $("calendar-preset-note").textContent=client.ready && !(client.sdkRevision>=7)?OMI18n.t("当前固件可使用经典月历，其他布局可断开连接后预览。"):OMI18n.t("选择版式后可预览并应用到屏幕。");
+    if(regional)$("calendar-preset-note").textContent=OMI18n.t("地区月历");
     $("sdk-single-day").disabled=$("sdk-single-day").hidden=client.ready && !(client.sdkRevision>=8);
     $("scheduler-start").disabled = busy;
     for (const id of ["native-calendar", "calendar-style", "set-time", "background-clear", "holiday-read", "holiday-write",
       "gallery-read", "photo-gallery-read", "job-add"]) $(id).disabled = !ready;
     $("photo-read-preview").disabled=!ready || !(client.sdkRevision>=16) || $("photo-slot").value==="";
-    for(const id of ["holiday-read","holiday-write"])$(id).disabled=!ready || Number($("calendar-layout").value)!==0;
+    for(const id of ["holiday-read","holiday-write"])$(id).disabled=!ready || Number($("calendar-layout").value)!==0 || regional;
     $("photo-calendar-start").disabled = !ready || $("photo-slot").value==="" || !gallery || gallery.external!==($("photo-source").value==="1");
     $("native-clock").disabled = !ready || ((client.config?.model === 5 || OMProtocol.sdkBoard(client.board)) && !$("clock-full").checked);
     $("led-off").disabled = $("led-on").disabled = !ready || client.config?.model !== 5;
@@ -207,7 +231,7 @@
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
-    OMScreen.device({ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
+    OMScreen.device({regional,regionSupported:OMRegional.supported(client),ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -224,6 +248,14 @@
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings), chosenModel = model();let pageLabel="";
       if(calendarTab){
+        if(tab==="calendar" && usesRegionRecord()){
+          const p=activeRegion(),date=$("calendar-date").value?CourseTable.dateValue($("calendar-date").value):OMRegional.localDate(p);
+          OMRegionRecord.render(canvas,p,date);
+          frame=OMProtocol.planes(canvas.getContext("2d").getImageData(0,0,400,300).data,false,chosenModel);
+          $("preview").getContext("2d").drawImage(canvas,0,0);
+          $("preview-label").textContent=p.name+" · "+p.timeZone+" · 400 × 300";
+          return;
+        }
         const region=C.byId(Number($("calendar-layout").value))||C.regions[0];
         const date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00") : C.localDate(region.code);
         const style=tab==="calendar"?Number($("sdk-month-style").value)||0:0;
@@ -285,6 +317,9 @@
     const nativeScene=["calendar","photo-calendar","course","todo","stock"].includes(tab);
     if(nativeScene)$("rotate").checked=false;
     if($("rotate").parentElement)$("rotate").parentElement.hidden=nativeScene;
+    if(tab==="calendar" && store.data.activeRegion){
+      $("calendar-layout").value=String(OMRegional.nativeId(activeRegion())??0);$("calendar-language").value="zh";
+    }
     const section=sectionOf(tab);sectionViews[section]=tab;
     for (const b of tabs) { const on = b === button; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; $(b.getAttribute("aria-controls")).hidden = !on; }
     for(const b of tabs)b.hidden=sectionOf(b.dataset.tab)!==section;
@@ -297,7 +332,7 @@
     $("scene-title").dataset.i18n=title;$("scene-title").textContent=OMI18n.t(title);
     for(const name of Object.keys(sectionViews))$("nav-"+name).setAttribute("aria-pressed",String(name===section));
     renderLibrary();
-    if(tab==="calendar")renderPresets();
+    if(tab==="calendar"){regionOptions();calendarInfo();renderPresets();}
     OMScreen.context(tab);
     client.armIdleDisconnect();
     preview();
@@ -306,7 +341,7 @@
   for(const name of Object.keys(sectionViews))bind("nav-"+name,()=>selectTab($("tab-"+sectionViews[name])),"");
   let presetKey="";
   function renderPresets(){
-    if(typeof OMSdkPreview==="undefined")return;
+    if(typeof OMSdkPreview==="undefined" || usesRegionRecord())return;
     const date=$("calendar-date").value?new Date($("calendar-date").value+"T12:00:00"):C.localDate(C.byId(Number($("calendar-layout").value)).code);
     const key=[$("preview-model").value,$("calendar-layout").value,date.toDateString(),client.ready?client.sdkRevision:"latest"].join(":");
     if(key===presetKey)return;presetKey=key;
@@ -338,7 +373,7 @@
     rail.className="navigation-rail";rail.append(document.querySelector(".primary-nav"),document.querySelector(".site-links"));main.prepend(rail);
     const settings=$("settings-editor"),device=$("device-panel");
     settings.prepend($("compatibility"),$("device-details"),oldAside.querySelector(".device-extras"));header.insertBefore(device,header.querySelector(".header-tools"));oldAside.remove();
-    const backup=document.createElement("details"),summary=document.createElement("summary");summary.textContent="导入 / 导出方案";backup.className="plan-backup";backup.append(summary,document.querySelector(".plan-actions"));$("screen-workbench").append(backup);
+    const backup=document.createElement("details"),summary=document.createElement("summary");summary.dataset.i18n="导入 / 导出方案";summary.textContent=OMI18n.t(summary.dataset.i18n);backup.className="plan-backup";backup.append(summary,document.querySelector(".plan-actions"));$("screen-workbench").append(backup);
     $("preview-panel").insertBefore($("screen-apply"),$("preview-panel").querySelector(".preview-caption"));
     $("preview-panel").append($("transfer-status"));
     $("settings-editor").append($("operation-log"));
@@ -438,7 +473,7 @@
   bind("disconnect", () => { client.disconnect(); gallery = null; }, OMI18n.t("已断开，已提交的刷新可能仍在继续。"));
   bind("device-info-refresh", async () => {await client.operation(() => client.readDeviceInfo());await preview();}, "");
   bind("device-home", () => client.home(progress), OMI18n.t("已回到设备初始页；保存的图片仍保留。"));
-  const startCalendar=(photo=false,date=new Date())=>{client.offlineRotation=null;return client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value,photo?0:Number($("sdk-month-style").value)||0);};
+  const startCalendar=(photo=false,date=new Date())=>{client.offlineRotation=null;if(!photo && usesRegionRecord())return OMRegionRecord.apply(client,activeRegion(),progress,date);return client.internationalCalendar(Number($("calendar-layout").value),$("calendar-language").value,photo,Number($("photo-slot").value),$("photo-source").value==="1",progress,date,$("photo-fit").value,photo?0:Number($("sdk-month-style").value)||0);};
   bind("native-calendar", () => startCalendar());
   bind("native-clock", () => client.mode(2, progress, new Date(), $("clock-full").checked));
   $("clock-full").addEventListener("change", update);
@@ -487,7 +522,7 @@
     bind("sdk-ota-inspect",async()=>{const state=await OMSdkOTA.inspect(client),text=OMSdkOTA.describe(state);$("sdk-ota-state").textContent=text;log(text);},"");
     bind("sdk-ota-abort",async()=>{await OMSdkOTA.abort(client);$("sdk-ota-state").textContent=OMI18n.t("未提交的升级已取消，原应用和图库仍保留。");});
   }
-  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared",client.config.alternate===26?0:client.config.alternate>>3); });
+  bind("set-time", () => { const date = new Date($("custom-time").value); if (!Number.isFinite(+date)) throw Error(OMI18n.t("请选择有效时间")); if(usesRegionRecord() && tab==="calendar")return OMRegionRecord.apply(client,activeRegion(),progress,date); return client.internationalCalendar(client.config.layout,$("calendar-language").value,!!(client.config.alternate&1),client.config.photoSlot,!!client.config.photoSource,progress,date,client.config.alternate&4?"contain":"prepared",client.config.alternate===26?0:client.config.alternate>>3); });
   bind("calendar-style", () => startCalendar());
   bind("photo-calendar-start",()=>locked(async()=>{await startCalendar(true);await defaultRotation(Number($("photo-slot").value),$("photo-source").value==="1",true);}));
   $("sdk-month-style").addEventListener("change",()=>{
@@ -503,6 +538,15 @@
     calendarInfo();preview();
   }
   function calendarInfo(){
+    if(tab==="calendar" && usesRegionRecord()){
+      const p=activeRegion(),date=$("calendar-date").value?CourseTable.dateValue($("calendar-date").value):OMRegional.localDate(p),year=date.getFullYear();
+      $("holiday-summary").textContent=p.name+" · "+p.timeZone+" · "+OMI18n.t("Offline holidays: ")+Object.keys(p.years).join(", ");
+      if(!p.years[year])$("holiday-summary").textContent+=" · "+OMI18n.t("Holiday data is unavailable for this year. Update the holiday table; dates are still shown.");
+      $("holiday-list").replaceChildren();
+      for(const item of p.years[year]||[])if(item.month===date.getMonth()+1)
+        row("holiday-list",item.month+"-"+item.day+" · "+(item.name||"")+" · "+(item.off?"休":"班"));
+      return;
+    }
     const region=C.byId(Number($("calendar-layout").value))||C.regions[0], date=$("calendar-date").value ? new Date($("calendar-date").value+"T12:00:00"):C.localDate(region.code);
     const known=region.years.includes(date.getFullYear());
     $("holiday-summary").textContent=OMI18n.t("Offline holidays: ")+region.years.join(", ")+". "+OMI18n.t(known?"National holidays; local/state holidays are excluded.":"Holiday data is unavailable for this year. Update the holiday table; dates are still shown.");
@@ -650,6 +694,7 @@
     await preview();let applied=OMScreen.signature(screenData(),p);
     if(!frame || loading || OMScreen.dirty())throw Error("请先保存表格并等待预览完成");
     if(p.update==="snapshot")await client.publish(frame,progress);
+    else if(p.content==="calendar" && usesRegionRecord())await OMRegionRecord.apply(client,activeRegion(),progress);
     else if(p.content==="reminder"){
       const todos=p.reminderId?screenData().todos.filter(t=>t.id===p.reminderId):screenData().todos;
       const saved=await OMReminder.apply(client,{todos:F.clone(todos),date:new Date(),country:p.country,title:p.reminderTitle,model:client.config.model,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
@@ -931,14 +976,32 @@
     }
   });
   bind("rotation-save", () => client.rotate(Number($("rotation-mode").value), Number($("rotation-interval").value), daysInput($("rotation-days").value), external(), progress));
+  function showRegionYear(year){
+    const rows=activeRegion().years[year]||[];
+    $("holiday-year").value=String(year);
+    $("holiday-text").value=rows.map(e=>[String(e.month).padStart(2,"0")+"-"+String(e.day).padStart(2,"0"),e.off?"off":"work",e.name].filter(Boolean).join(" ")).join("\n");
+  }
+  function editedYear(){
+    const year=Number($("holiday-year").value);
+    const rows=$("holiday-text").value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).map(line=>{
+      const m=/^(\d{1,2})-(\d{1,2})\s+(休|班|off|work)(?:\s+(.+))?$/.exec(line);
+      if(!m)throw Error("请输入 MM-DD 休/班，可在后面填写名称");
+      return {month:Number(m[1]),day:Number(m[2]),off:["off","休"].includes(m[3]),name:m[4]||""};
+    });
+    return {format:OMRegional.annualFormat,code:activeRegion().code,year,entries:OMRegional.annual(year,rows)};
+  }
+  $("region-profile").addEventListener("change",()=>action(()=>selectRegion($("region-profile").value),""));
+  $("holiday-year").addEventListener("change",()=>showRegionYear(Number($("holiday-year").value)));
+  bind("region-export",()=>jsonDownload("elink42-region-"+activeRegion().code+".json",activeRegion()),"已导出地区配置。");
+  bind("region-year-export",()=>{const y=editedYear();jsonDownload("elink42-"+y.code+"-"+y.year+".json",y);},"已导出年度设置。");
+  bind("region-year-save",()=>{const y=editedYear(),p=activeRegion();
+    store.change(data=>OMRegional.install(data,{...p,years:{...p.years,[y.year]:y.entries}}));selectRegion(store.data.activeRegion,y.year);
+  },"年度设置已保存到地区方案。");
   function showHolidays(value) { $("holiday-year").value = String(value.year); $("holiday-text").value = value.entries.map(e => `${String(e.month).padStart(2, "0")}-${String(e.day).padStart(2, "0")} ${e.off ? "off" : "work"}`).join("\n"); }
   bind("holiday-read", async () => showHolidays(await client.holidays()), OMI18n.t("已读取设备调休表。"));
   bind("holiday-write", async () => {
-    const entries = $("holiday-text").value.trim().split(/\r?\n/).filter(Boolean).map(line => {
-      const match = line.trim().match(/^(\d{1,2})-(\d{1,2})\s+(off|work|休|班)$/); if (!match) throw Error(OMI18n.t("调休格式应为 MM-DD 休 或 MM-DD 班"));
-      return {month: Number(match[1]), day: Number(match[2]), off: ["off","休"].includes(match[3])};
-    });
-    const year = Number($("holiday-year").value); OMProtocol.holidays(year, entries);
+    const {year,entries:rows}=editedYear(),entries=rows.map(({month,day,off})=>({month,day,off}));
+    OMProtocol.holidays(year,entries);
     const old = await client.holidays(); jsonDownload("om6626-holidays-before.json", old);
     showHolidays(await client.holidays(entries, year));
   }, OMI18n.t("原表已导出备份，新表已保存并读回核对。"));
@@ -1002,7 +1065,7 @@
   bind("workspace-export",()=>OMScreen.exportPlan(),"完整屏幕方案已导出，含课程、考试、布局和已备份背景。");
   $("workspace-import").addEventListener("change",e=>action(async()=>{
     if(client.busy || uiBusy || schedulerRunning || scheduler)throw Error("请等待设备操作结束再导入方案");
-    try{await OMScreen.importPlan(e.target.files[0]);applySettings();refreshLists();loadDraft(store.data.templates[0]||F.defaultTemplates()[0]);}
+    try{const year=await OMScreen.importPlan(e.target.files[0]);applySettings();regionOptions();showRegionYear(year??OMRegional.localDate(activeRegion()).getFullYear());calendarInfo();refreshLists();loadDraft(store.data.templates[0]||F.defaultTemplates()[0]);}
     finally{e.target.value="";}
   },""));
   bind("log-export", () => download("om6626-web-log.txt", new Blob([lines.join("\n")], {type: "text/plain"})), OMI18n.t("已导出日志。"));
@@ -1092,10 +1155,10 @@
       change(workspace=>{workspace.stocks=next;});
     }finally{stockFetching=false;update();}
   },""));
-  setupShell();applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
+  setupShell();regionOptions();showRegionYear(OMRegional.localDate(activeRegion()).getFullYear());applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   OMI18n.onChange=()=>{
     for(const id of ["compatibility","nfc-state","result","photo-state","scheduler-state","ota-package","ota-kind","ota-service","gallery-state"])$(id).textContent=OMI18n.t($(id).textContent);
-    update();refreshLists();calendarInfo();renderLibrary();preview();
+    regionOptions();update();refreshLists();calendarInfo();renderLibrary();preview();
   };
   $("ui-language").addEventListener("change",()=>OMI18n.setLanguage($("ui-language").value));
   OMI18n.apply();syncCalendar(false,false);
@@ -1103,5 +1166,5 @@
   OMScreen.init({read:screenData,save:data=>store.commit(data),show:type=>{
     $("school-view").value=type==="day"?"day":"week";
     selectTab($(type==="photo"?"tab-photo-calendar":type==="reminder"?"tab-todo":type==="stock"?"tab-stock":["day","week"].includes(type)?"tab-course":"tab-calendar"));
-  },preview,deviceSettings:()=>selectTab($("tab-settings")),download:jsonDownload,refresh:()=>{if(!uiBusy&&!client.busy){screenData();refreshLists();}},apply:p=>action(()=>locked(()=>applyScreen(p)),"")});
+  },regionChanged:selectRegion,preview,deviceSettings:()=>selectTab($("tab-settings")),download:jsonDownload,refresh:()=>{if(!uiBusy&&!client.busy){screenData();refreshLists();}},apply:p=>action(()=>locked(()=>applyScreen(p)),"")});
 })();
