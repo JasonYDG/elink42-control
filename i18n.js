@@ -1,5 +1,6 @@
 "use strict";
 const OMTranslations = {
+  "SDK 30 已撤回，请选择 SDK 31 或后续版本。": "SDK 30 has been withdrawn. Select SDK 31 or later.",
   "正在加载图库…":"Loading wallpapers…",
   "重试":"Retry",
   "诗词与名句":"Poetry and maxims",

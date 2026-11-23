@@ -380,3 +380,12 @@ test('a confirmed Flash rejection keeps Bluetooth connected and never retries th
  control.writeValueWithResponse=async b=>{if(b[0]===1){r.commands.push([...b]);const reply=Uint8Array.of(0x60,1,132);control.value=new DataView(reply.buffer);for(const waiter of [...r.client.pending])if(waiter.match(reply))waiter.resolve(reply);}else await original(b);};
  await assert.rejects(r.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(r.commands.filter(b=>b[0]===1).length,1);assert.equal(r.device.gatt.connected,true);assert.equal(r.client.pending.size,0);assert.equal(r.received.length,0);
 });
+
+for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])test(`withdrawn SDK 30 is rejected before writing on ${panel}`,async()=>{
+  const bytes=fs.readFileSync(path.join(root,'firmware',`elink42-sdk-v31-${panel}.e42ota`));
+  const pack=await SdkOTA.parse(bytes);
+  bytes.writeUInt32LE(30,12);
+  bytes.writeUInt32LE(SdkOTA.crc32(bytes.subarray(0,60)),60);
+  await assert.rejects(SdkOTA.parse(bytes),/SDK 30/);
+  await assert.rejects(SdkOTA.transfer({}, {...pack,revision:30}),/SDK 30/);
+});
