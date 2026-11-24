@@ -45,12 +45,17 @@ for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
   const manifest=JSON.parse(fs.readFileSync(path.join(site,"site-manifest.json")));
   assert.equal(manifest.pages_url,"https://jasonydg.github.io/elink42-control/");
-  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.32');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,33);assert.equal(Object.keys(manifest.assets).length,334);
+  assert.equal(manifest.content,"web-control-with-bundled-signed-ota");assert.equal(manifest.version,'0.8.33');assert.equal(manifest.firmware_revision,33);assert.equal(manifest.sdk_revision,34);assert.equal(Object.keys(manifest.assets).length,336);
   assert.deepEqual(Object.keys(manifest.firmware_images).sort(),['2','5']);
   for(const row of Object.values(manifest.firmware_images)){assert.equal(row.application_bytes,238532);assert.match(row.application_sha256,/^[0-9a-f]{64}$/);assert.match(row.bundle_sha256,/^[0-9a-f]{64}$/);}
   assert.ok(manifest.assets["firmware.js"]);
   assert.equal(manifest.assets[migrationFile],undefined);assert.equal(fs.existsSync(path.join(site,migrationFile)),false);
   assert.ok(manifest.assets[latestMigrationFile]);assert.match(fs.readFileSync(path.join(site,"index.html"),"utf8"),/id="migration-risk"[^>]*data-i18n="高风险/);
+  const publicPackages = Object.keys(manifest.assets).filter(name => name.startsWith('firmware/')).sort();
+  assert.deepEqual(publicPackages,[...firmwareFiles].filter(name => name !== migrationFile).sort());
+  for (const name of ['index.html','console.js','features.js','tools/serve_local.py','stock-local.html']) {
+    assert.doesNotMatch(fs.readFileSync(path.join(site,name),'utf8'), /uapis\.cn|seniverse\.com|gtimg\.cn|127\.0\.0\.1:8290|saying-fetch|stock-local-download/i);
+  }
   const files=fs.readdirSync(site,{recursive:true,withFileTypes:true}).filter(p=>p.isFile()).map(p=>path.relative(site,path.join(p.parentPath,p.name)).split(path.sep).join('/')).sort();
   assert.deepEqual(files,[...Object.keys(manifest.assets),"site-manifest.json"].sort());
   for(const [name,hash] of Object.entries(manifest.assets)){
@@ -66,7 +71,6 @@ test("Pages deploys the control client and bundled OTA with relative paths and e
     assert.deepEqual([...html.matchAll(/<script\b[^>]*\bsrc="([^"?]+)/g)].map(m=>m[1]),['i18n.js','features.js','console.js']);
     assert.ok(html.includes(`data-catalog-src="wallpapers.js?v=${manifest.version}&h=${manifest.assets['wallpapers.js'].slice(0,12)}"`));
     assert.ok(html.includes(`data-firmware-src="firmware.js?v=${manifest.version}&h=${manifest.assets['firmware.js'].slice(0,12)}"`));
-    assert.ok(html.includes(`data-template="stock-local.html?v=${manifest.version}&amp;h=${manifest.assets['stock-local.html'].slice(0,12)}"`));
     for(const [,url] of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(url==="data:,")continue;
       if(url.startsWith("https://")){assert.ok(["github.com","gu.qq.com"].includes(new URL(url).hostname),url);continue;}
@@ -104,10 +108,6 @@ test('the one-click SDK update pins the published package for each connected pan
   assert.ok(html.includes('id="sdk-ota-panel" data-revision="'+manifest.sdk_revision+'"'));
   const button=html.match(/<button id="sdk-ota-bundled"[^>]+>/)[0];
   for(const [anchor] of html.matchAll(/<a\b[^>]+>/g)){
-    if(anchor.includes('id="stock-desktop-download"')){
-      assert.match(anchor,/href="downloads\/ElinkStockSync-1\.0\.1\.exe\?v=[\d.]+&h=[a-f\d]{12}" download/);
-      continue;
-    }
     assert.doesNotMatch(anchor,/\bdownload\b|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\//i);
   }
   for(const [model,panel] of [[2,'tricolor-ssd1619'],[5,'fourcolor-jd79668']]){
@@ -126,7 +126,7 @@ test('the OTA page retains one-click updates without direct firmware download li
   const html=fs.readFileSync(path.join(site,'index.html'),'utf8'),manifest=JSON.parse(fs.readFileSync(path.join(site,'site-manifest.json')));
   assert.doesNotMatch(html,/<a\b[^>]*(?:\bid="download-v33-|\bhref="(?:\.\/)?firmware\/|\.(?:e42ota|hex|bin|zip)|\/releases\/download\/)/i);
   for(const id of ['ota-bundled','sdk-ota-bundled','ota-migration'])assert.match(html,new RegExp('<button id="'+id+'"'));
-  assert.match(html,/connect-src[^;]*https:\/\/web\.sqt\.gtimg\.cn/);
+  assert.match(html,/connect-src 'self' data:;/);
   assert.doesNotMatch(html,/script-src[^;]*(?:qt\.gtimg|sqt\.gtimg)/);
   assert.ok(html.indexOf('id="ota-bundled"')<html.indexOf('id="ota-migration"'));
   assert.match(html,/id="migration-risk"[^>]*data-i18n="高风险/);
@@ -154,7 +154,7 @@ test("weather controls are absent and no firmware source, private keys or raw im
   assert.doesNotMatch(html,/id="(?:tab-weather|weather-editor|weather-key|weather-fetch)"/);
   assert.doesNotMatch(html.match(/<select id="job-kind">([\s\S]*?)<\/select>/)[1],/value="weather"/);
   assert.match(html,/id="nav-stock"[^>]*data-i18n="股票日历">Stock calendar/);
-  assert.match(html,/data-hosting="github-pages"/);assert.match(html,/connect-src 'self' data: https:\/\/uapis.cn/);
+  assert.match(html,/data-hosting="github-pages"/);assert.match(html,/connect-src 'self' data:;/);
   for(const p of fs.readdirSync(root,{recursive:true})){
     if(p.split(path.sep).some(part=>[".git","build"].includes(part)))continue;
     const name=p.split(path.sep).join('/');

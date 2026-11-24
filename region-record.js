@@ -94,7 +94,7 @@ const OMRegionRecord = (() => {
     else if(next){number(bytes[next+2],8,275,black);rect(39,291,3,3,black);number(bytes[next+3],48,275,black);draw(u16(next+5),90,279,bytes[next+4]?red:black);}
   }
   async function apply(client,p,progress,date=new Date()){
-    if(OMGermanMonth.uses(p) && client.sdkRevision<33)throw Error("德国点阵月历需要 SDK 33，请在设置中升级固件。");
+    if(OMGermanMonth.uses(p) && client.sdkRevision<34)throw Error("德国方格月历需要 SDK 34，请在设置中升级固件。");
     if(!OMRegional.supported(client))throw Error("地区方案离线换日需要 SDK 32，请在设置中升级固件。");
     return OMSchool.apply(client,{country:0,date},false,progress,{format:5,style:15,supported:OMRegional.supported,bytes:pack(p)});
   }

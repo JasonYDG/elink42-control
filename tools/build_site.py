@@ -13,13 +13,17 @@ OUT = ROOT / 'build' / 'elink42-control'
 ASSETS = ['index.html', 'style.css', 'i18n.js', 'holidays.js', 'calendar.js', 'charset.js', 'protocol.js',
           'sdk-preview.js','sdk-preview.wasm','sdk6-preview.wasm','sdk7-preview.wasm','sdk8-preview.wasm','sdk9-preview.wasm','sdk10-preview.wasm','sdk22-preview.wasm','sdk-ota.js', 'ble.js', 'features.js', 'archive.js', 'ota.js', 'firmware.js', 'render.js', 'wallpapers.js', 'rotation.js', 'app.js', '.nojekyll']
 ASSETS += ['timetable.html', 'timetable.css', 'planner.js', 'course-table.js', 'school-native.js', 'reminder-native.js', 'course-editor.js', 'course-import.js', 'timetable-template.xlsx', 'vendor/xlsx.full.min.js', 'vendor/xlsx.LICENSE']
-SDK_REVISION = 33
-WEB_VERSION = '0.8.32'
+SDK_REVISION = 34
+WEB_VERSION = '0.8.33'
 SDK_FILES = [f'firmware/elink42-sdk-v{SDK_REVISION}-{panel}.e42ota' for panel in ('tricolor-ssd1619','fourcolor-jd79668')]
+LEGACY_SDK_FILES = [f'firmware/elink42-sdk-v{revision}-{panel}.e42ota'
+                    for revision in (6,7,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24,28,31,32,33)
+                    for panel in ('tricolor-ssd1619','fourcolor-jd79668')]
 V33_FILES = [f'firmware/elink42-{panel}-v33-ota.zip' for panel in ('tricolor-ssd1619','fourcolor-jd79668')]
-ASSETS += ['regional-calendar.js','german-font.js','german-month.js','fonts/Terminus-OFL.txt','region-record.js','screen-workbench.js','tools/serve_local.py','firmware/LICENSES.txt',*SDK_FILES, *(name.replace(f'-v{SDK_REVISION}-', f'-v{previous}-') for previous in (6,7,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24,28,31,32) for name in SDK_FILES)]
+ASSETS += ['regional-calendar.js','german-font.js','german-month.js','fonts/Terminus-OFL.txt','region-record.js','screen-workbench.js','tools/serve_local.py','firmware/LICENSES.txt',*SDK_FILES]
 ASSETS += ['calendar-font.js','fonts/fusion-pixel-10px-monospaced-zh_hans.bdf.gz','fonts/fusion-pixel-12px-monospaced-zh_hans.bdf.gz','fonts/OFL.txt']
-ASSETS += V33_FILES + ['firmware/elink42-v33-sdk21-migration.zip']
+ASSETS += LEGACY_SDK_FILES + V33_FILES + ['firmware/elink42-v33-sdk21-migration.zip']
+# Preserve existing download URLs. The retired stock page only links back to the console.
 ASSETS += ['stock-local.html', 'downloads/ElinkStockSync-1.0.0.exe', 'downloads/ElinkStockSync-1.0.1.exe']
 
 def firmware_images():
@@ -47,7 +51,6 @@ def firmware_images():
 
 def console_assets():
     html = (ROOT / 'index.html').read_text(encoding='utf8')
-    # The stock-page export reads the two named scripts separately.
     group = re.search(r'(?:<script defer src="[^"]+"></script>\s*)+', html)
     names = re.findall(r'src="([\w-]+\.js)\?', group[0])
     assert names[-1] == 'app.js' and len(names) == html.count('<script defer src=')
@@ -61,7 +64,7 @@ def build():
     assert len(images)==236 and all(re.fullmatch(r'assets/wallpapers/(thumbs/[a-z0-9-]+\.webp|display/[a-z0-9-]+\.png)',p) for p in images)
     generated = console_assets()
     files = ASSETS+images+['console.js']
-    assert len(files) == len(set(files)) == 334
+    assert len(files) == len(set(files)) == 336
     firmware=firmware_images()
     OUT.mkdir(parents=True, exist_ok=True)
     assert OUT.resolve().is_relative_to((ROOT / 'build').resolve())

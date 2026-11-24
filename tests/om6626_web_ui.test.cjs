@@ -120,15 +120,13 @@ test('seven primary destinations group nine calendar presets without weather nav
   await u.click('nav-course');await u.input('school-view','day','change');assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).screenProfile.content,'day');
 });
 
-test('stock delivery uses the desktop download and a connected browser can only preview quotes',async()=>{
+test('stock snapshots can be imported offline and the display requires saved data',async()=>{
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
-  assert.match(html,/id="stock-desktop-download"[^>]*href="downloads\/ElinkStockSync-1\.0\.1\.exe\?[^"]+" download/);
-  assert.doesNotMatch(html,/id="stock-(auto-send|start|interval)"/);
+  assert.doesNotMatch(html,/id="stock-(save|desktop-download|local-download)"/);
   const u=ui(5,false,'zh',true);await u.click('connect');await u.click('nav-stock');
-  assert.equal(u.get('screen-apply').hidden,true);
-  const before=u.packets.length;u.get('stock-text').value='sh000001';
-  const preview=u.click('stock-save');u.respond(liveQuote());await preview;
-  assert.equal(u.packets.length,before);
+  assert.equal(u.get('screen-apply').disabled,true);
+  await u.file('stock-import',new Blob([JSON.stringify({format:'elink42-stock-v1',codes:'sh000001',text:liveQuote()})]));
+  assert.equal(u.get('screen-apply').disabled,false);assert.equal(u.fetchCount(),0);
 });
 function liveQuote(){const f=Array(33).fill('');Object.assign(f,{1:'Index',2:'000001',3:'3200',30:'20261113113000',32:'0.5'});return 'v_sh000001="'+f.join('~')+'";';}
 test('importing local quotes revalidates the original data and only changes the stock snapshot',async()=>{
@@ -139,85 +137,12 @@ test('importing local quotes revalidates the original data and only changes the 
   await importData(record);
   const snapshot=JSON.parse(u.local.get('om6626-workspace-v1'));
   assert.equal(snapshot.stocks.quotes[0].time,'2026-11-13 11:30:00');
-  assert.equal(u.get('stock-text').value,'sh000001');assert.equal(u.rendered.at(-1).kind,'stockCalendar');
+  assert.equal(u.rendered.at(-1).kind,'stockCalendar');
   await importData({...record,codes:'sz000001'});
   assert.match(u.get('result').textContent,/股票行情字段无效/);
   assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')),snapshot);
   assert.equal(u.packets.length,before);assert.equal(u.fetchCount(),0);
 });
-test('stock fetch stores real validated quotes, and failed refresh retains the prior snapshot',async()=>{
-  const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
-  const pending=u.click('stock-save');assert.equal(u.lastFetchURL(),'/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await pending;
-  const data=JSON.parse(u.local.get('om6626-workspace-v1'));assert.equal(data.stocks.quotes[0].price,3200);assert.equal(u.rendered.at(-1).kind,'stockCalendar');assert.equal(data.screenProfile.update,'snapshot');
-  const retry=u.click('stock-save');u.respond('v_pv_none="1";');await retry;
-  assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,data.stocks);assert.match(u.get('stock-state').textContent,/失败.*没有行情.*上次行情保留/);
-});
-
-test('local quote network failures preserve data and explain the missing service',async()=>{
- const u=ui(5,false,'zh',true,{now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- let request=u.click('stock-save');u.respond(liveQuote());await request;
- const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
- request=u.click('stock-save');u.failFetch();await request;
- assert.match(u.get('stock-state').textContent,/无法连接本地行情接口/);assert.doesNotMatch(u.get('stock-state').textContent,/Failed to fetch/);
- assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
- request=u.click('stock-save');u.respond('',404);await request;assert.match(u.get('stock-state').textContent,/静态预览服务/);
- request=u.click('stock-save');u.respond('',502);await request;assert.match(u.get('stock-state').textContent,/本地控制端暂时无法取得行情/);
-});
-
-for(const failure of ['network','timeout','server','body-network','body-timeout','body-abort'])test(`hosted stock ${failure}: uses one Tencent backup with a fresh timeout`,async()=>{
- const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- const pending=u.click('stock-save');assert.equal(u.lastFetchURL(),'https://qt.gtimg.cn/q=sh000001');
- const first=u.httpRequests.at(-1).options;
- if(failure==='server')u.respond('',503);
- else if(failure.startsWith('body-'))u.respond(failure==='body-network'?new TypeError('network error'):Object.assign(Error('timeout'),{name:failure==='body-abort'?'AbortError':'TimeoutError'}));
- else u.failFetch(failure==='timeout'?Object.assign(Error('timeout'),{name:'TimeoutError'}):new TypeError('Failed to fetch'));
- await new Promise(setImmediate);assert.equal(u.lastFetchURL(),'https://web.sqt.gtimg.cn/q=sh000001');
- const second=u.httpRequests.at(-1).options;assert.notEqual(first.signal,second.signal);
- for(const options of [first,second]){assert.equal(options.credentials,'omit');assert.equal(options.redirect,'error');assert.equal(options.referrerPolicy,'no-referrer');}
- u.respond(liveQuote());await pending;
- assert.equal(u.fetchCount(),2);assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks.quotes[0].price,3200);assert.doesNotMatch(u.get('stock-state').textContent,/失败/);
-});
-
-test('hosted stock primary succeeds without contacting the backup',async()=>{
- const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- const pending=u.click('stock-save');u.respond(liveQuote());await pending;assert.equal(u.fetchCount(),1);assert.match(u.lastFetchURL(),/^https:\/\/qt\.gtimg\.cn\//);
-});
-
-test('both hosted quote channels fail without changing saved data or sending BLE',async()=>{
- const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- let pending=u.click('stock-save');u.respond(liveQuote());await pending;const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
- pending=u.click('stock-save');u.failFetch();await new Promise(setImmediate);u.failFetch();await pending;
- assert.equal(u.fetchCount(),3);assert.match(u.get('stock-state').textContent,/主、备用行情通道均无法连接/);assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);assert.equal(u.packets.length,0);
-});
-
-
-
-test('invalid backup quotes do not replace the previous snapshot or trigger another request',async()=>{
- const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- let pending=u.click('stock-save');u.respond(liveQuote());await pending;const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
- pending=u.click('stock-save');u.failFetch();await new Promise(setImmediate);u.respond(liveQuote().replace('20261113113000','20260230113000'));await pending;
- assert.equal(u.fetchCount(),3);assert.match(u.get('stock-state').textContent,/行情时间无效/);assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
-});
-
-for(const response of ['bad-time','wrong-symbol','rate-limit'])test(`hosted ${response} fails closed without a backup request`,async()=>{
- const u=ui(5,false,'zh',true,{hostname:'jasonydg.github.io'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- let pending=u.click('stock-save');u.respond(liveQuote());await pending;const before=JSON.parse(u.local.get('om6626-workspace-v1')).stocks;
- pending=u.click('stock-save');u.respond(response==='bad-time'?liveQuote().replace('20261113113000','20260230113000'):response==='wrong-symbol'?liveQuote().replace('v_sh000001','v_sz000001'):'',response==='rate-limit'?429:200);await pending;
- assert.equal(u.fetchCount(),2);assert.match(u.get('stock-state').textContent,/失败/);assert.deepEqual(JSON.parse(u.local.get('om6626-workspace-v1')).stocks,before);
-});
-
-test('existing 8289 static previews discover the local quote service and reuse it',async()=>{
- const u=ui(5,false,'zh',true,{port:'8289',now:'2026-11-13T10:00:00+08:00'});await u.click('nav-stock');u.get('stock-text').value='sh000001';
- const pending=u.click('stock-save');u.respond('',404);await new Promise(setImmediate);
- assert.equal(u.lastFetchURL(),'http://127.0.0.1:8290/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await pending;
- const again=u.click('stock-save');assert.equal(u.lastFetchURL(),'http://127.0.0.1:8290/api/stock/quote?symbols=sh000001');u.respond(liveQuote());await again;
- assert.equal(JSON.parse(u.local.get('om6626-workspace-v1')).stocks.quotes[0].price,3200);
-});
-
-
-
-
-
 for(const model of [2,5])for(const revision of [33,34])test(`UI model ${model} v${revision}: withdrawn migration cannot fetch or write`,async()=>{
   const u=ui(model,true,'zh',true,{revision});await u.click('connect');
   assert.equal(u.get('ota-migration').disabled,revision!==33);const before=u.packets.length;
@@ -582,14 +507,6 @@ test("page scheduler marks stale jobs missed and never overwrites screen with la
   u.advance(600000);const before=u.packets.length;await u.click("scheduler-start");assert.equal(u.packets.length,before);
   const job=JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0];assert.equal(job.enabled,false);assert.match(job.status,/错过/);
 });
-test("legacy weather jobs stop without fetching or sending after weather is replaced by stocks",async()=>{
-  const u=ui();await u.click("connect");u.get("job-title").value="天气";u.get("job-kind").value="weather";
-  u.get("job-time").value=new Date(Date.now()+120000).toISOString();await u.click("job-add");
-  u.advance(121000);
-  const before=u.packets.length,requests=u.fetchCount();await u.click("scheduler-start");assert.equal(u.packets.length,before);assert.equal(u.fetchCount(),requests);
-  assert.match(JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0].status,/天气任务已停用/);assert.equal(JSON.parse(u.local.get("om6626-workspace-v1")).jobs[0].enabled,false);
-});
-
 test("connection restores actual photo presentation and time sync preserves its slot and fitting",async()=>{
   const u=ui(5,false,"en",true,{flags:7,country:3,mode:1,slot:2,source:0});u.stored[2]=123;await u.click("connect");
   assert.equal(u.get("photo-calendar-editor").hidden,false);assert.equal(u.get("calendar-layout").value,"3");assert.equal(u.get("photo-slot").value,"2");assert.equal(u.get("photo-fit").value,"contain");

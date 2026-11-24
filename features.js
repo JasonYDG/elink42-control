@@ -10,7 +10,7 @@ const OMFeatures = (() => {
   };
   const defaults = () => ({version: 1, todos: [], courses: Array.from({length: 7}, () => ""), templates: [], jobs: [],
     devices: [], settings: {fontSize: 16, urgentHours: 24, theme: "system", dither: "none", strength: 1,
-      brightness: 0, contrast: 1, gamma: 1, redThreshold: 1.35, packetBytes: 180, packetDelay: 0, stockInterval:15, calendarCountry:0, calendarLanguage:"zh", imageTarget:"full"}, weather: null});
+      brightness: 0, contrast: 1, gamma: 1, redThreshold: 1.35, packetBytes: 180, packetDelay: 0, stockInterval:15, calendarCountry:0, calendarLanguage:"zh", imageTarget:"full"}});
   function validate(data) {
     if (!data || data.version !== 1) throw Error(OMI18n.t("备份版本不支持"));
     if(data.screenProfile!==undefined && typeof OMScreen!=="undefined")OMScreen.normalise(data.screenProfile);
@@ -24,11 +24,14 @@ const OMFeatures = (() => {
       string(todo.id, 80, OMI18n.t("待办编号")); string(todo.title, 100, OMI18n.t("待办标题")); string(todo.description, 1000, OMI18n.t("待办内容"));
       if (typeof todo.done !== "boolean" || (todo.due && !Number.isFinite(Date.parse(todo.due)))) throw Error(OMI18n.t("待办日期或状态无效"));
     }
-    data.templates.forEach(template);
+    // Migrate saved workspaces and imported backups before validating current job types.
+    data = {...data, templates: data.templates.filter(t => t?.id !== "default-weather").map(template),
+      jobs: data.jobs.filter(j => j?.kind !== "weather" && !(j?.kind === "template" && j.templateId === "default-weather"))};
+    delete data.weather;
     for (const job of data.jobs) {
       string(job.id, 80, OMI18n.t("任务编号")); string(job.device, 200, OMI18n.t("目标设备")); string(job.title, 100, OMI18n.t("任务标题"));
       string(job.text, 3000, OMI18n.t("任务内容"));
-      if (!["todo", "weather", "template"].includes(job.kind) || !Number.isFinite(Date.parse(job.at)) || typeof job.enabled !== "boolean" ||
+      if (!["todo", "template"].includes(job.kind) || !Number.isFinite(Date.parse(job.at)) || typeof job.enabled !== "boolean" ||
           !["once", "daily", "weekly"].includes(job.repeat)) throw Error(OMI18n.t("定时任务配置无效"));
       if (job.kind === "template") string(job.templateId, 80, OMI18n.t("模板编号"));
     }
@@ -46,15 +49,15 @@ const OMFeatures = (() => {
     bounded(s.redThreshold, 1, 3, OMI18n.t("红色阈值"));
     bounded(s.packetBytes ?? 180, 20, 180, OMI18n.t("传输上限")); bounded(s.packetDelay ?? 0, 0, 100, OMI18n.t("包间隔"));
     if (!Number.isInteger(s.packetBytes ?? 180) || !Number.isInteger(s.packetDelay ?? 0)) throw Error(OMI18n.t("传输设置必须是整数"));
-    if (data.weather !== null) weather(data.weather);
     return clone({...data, settings: {...s, packetBytes: s.packetBytes ?? 180, packetDelay: s.packetDelay ?? 0}});
   }
   function template(value) {
     if (!value || value.width !== 400 || value.height !== 300 || !Array.isArray(value.elements) || value.elements.length > 100)
       throw Error(OMI18n.t("模板需要 400 × 300 画布和最多 100 个元素"));
     string(value.id, 80, OMI18n.t("模板编号")); string(value.name, 100, OMI18n.t("模板名称"));
+    value = {...value, elements: value.elements.filter(e => e?.type !== "weather")};
     for (const element of value.elements) {
-      if (!["text", "rect", "line", "image", "weather"].includes(element.type)) throw Error(OMI18n.t("模板包含不支持的元素类型"));
+      if (!["text", "rect", "line", "image"].includes(element.type)) throw Error(OMI18n.t("模板包含不支持的元素类型"));
       bounded(element.x, -400, 800, OMI18n.t("横坐标")); bounded(element.y, -300, 600, OMI18n.t("纵坐标"));
       bounded(element.width, 1, 800, OMI18n.t("宽度")); bounded(element.height, 1, 600, OMI18n.t("高度"));
       if (!["black", "white", "red", "yellow"].includes(element.color)) throw Error(OMI18n.t("模板颜色无效"));
@@ -84,24 +87,6 @@ const OMFeatures = (() => {
     }
     change(callback) { const next = clone(this.data); callback(next); this.commit(next); }
   }
-  function weather(data) {
-    if (!data || typeof data.city !== "string" || data.city.length > 100 || !Array.isArray(data.days) || data.days.length > 16 ||
-        !Number.isFinite(Date.parse(data.updated))) throw Error(OMI18n.t("天气数据格式无效"));
-    for (const day of [data.current, ...data.days].filter(Boolean)) {
-      string(day.text, 100, OMI18n.t("天气现象"));
-      for (const field of ["temperature", "low", "high"]) if (day[field] !== undefined && day[field] !== null) bounded(Number(day[field]), -100, 100, OMI18n.t("温度"));
-    }
-    return clone(data);
-  }
-  function seniverse(now, daily) {
-    const current = now?.results?.[0], forecast = daily?.results?.[0];
-    if (!current?.now || !current.location?.name || !Array.isArray(forecast?.daily)) throw Error(OMI18n.t("心知天气响应无效，请核对产品权限及城市"));
-    return weather({city: current.location.name, updated: current.last_update,
-      current: {text: current.now.text, temperature: Number(current.now.temperature), code: String(current.now.code),
-        humidity: current.now.humidity || "", wind: current.now.wind_speed || ""},
-      days: forecast.daily.map(day => ({date: day.date, text: day.text_day, night: day.text_night,
-        low: Number(day.low), high: Number(day.high), code: String(day.code_day)}))});
-  }
   function nextJob(job, now = new Date()) {
     if (job.repeat === "once") return {...job, enabled: false};
     const at = new Date(job.at), days = job.repeat === "weekly" ? 7 : 1;
@@ -113,11 +98,9 @@ const OMFeatures = (() => {
       .map(job => ({...job, missed: +now - Date.parse(job.at) > 5 * 60000}));
   }
   function placeholders(text, context = {}) {
-    const date = context.date || new Date(), weather = context.weather;
+    const date = context.date || new Date();
     const vars = {date: date.toLocaleDateString(OMI18n.locale), time: date.toLocaleTimeString(OMI18n.locale, {hour: "2-digit", minute: "2-digit"}),
       weekday: date.toLocaleDateString(OMI18n.locale, {weekday: "long"}), title: context.title || "", content: context.content || "",
-      city: weather?.city || "", temperature: weather?.current?.temperature ?? "", weather: weather?.current?.text || "",
-      humidity: weather?.current?.humidity || "", wind: weather?.current?.wind || "", saying: context.saying || "",
       todo: (context.todos || []).filter(t => !t.done).map(t => t.title).join("\n")};
     return String(text).replace(/\{\{([a-z]+)\}\}/g, (_, key) => Object.hasOwn(vars, key) ? vars[key] : "");
   }
@@ -162,11 +145,7 @@ const OMFeatures = (() => {
       ({type: "text", x, y, width, height, fontSize, text: content, color});
     return [{id: "default-note", name: OMI18n.t("便笺 / 待办"), width: 400, height: 300, elements: [
       text(20, 16, 360, 34, 24, "{{title}}", "red"), {type: "line", x: 20, y: 55, width: 360, height: 1, color: "red"},
-      text(20, 70, 360, 190, 18, "{{content}}\n{{todo}}"), text(20, 278, 360, 20, 12, "{{date}}  {{weekday}}") ]},
-    {id: "default-weather", name: OMI18n.t("天气"), width: 400, height: 300, elements: [
-      text(20, 15, 360, 35, 24, "{{city}}  {{date}}", "red"), {type: "weather", x: 260, y: 70, width: 110, height: 100, color: "yellow"},
-      text(20, 78, 230, 90, 48, "{{temperature}}°"), text(20, 178, 360, 40, 24, "{{weather}}"),
-      text(20, 245, 360, 35, 14, "{{content}}") ]}];
+      text(20, 70, 360, 190, 18, "{{content}}\n{{todo}}"), text(20, 278, 360, 20, 12, "{{date}}  {{weekday}}") ]}];
   }
   const matrix = [
     [OMI18n.t("连接、绑定、切换设备、日志"), OMI18n.t("已实现；系统蓝牙选择器授权，一次连接一台")],
@@ -176,8 +155,7 @@ const OMFeatures = (() => {
     [OMI18n.t("待办列表、单项、截止时间、紧急颜色、导入导出"), OMI18n.t("已实现；渲染后直接发送或保存到设备槽位")],
     [OMI18n.t("模板编辑、元素、占位符、导入导出"), OMI18n.t("已实现网页格式；原 APK .epdtpl 完整 schema 尚未恢复，未宣称双向兼容")],
     [OMI18n.t("周日程 / 课程表"), OMI18n.t("已实现；七天渲染并保存至七个空槽，设备离线按周切换")],
-    [OMI18n.t("自由日程 / 天气定时推送"), OMI18n.t("页面开启且目标设备已连接时执行；关闭网页后的 Android 后台服务无法等价迁移")],
-    [OMI18n.t("天气实况、三日预报、一言"), OMI18n.t("已实现心知 V3、本地代理和模板占位符；私钥仅在本次页面会话使用")],
+    [OMI18n.t("自由日程定时推送"), OMI18n.t("页面开启且目标设备已连接时执行；关闭网页后的 Android 后台服务无法等价迁移")],
     [OMI18n.t("内部 / 外置图库、备注、显示、删除、背景、轮播"), OMI18n.t("已接入原生命令和元数据/CRC 核对；有外置存储的设备才可使用外置图库")],
     [OMI18n.t("调休日历"), OMI18n.t("已实现读取、编辑、保存及读回；不自动替换用户原调休表")],
     [OMI18n.t("LED 关闭 / 恢复正常"), OMI18n.t("JD79668 原生命令已实现；全彩 LED 调色不在当前 OM6626 接收协议中")],
@@ -191,30 +169,6 @@ const OMFeatures = (() => {
     const symbols=String(text).trim().toLowerCase().split(/[\s,，]+/).filter(Boolean);
     if(!symbols.length||symbols.length>5||new Set(symbols).size!==symbols.length||symbols.some(s=>!/^(sh|sz|bj)\d{6}$/.test(s)))throw Error("请输入1–5个不重复的A股代码，包含sh、sz或bj前缀，例如sh000001、sz000001。");
     return symbols;
-  }
-  function stockUrls(symbols) {
-    const query = encodeURIComponent(symbols.join(","));
-    return ["https://qt.gtimg.cn/q=", "https://web.sqt.gtimg.cn/q="].map(base => base + query);
-  }
-  async function stockTransport(urls, beforeBackup = () => true) {
-    for (let attempt = 0; attempt < urls.length; attempt++) {
-      if (attempt && !beforeBackup()) return null;
-      const last = attempt === urls.length - 1;
-      try {
-        const response = await fetch(urls[attempt], {
-          signal: AbortSignal.timeout(15000), credentials: "omit", redirect: "error", referrerPolicy: "no-referrer"
-        });
-        if (response.ok) return {response, bytes: await response.arrayBuffer()};
-        if (last || response.status < 500) return {response};
-        await response.body?.cancel();
-      } catch (error) {
-        if (last || !["TypeError", "TimeoutError", "AbortError"].includes(error.name)) throw error;
-      }
-    }
-  }
-  function stockText(bytes) {
-    if (bytes.byteLength > 32000) throw Error("行情响应过大");
-    return new TextDecoder("gbk", {fatal:true}).decode(bytes);
   }
   function stockState(value){
     if(!value||typeof value!=="object"||!Array.isArray(value.symbols)||!Array.isArray(value.quotes)||value.quotes.length>5||typeof value.updated!=="string"||(value.updated&&!Number.isFinite(Date.parse(value.updated)))||typeof value.stale!=="boolean")throw Error("股票行情格式无效");
@@ -253,5 +207,5 @@ const OMFeatures = (() => {
     const phase=!known?"交易日历待更新":weekday===0||weekday===6||calendar.days.some(d=>d[0]===key&&!d[2])?"休市":minute<555?"未开盘":minute<565?"开盘竞价":minute<570?"开盘前":minute<690?"交易中":minute<780?"午间休市":minute<897?"交易中":minute<900?"收盘竞价":"已收盘";
     return {date:key,known:!!known,open:["开盘竞价","交易中","收盘竞价"].includes(phase),phase};
   }
-  return {Store, defaults, validate, template, clone, weather, seniverse, nextJob, dueJobs, placeholders, process, monochrome,defaultTemplates, matrix,stockSymbols,stockState,stockTencent,stockSession,stockUrls,stockTransport,stockText};
+  return {Store, defaults, validate, template, clone, nextJob, dueJobs, placeholders, process, monochrome,defaultTemplates, matrix,stockSymbols,stockState,stockTencent,stockSession};
 })();

@@ -196,12 +196,16 @@ test("job scheduler uses target identity, refuses missed replay and advances cal
   assert.equal(F.placeholders("{{title}} {{weather}} {{missing}}",{title:"x"}),"x  ");
 });
 
-test("weather response parser validates real Seniverse envelope and hides absent optional fields",()=>{
-  const now={results:[{location:{name:"北京"},last_update:"2026-10-19T08:00:00+08:00",now:{text:"晴",temperature:"21",code:"0"}}]};
-  const daily={results:[{daily:[{date:"2026-10-19",text_day:"晴",text_night:"晴",low:"10",high:"22",code_day:"0"}]}]};
-  const data=F.seniverse(now,daily);assert.equal(data.current.temperature,21);assert.equal(data.days[0].low,10);
-  assert.equal(F.placeholders("{{city}} {{humidity}}",{weather:data}),"北京 ");
-  assert.throws(()=>F.seniverse({status:"error"},daily),/响应/);
+test("old workspace imports retain personal data and drop retired jobs, forecasts and drawing elements",()=>{
+  const legacy=F.defaults(), saved=F.defaultTemplates()[0];
+  legacy.weather={city:"Old city"};
+  legacy.templates=[{...saved,id:"default-weather"}, {...saved,elements:[...saved.elements,{type:"weather"}]}];
+  legacy.jobs=[{kind:"weather"},{kind:"template",templateId:"default-weather"}];
+  const restored=F.validate(legacy);
+  assert.equal(restored.templates.length,1);
+  assert.equal(restored.templates[0].elements.length,saved.elements.length);
+  assert.equal(restored.jobs.length,0);assert.equal("weather" in restored,false);
+  assert.equal(F.placeholders("{{saying}}{{weather}}",{saying:"removed"}),"");
 });
 
 test("template ZIP roundtrip, unicode, CRC, bounds and APK-format rejection",async()=>{
