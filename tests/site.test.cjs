@@ -39,7 +39,7 @@ test('calendar previews match each SDK revision\'s large-date glyphs and photo s
 });
 const v33Files=['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-'+panel+'-v33-ota.zip');
 const firmwareFiles=new Set(['firmware/LICENSES.txt',migrationFile,...['tricolor-ssd1619','fourcolor-jd79668'].map(panel=>'firmware/elink42-sdk-v7-'+panel+'.e42ota')]);
-for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24,28,31,32,33])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
+for(const revision of [6,8,9,10,12,14,15,16,17,18,19,20,21,22,23,24,28,31,32,33,34])for(const panel of ['tricolor-ssd1619','fourcolor-jd79668'])firmwareFiles.add('firmware/elink42-sdk-v'+revision+'-'+panel+'.e42ota');
 firmwareFiles.add(latestMigrationFile);
 for(const name of v33Files)firmwareFiles.add(name);
 test("Pages deploys the control client and bundled OTA with relative paths and exact hashes",()=>{
