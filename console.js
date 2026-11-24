@@ -2981,6 +2981,120 @@ const OMRegional = (() => {
 })();
 
 ;
+// Terminus Font. SIL OFL 1.1, see fonts/Terminus-OFL.txt. Generated from native BDF strikes.
+const OMGermanFont={"title":{"Januar":[96,1,-20,93,20,"AfwAAAAAAAAAAAAAAfwAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAHB/4P/g4Dh/4Of4AHB/8P/w4Dh/8O/4AHAAeOB44DgAePwAAHAAOOA44DgAOPgAAHAAOOA44DgAOPAAAHA/+OA44Dg/+OAAAHB/+OA44Dh/+OAAAHDwOOA44DjwOOAA4HDgOOA44DjgOOAA4HDgOOA44DjgOOAA4HDgOOA44DjgOOAA8PDwOOA48DjwOOAAf+B/+OA4f/h/+OAAP8A/+OA4P/g/+OAA"],"Februar":[112,1,-20,109,20,"//gAAOAAAAAAAAAAAAD/+AAA4AAAAAAAAAAAAOAAAADgAAAAAAAAAAAA4AAAAOAAAAAAAAAAAADgAAAA4AAAAAAAAAAAAOAAAADgAAAAAAAAAAAA4AA/4P/g5/jgOH/g5/jgAH/w//Dv+OA4f/Dv+OAA8HjgePwA4DgAePwA/8DgOOA4+ADgOAA4+AD/wOA44DjwAOA4ADjwAOAA4DjgOOAA4Dg/+OAA4AD/+OA44ADgOH/44ADgAP/44DjgAOA48DjgAOAA4ADgOOAA4DjgOOAA4ADgAOA44ADgOOA44ADgAOAA4DjgAOA44DjgAOAA8DjgeOAA8DjwOOAA4AB/+P/w4AB/+H/44ADgAD/w/+DgAD/4P/jgAA=="],"März":[64,1,-20,61,20,"4Bw44AAAAADgHDjgAAAAAPA8OOAAAAAA+Hw44AAAAAD8/AAAAAAAAPz8AAAAAAAA79x/4Of4//jnnH/w7/j/+OecAHj8AABw4xwAOPgAAODgHAA48AABwOAcP/jgAAOA4Bx/+OAABwDgHPA44AAOAOAc4DjgABwA4BzgOOAAOADgHOA44ABwAOAc8DjgAOAA4Bx/+OAA//jgHD/44AD/+A=="],"April":[80,1,-20,74,25,"P+AAAAAABwAfAH/wAAAAAAcAHwDweAAAAAAHAAcA4DgAAAAABwAHAOA4AAAAAAAABwDgOAAAAAAAAAcA4Dj/4Of4HwAHAOA4//Dv+B8ABwDgOOB4/AAHAAcA4DjgOPgABwAHAP/44DjwAAcABwD/+OA44AAHAAcA4DjgOOAABwAHAOA44DjgAAcABwDgOOA44AAHAAcA4DjgOOAABwAHAOA44DjgAAcABwDgOOB44AAHAAcA4Dj/8OAAH8AfwOA4/+DgAB/AH8AAAOAAAAAAAAAAAADgAAAAAAAAAAAA4AAAAAAAAAAAAOAAAAAAAAAAAADgAAAAAAAAAA=="],"Mai":[48,1,-20,42,20,"4BwAAAcA4BwAAAcA8DwAAAcA+HwAAAcA/PwAAAAA/PwAAAAA79x/4B8A55x/8B8A55wAeAcA4xwAOAcA4BwAOAcA4Bw/+AcA4Bx/+AcA4BzwOAcA4BzgOAcA4BzgOAcA4BzgOAcA4BzwOAcA4Bx/+B/A4Bw/+B/A"],"Juni":[64,1,-20,58,20,"AfwAAAAABwAB/AAAAAAHAABwAAAAAAcAAHAAAAAABwAAcAAAAAAAAABwAAAAAAAAAHDgOP/gHwAAcOA4//AfAABw4DjgeAcAAHDgOOA4BwAAcOA44DgHAABw4DjgOAcAAHDgOOA4BwAAcOA44DgHAOBw4DjgOAcA4HDgOOA4BwDgcOA44DgHAPDw8DjgOAcAf+B/+OA4H8A/wD/44DgfwA=="],"Juli":[64,1,-20,58,20,"AfwAAB8ABwAB/AAAHwAHAABwAAAHAAcAAHAAAAcABwAAcAAABwAAAABwAAAHAAAAAHDgOAcAHwAAcOA4BwAfAABw4DgHAAcAAHDgOAcABwAAcOA4BwAHAABw4DgHAAcAAHDgOAcABwAAcOA4BwAHAOBw4DgHAAcA4HDgOAcABwDgcOA4BwAHAPDw8DgHAAcAf+B/+B/AH8A/wD/4H8AfwA=="],"August":[96,1,-20,93,25,"P+AAAAAAAAAAAA4Af/AAAAAAAAAAAA4A8HgAAAAAAAAAAA4A4DgAAAAAAAAAAA4A4DgAAAAAAAAAAA4A4DgAAAAAAAAAAA4A4DjgOD/44Dg/4P/g4DjgOH/44Dh/8P/g4DjgOPA44DjweA4A4DjgOOA44DjgAA4A//jgOOA44DjgAA4A//jgOOA44DjwAA4A4DjgOOA44Dh/4A4A4DjgOOA44Dg/8A4A4DjgOOA44DgAeA4A4DjgOOA44DgAOA4A4DjgOOA44DgAOA4A4DjwOPA48DjweA8A4Dh/+H/4f/h/8Af44Dg/+D/4P/g/4AP4AAAAAAA4AAAAAAAAAAAAAAA4AAAAAAAAAAAAAAB4AAAAAAAAAAAAAH/wAAAAAAAAAAAAAH/gAAAAAAAA"],"September":[144,1,-20,141,25,"P+AAAAAADgAAAAAA4AAAAAAAf/AAAAAADgAAAAAA4AAAAAAA8HgAAAAADgAAAAAA4AAAAAAA4DgAAAAADgAAAAAA4AAAAAAA4DgAAAAADgAAAAAA4AAAAAAA4AAAAAAADgAAAAAA4AAAAAAA4AA/4P/g/+A/4P/g/+A/4Of44AB/8P/w/+B/8P/w//B/8O/48ADweOB4DgDweOd44HjwePwAf+DgOOA4DgDgOOc44DjgOPgAP/DgOOA4DgDgOOc44DjgOPAAAHjgOOA4DgDgOOc44DjgOOAAADj/+OA4DgD/+Oc44Dj/+OAAADj/+OA4DgD/+Oc44Dj/+OAAADjgAOA4DgDgAOc44DjgAOAA4DjgAOA4DgDgAOc44DjgAOAA4DjgAOA4DgDgAOc44DjgAOAA8HjwOOB4DwDwOOc44HjwOOAAf/B/+P/wB/h/+Oc4//B/+OAAP+A/8P/gA/g/8Oc4/+A/8OAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAAAAAAAOAAAAAAAAAAAAAAAAAA"],"Oktober":[112,1,-20,109,20,"P+BwAA4AAADgAAAAAAB/8HAADgAAAOAAAAAAAPB4cAAOAAAA4AAAAAAA4DhwAA4AAADgAAAAAADgOHAADgAAAOAAAAAAAOA4cAAOAAAA4AAAAAAA4DhwOP/gP+D/4D/g5/jgOHBw/+B/8P/wf/Dv+OA4cOAOAPB44HjwePwA4DhxwA4A4DjgOOA4+ADgOHOADgDgOOA44DjwAOA4dwAOAOA44DjgOOAA4Dh+AA4A4DjgOP/44ADgOH4ADgDgOOA4//jgAOA4dwAOAOA44DjgAOAA4DhzgA4A4DjgOOAA4ADgOHHADgDgOOA44ADgAPB4cOAPAPB44HjwOOAAf/BwcAf4f/D/8H/44AA/4HA4A/g/4P/gP/DgAA=="],"November":[128,1,-20,125,20,"4DgAAAAAAAAAAOAAAAAAAOA4AAAAAAAAAADgAAAAAADgOAAAAAAAAAAA4AAAAAAA4DgAAAAAAAAAAOAAAAAAAOA4AAAAAAAAAADgAAAAAADwOAAAAAAAAAAA4AAAAAAA+Dg/4OA4P+D/4P/gP+Dn+Pw4f/DgOH/w//D/8H/w7/juOPB44DjweOd44HjwePwA5zjgOHBw4DjnOOA44Dj4AOO44DhwcOA45zjgOOA48ADh+OA4cHDgOOc44DjgOOAA4PjgODjg//jnOOA4//jgAOB44Dg44P/45zjgOP/44ADgOOA4OODgAOc44DjgAOAA4DjgOB3A4ADnOOA44ADgAOA44DgdwOAA5zjgOOAA4ADgOPB4D4DwOOc44HjwOOAA4Dh/8A+Af/jnOP/wf/jgAOA4P+APgD/w5zj/4D/w4AA="],"Dezember":[128,1,-20,125,20,"/4AAAAAAAAAAAOAAAAAAAP/gAAAAAAAAAADgAAAAAADg8AAAAAAAAAAA4AAAAAAA4HAAAAAAAAAAAOAAAAAAAOA4AAAAAAAAAADgAAAAAADgOAAAAAAAAAAA4AAAAAAA4Dg/4P/4P+D/4P/gP+Dn+OA4f/D/+H/w//D/8H/w7/jgOPB4AHDweOd44HjwePwA4DjgOADg4DjnOOA44Dj4AOA44DgBwOA45zjgOOA48ADgOOA4A4DgOOc44DjgOOAA4Dj/+AcA//jnOOA4//jgAOA4//gOAP/45zjgOP/44ADgOOAAHADgAOc44DjgAOAA4DjgADgA4ADnOOA44ADgAOBw4ABwAOAA5zjgOOAA4ADg8PA44ADwOOc44HjwOOAA/+B/+P/4f/jnOP/wf/jgAP+AP/D/+D/w5zj/4D/w4AA="]},"day":{"1":[12,2,-15,8,15,"GDh42BgYGBgYGBgYGBj/"],"2":[12,1,-15,10,15,"PwBhgMDAwMDAwADAAYADAAYADAAYADAAYADAAP/A"],"3":[12,1,-15,10,15,"PwBhgMDAAMAAwADAAYAfAAGAAMAAwADAwMBhgD8A"],"4":[12,1,-15,10,15,"AMABwAPABsAMwBjAMMBgwMDAwMDAwP/AAMAAwADA"],"5":[12,1,-15,10,15,"/8DAAMAAwADAAMAA/wABgADAAMAAwADAwMBhgD8A"],"6":[12,1,-15,10,15,"P4BgAMAAwADAAMAA/wDBgMDAwMDAwMDAwMBhgD8A"],"7":[12,1,-15,10,15,"/8DAwMDAAMABgAGAAwADAAYABgAMAAwADAAMAAwA"],"8":[12,1,-15,10,15,"PwBhgMDAwMDAwMDAYYA/AGGAwMDAwMDAwMBhgD8A"],"9":[12,1,-15,10,15,"PwBhgMDAwMDAwMDAwMBgwD/AAMAAwADAAMABgH8A"],"10":[24,2,-15,21,15,"GAfgOAwweBgY2BgYGBg4GBh4GBjYGBmYGBsYGB4YGBwYGBgYGBgYGAww/wfg"],"11":[24,2,-15,20,15,"GAGAOAOAeAeA2A2AGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGAGA/w/w"],"12":[24,2,-15,21,15,"GAfgOAwweBgY2BgYGBgYGAAYGAAwGABgGADAGAGAGAMAGAYAGAwAGBgA/x/4"],"13":[24,2,-15,21,15,"GAfgOAwweBgY2AAYGAAYGAAYGAAwGAPgGAAwGAAYGAAYGAAYGBgYGAww/wfg"],"14":[24,2,-15,21,15,"GAAYOAA4eAB42ADYGAGYGAMYGAYYGAwYGBgYGBgYGBgYGB/4GAAYGAAY/wAY"],"15":[24,2,-15,21,15,"GB/4OBgAeBgA2BgAGBgAGBgAGB/gGAAwGAAYGAAYGAAYGAAYGBgYGAww/wfg"],"16":[24,2,-15,21,15,"GAfwOAwAeBgA2BgAGBgAGBgAGB/gGBgwGBgYGBgYGBgYGBgYGBgYGAww/wfg"],"17":[24,2,-15,21,15,"GB/4OBgYeBgY2AAYGAAwGAAwGABgGABgGADAGADAGAGAGAGAGAGAGAGA/wGA"],"18":[24,2,-15,21,15,"GAfgOAwweBgY2BgYGBgYGBgYGAwwGAfgGAwwGBgYGBgYGBgYGBgYGAww/wfg"],"19":[24,2,-15,21,15,"GAfgOAwweBgY2BgYGBgYGBgYGBgYGAwYGAf4GAAYGAAYGAAYGAAYGAAw/w/g"],"20":[24,1,-15,22,15,"PwPwYYYYwMwMwMwMwMwcAMw8AYxsAwzMBg2MDA8MGA4MMAwMYAwMwAYY/8Pw"],"21":[24,1,-15,21,15,"PwDAYYHAwMPAwMbAwMDAAMDAAYDAAwDABgDADADAGADAMADAYADAwADA/8f4"],"22":[24,1,-15,22,15,"PwPwYYYYwMwMwMwMwMwMAMAMAYAYAwAwBgBgDADAGAGAMAMAYAYAwAwA/8/8"],"23":[24,1,-15,22,15,"PwPwYYYYwMwMwMAMwMAMAMAMAYAYAwHwBgAYDAAMGAAMMAAMYAwMwAYY/8Pw"],"24":[24,1,-15,22,15,"PwAMYYAcwMA8wMBswMDMAMGMAYMMAwYMBgwMDAwMGAwMMA/8YAAMwAAM/8AM"],"25":[24,1,-15,22,15,"Pw/8YYwAwMwAwMwAwMwAAMwAAY/wAwAYBgAMDAAMGAAMMAAMYAwMwAYY/8Pw"],"26":[24,1,-15,22,15,"PwP4YYYAwMwAwMwAwMwAAMwAAY/wAwwYBgwMDAwMGAwMMAwMYAwMwAYY/8Pw"],"27":[24,1,-15,22,15,"Pw/8YYwMwMwMwMAMwMAYAMAYAYAwAwAwBgBgDABgGADAMADAYADAwADA/8DA"],"28":[24,1,-15,22,15,"PwPwYYYYwMwMwMwMwMwMAMwMAYYYAwPwBgYYDAwMGAwMMAwMYAwMwAYY/8Pw"],"29":[24,1,-15,22,15,"PwPwYYYYwMwMwMwMwMwMAMwMAYwMAwYMBgP8DAAMGAAMMAAMYAAMwAAY/8fw"],"30":[24,1,-15,22,15,"PwPwYYYYwMwMAMwMAMwcAMw8AYxsHwzMAY2MAM8MAM4MAMwMwMwMYYYYPwPw"],"31":[24,1,-15,21,15,"PwDAYYHAwMPAAMbAAMDAAMDAAYDAHwDAAYDAAMDAAMDAAMDAwMDAYYDAPwf4"]},"dense":{"1":[10,2,-13,6,13,"MHDwMDAwMDAwMDAw/A=="],"2":[10,1,-13,8,13,"fsPDwwMDBgwYMGDA/w=="],"3":[10,1,-13,8,13,"fsPDAwMDPgMDA8PDfg=="],"4":[10,1,-13,8,13,"AwcPGzNjw8PD/wMDAw=="],"5":[10,1,-13,8,13,"/8DAwMD+AwMDA8PDfg=="],"6":[10,1,-13,8,13,"PmDAwMD+w8PDw8PDfg=="],"7":[10,1,-13,8,13,"/8PDAwYGDAwYGBgYGA=="],"8":[10,1,-13,8,13,"fsPDw8PDfsPDw8PDfg=="],"9":[10,1,-13,8,13,"fsPDw8PDw38DAwMGfA=="],"10":[20,2,-13,17,13,"MD8AcGGA8GGAMGGAMGOAMGeAMG2AMHmAMHGAMGGAMGGAMGGA/D8A"],"11":[20,2,-13,16,13,"MAxwHPA8MAwwDDAMMAwwDDAMMAwwDDAM/D8="],"12":[20,2,-13,17,13,"MD8AcGGA8GGAMGGAMAGAMAGAMAMAMAYAMAwAMBgAMDAAMGAA/H+A"],"13":[20,2,-13,17,13,"MD8AcGGA8GGAMAGAMAGAMAGAMB8AMAGAMAGAMAGAMGGAMGGA/D8A"],"14":[20,2,-13,17,13,"MAGAcAOA8AeAMA2AMBmAMDGAMGGAMGGAMGGAMH+AMAGAMAGA/AGA"],"15":[20,2,-13,17,13,"MH+AcGAA8GAAMGAAMGAAMH8AMAGAMAGAMAGAMAGAMGGAMGGA/D8A"],"16":[20,2,-13,17,13,"MB8AcDAA8GAAMGAAMGAAMH8AMGGAMGGAMGGAMGGAMGGAMGGA/D8A"],"17":[20,2,-13,17,13,"MH+AcGGA8GGAMAGAMAMAMAMAMAYAMAYAMAwAMAwAMAwAMAwA/AwA"],"18":[20,2,-13,17,13,"MD8AcGGA8GGAMGGAMGGAMGGAMD8AMGGAMGGAMGGAMGGAMGGA/D8A"],"19":[20,2,-13,17,13,"MD8AcGGA8GGAMGGAMGGAMGGAMGGAMD+AMAGAMAGAMAGAMAMA/D4A"],"20":[20,1,-13,18,13,"fh+AwzDAwzDAwzDAAzHAAzPABjbADDzAGDjAMDDAYDDAwDDA/x+A"],"21":[20,1,-13,17,13,"fgYAww4Awx4AwwYAAwYAAwYABgYADAYAGAYAMAYAYAYAwAYA/x+A"],"22":[20,1,-13,18,13,"fh+AwzDAwzDAwzDAAwDAAwDABgGADAMAGAYAMAwAYBgAwDAA/z/A"],"23":[20,1,-13,18,13,"fh+AwzDAwzDAwwDAAwDAAwDABg+ADADAGADAMADAYDDAwDDA/x+A"],"24":[20,1,-13,18,13,"fgDAwwHAwwPAwwbAAwzAAxjABjDADDDAGDDAMD/AYADAwADA/wDA"],"25":[20,1,-13,18,13,"fj/AwzAAwzAAwzAAAzAAAz+ABgDADADAGADAMADAYDDAwDDA/x+A"],"26":[20,1,-13,18,13,"fg+AwxgAwzAAwzAAAzAAAz+ABjDADDDAGDDAMDDAYDDAwDDA/x+A"],"27":[20,1,-13,18,13,"fj/AwzDAwzDAwwDAAwGAAwGABgMADAMAGAYAMAYAYAYAwAYA/wYA"],"28":[20,1,-13,18,13,"fh+AwzDAwzDAwzDAAzDAAzDABh+ADDDAGDDAMDDAYDDAwDDA/x+A"],"29":[20,1,-13,18,13,"fh+AwzDAwzDAwzDAAzDAAzDABjDADB/AGADAMADAYADAwAGA/x8A"],"30":[20,1,-13,18,13,"fh+AwzDAwzDAAzDAAzHAAzPAPjbAAzzAAzjAAzDAwzDAwzDAfh+A"],"31":[20,1,-13,17,13,"fgYAww4Awx4AAwYAAwYAAwYAPgYAAwYAAwYAAwYAwwYAwwYAfh+A"]},"year":{"0":[10,1,-13,7,13,"fIKCgoaKkqLCgoKCfA=="],"1":[10,2,-13,5,13,"IGCgICAgICAgICAg+A=="],"2":[10,1,-13,7,13,"fIKCggICBAgQIECA/g=="],"3":[10,1,-13,7,13,"fIKCAgICPAICAoKCfA=="],"4":[10,1,-13,7,13,"AgYKEiJCgoKC/gICAg=="],"5":[10,1,-13,7,13,"/oCAgID8AgICAoKCfA=="],"6":[10,1,-13,7,13,"PECAgID8goKCgoKCfA=="],"7":[10,1,-13,7,13,"/oKCAgQECAgQEBAQEA=="],"8":[10,1,-13,7,13,"fIKCgoKCfIKCgoKCfA=="],"9":[10,1,-13,7,13,"fIKCgoKCgn4CAgIEeA=="]},"meta":{"MO":[16,0,-10,15,10,"gnzGxu7G/sbWxsbGxsbGxsbGxnw="],"DI":[16,0,-10,14,10,"+DzMGMYYxhjGGMYYxhjGGMwY+Dw="],"MI":[16,0,-10,14,10,"gjzGGO4Y/hjWGMYYxhjGGMYYxjw="],"DO":[16,0,-10,15,10,"+HzMxsbGxsbGxsbGxsbGxszG+Hw="],"FR":[16,0,-10,15,10,"/vzAxsDGwMb4xsD8wPDA2MDMwMY="],"SA":[16,0,-10,15,10,"fHzGxsDGwMZ8xgb+BsbGxsbGfMY="],"SO":[16,0,-10,15,10,"fHzGxsDGwMZ8xgbGBsbGxsbGfHw="],"DEUTSCHLAND":[88,0,-10,87,10,"+P7G/3x8xsB8xvjMwMYYxsbGwMbGzMbAxhjAxsbAxsbGxsDGGMDAxsDG5sbG+MYYfMD+wMb2xsbAxhgGwMbA/t7GxsDGGAbAxsDGzsbGwMYYxsbGwMbGxszAxhjGxsbAxsbM+P58GHx8xv7Gxvg="],"HEUTE":[40,0,-10,39,10,"xv7G//7GwMYYwMbAxhjAxsDGGMD++MYY+MbAxhjAxsDGGMDGwMYYwMbAxhjAxv58GP4="]},"status":{"0":[8,0,-10,7,10,"fMbGzt725sbGfA=="],"1":[8,1,-10,6,10,"MHDwMDAwMDAw/A=="],"2":[8,0,-10,7,10,"fMbGBgwYMGDA/g=="],"3":[8,0,-10,7,10,"fMbGBjwGBsbGfA=="],"4":[8,0,-10,7,10,"Bg4eNmbG/gYGBg=="],"5":[8,0,-10,7,10,"/sDAwPwGBgbGfA=="],"6":[8,0,-10,7,10,"PGDAwPzGxsbGfA=="],"7":[8,0,-10,7,10,"/gYGDAwYGDAwMA=="],"8":[8,0,-10,7,10,"fMbGxnzGxsbGfA=="],"9":[8,0,-10,7,10,"fMbGxsZ+BgYMeA=="],"a":[8,0,-7,7,7,"fAZ+xsbGfg=="],"b":[8,0,-10,7,10,"wMDA/MbGxsbG/A=="],"c":[8,0,-7,7,7,"fMbAwMDGfA=="],"d":[8,0,-10,7,10,"BgYGfsbGxsbGfg=="],"e":[8,0,-7,7,7,"fMbG/sDAfA=="],"f":[8,0,-10,7,10,"HjAw/DAwMDAwMA=="],"g":[8,0,-7,7,9,"fsbGxsbGfgZ8"],"h":[8,0,-10,7,10,"wMDA/MbGxsbGxg=="],"i":[8,2,-10,4,10,"YGAA4GBgYGBg8A=="],"j":[8,1,-10,6,12,"DAwAHAwMDAwMzMx4"],"k":[8,0,-10,7,10,"wMDAxszY8NjMxg=="],"l":[8,2,-10,4,10,"4GBgYGBgYGBg8A=="],"m":[8,0,-7,7,7,"/NbW1tbW1g=="],"n":[8,0,-7,7,7,"/MbGxsbGxg=="],"o":[8,0,-7,7,7,"fMbGxsbGfA=="],"p":[8,0,-7,7,9,"/MbGxsbG/MDA"],"q":[8,0,-7,7,9,"fsbGxsbGfgYG"],"r":[8,0,-7,7,7,"3vDgwMDAwA=="],"s":[8,0,-7,7,7,"fsDAfAYG/A=="],"t":[8,0,-10,7,10,"MDAw/DAwMDAwHg=="],"u":[8,0,-7,7,7,"xsbGxsbGfg=="],"v":[8,0,-7,7,7,"xsbGbGw4OA=="],"w":[8,0,-7,7,7,"xsbW1tbWfA=="],"x":[8,0,-7,7,7,"xsZsOGzGxg=="],"y":[8,0,-7,7,9,"xsbGxsbGfgZ8"],"z":[8,0,-7,7,7,"/gwYMGDA/g=="],"A":[8,0,-10,7,10,"fMbGxsb+xsbGxg=="],"B":[8,0,-10,7,10,"/MbGxvzGxsbG/A=="],"C":[8,0,-10,7,10,"fMbGwMDAwMbGfA=="],"D":[8,0,-10,7,10,"+MzGxsbGxsbM+A=="],"E":[8,0,-10,7,10,"/sDAwPjAwMDA/g=="],"F":[8,0,-10,7,10,"/sDAwPjAwMDAwA=="],"G":[8,0,-10,7,10,"fMbGwMDexsbGfA=="],"H":[8,0,-10,7,10,"xsbGxv7GxsbGxg=="],"I":[8,2,-10,4,10,"8GBgYGBgYGBg8A=="],"J":[8,0,-10,7,10,"HgwMDAwMDMzMeA=="],"K":[8,0,-10,7,10,"xsbM2PDw2MzGxg=="],"L":[8,0,-10,7,10,"wMDAwMDAwMDA/g=="],"M":[8,0,-10,7,10,"gsbu/tbGxsbGxg=="],"N":[8,0,-10,7,10,"xsbG5vbezsbGxg=="],"O":[8,0,-10,7,10,"fMbGxsbGxsbGfA=="],"P":[8,0,-10,7,10,"/MbGxsb8wMDAwA=="],"Q":[8,0,-10,7,11,"fMbGxsbGxsbefAY="],"R":[8,0,-10,7,10,"/MbGxsb88NjMxg=="],"S":[8,0,-10,7,10,"fMbAwHwGBsbGfA=="],"T":[8,0,-10,8,10,"/xgYGBgYGBgYGA=="],"U":[8,0,-10,7,10,"xsbGxsbGxsbGfA=="],"V":[8,0,-10,7,10,"xsbGxsZsbGw4OA=="],"W":[8,0,-10,7,10,"xsbGxsbW/u7Ggg=="],"X":[8,0,-10,7,10,"xsZsbDg4bGzGxg=="],"Y":[8,0,-10,8,10,"w8NmZjwYGBgYGA=="],"Z":[8,0,-10,7,10,"/gYGDBgwYMDA/g=="],"!":[8,3,-10,2,10,"wMDAwMDAwADAwA=="],"\"":[8,1,-11,6,3,"zMzM"],"#":[8,0,-10,7,10,"bGxs/mxs/mxsbA=="],"$":[8,0,-11,7,13,"EBB81tDQfBYW1nwQEA=="],"%":[8,0,-10,8,10,"ZtZsDBgYMDZrZg=="],"&":[8,0,-10,7,10,"OGxsOHbczMzcdg=="],"'":[8,3,-11,2,3,"wMDA"],"(":[8,2,-10,4,10,"MGDAwMDAwMBgMA=="],")":[8,2,-10,4,10,"wGAwMDAwMDBgwA=="],"*":[8,0,-7,7,5,"bDj+OGw="],"+":[8,1,-7,6,5,"MDD8MDA="],",":[8,2,-2,3,3,"YGDA"],"-":[8,0,-5,7,1,"/g=="],".":[8,3,-2,2,2,"wMA="],"/":[8,1,-10,6,10,"DAwYGDAwYGDAwA=="],":":[8,3,-7,2,7,"wMAAAADAwA=="],";":[8,2,-7,3,8,"YGAAAABgYMA="],"<":[8,1,-9,6,9,"DBgwYMBgMBgM"],"=":[8,0,-7,7,4,"/gAA/g=="],">":[8,1,-9,6,9,"wGAwGAwYMGDA"],"?":[8,0,-10,7,10,"fMbGxgwYGAAYGA=="],"@":[8,0,-10,7,10,"fMbO1tbW1s7Afg=="],"[":[8,2,-10,4,10,"8MDAwMDAwMDA8A=="],"\\":[8,1,-10,6,10,"wMBgYDAwGBgMDA=="],"]":[8,2,-10,4,10,"8DAwMDAwMDAw8A=="],"^":[8,1,-11,6,3,"MHjM"],"_":[8,0,0,7,1,"/g=="],"`":[8,2,-12,3,2,"wGA="],"{":[8,1,-10,5,10,"OGBgYMBgYGBgOA=="],"|":[8,3,-10,2,10,"wMDAwMDAwMDAwA=="],"}":[8,1,-10,5,10,"4DAwMBgwMDAw4A=="],"~":[8,0,-11,8,3,"c9vO"]," ":[8,0,0,0,0,""],"ä":[8,0,-10,7,10,"bGwAfAZ+xsbGfg=="],"ö":[8,0,-10,7,10,"bGwAfMbGxsbGfA=="],"ü":[8,0,-10,7,10,"bGwAxsbGxsbGfg=="],"Ä":[8,0,-12,7,12,"bGwAfMbGxv7GxsbG"],"Ö":[8,0,-12,7,12,"bGwAfMbGxsbGxsZ8"],"Ü":[8,0,-12,7,12,"bGwAxsbGxsbGxsZ8"],"ß":[8,0,-10,7,10,"eMzMyPzGxsbm3A=="],"é":[8,0,-10,7,10,"GDAAfMbG/sDAfA=="],"è":[8,0,-10,7,10,"MBgAfMbG/sDAfA=="],"á":[8,0,-10,7,10,"GDAAfAZ+xsbGfg=="],"à":[8,0,-10,7,10,"MBgAfAZ+xsbGfg=="],"ç":[8,0,-7,7,9,"fMbAwMDGfDBg"],"É":[8,0,-12,7,12,"GDAA/sDAwPjAwMD+"],"–":[8,0,-5,7,1,"/g=="]},"detail":{"0":[8,0,-10,7,10,"fMbGzt725sbGfA=="],"1":[8,1,-10,6,10,"MHDwMDAwMDAw/A=="],"2":[8,0,-10,7,10,"fMbGBgwYMGDA/g=="],"3":[8,0,-10,7,10,"fMbGBjwGBsbGfA=="],"4":[8,0,-10,7,10,"Bg4eNmbG/gYGBg=="],"5":[8,0,-10,7,10,"/sDAwPwGBgbGfA=="],"6":[8,0,-10,7,10,"PGDAwPzGxsbGfA=="],"7":[8,0,-10,7,10,"/gYGDAwYGDAwMA=="],"8":[8,0,-10,7,10,"fMbGxnzGxsbGfA=="],"9":[8,0,-10,7,10,"fMbGxsZ+BgYMeA=="],"a":[8,0,-7,7,7,"fAZ+xsbGfg=="],"b":[8,0,-10,7,10,"wMDA/MbGxsbG/A=="],"c":[8,0,-7,7,7,"fMbAwMDGfA=="],"d":[8,0,-10,7,10,"BgYGfsbGxsbGfg=="],"e":[8,0,-7,7,7,"fMbG/sDAfA=="],"f":[8,0,-10,7,10,"HjAw/DAwMDAwMA=="],"g":[8,0,-7,7,10,"fsbGxsbGfgYGfA=="],"h":[8,0,-10,7,10,"wMDA/MbGxsbGxg=="],"i":[8,2,-10,4,10,"YGAA4GBgYGBg8A=="],"j":[8,1,-10,6,13,"DAwAHAwMDAwMDMzMeA=="],"k":[8,0,-10,7,10,"wMDAxszY8NjMxg=="],"l":[8,2,-10,4,10,"4GBgYGBgYGBg8A=="],"m":[8,0,-7,7,7,"/NbW1tbW1g=="],"n":[8,0,-7,7,7,"/MbGxsbGxg=="],"o":[8,0,-7,7,7,"fMbGxsbGfA=="],"p":[8,0,-7,7,10,"/MbGxsbG/MDAwA=="],"q":[8,0,-7,7,10,"fsbGxsbGfgYGBg=="],"r":[8,0,-7,7,7,"3vDgwMDAwA=="],"s":[8,0,-7,7,7,"fsDAfAYG/A=="],"t":[8,0,-10,7,10,"MDAw/DAwMDAwHg=="],"u":[8,0,-7,7,7,"xsbGxsbGfg=="],"v":[8,0,-7,7,7,"xsbGbGw4OA=="],"w":[8,0,-7,7,7,"xsbW1tbWfA=="],"x":[8,0,-7,7,7,"xsZsOGzGxg=="],"y":[8,0,-7,7,10,"xsbGxsbGfgYGfA=="],"z":[8,0,-7,7,7,"/gwYMGDA/g=="],"A":[8,0,-10,7,10,"fMbGxsb+xsbGxg=="],"B":[8,0,-10,7,10,"/MbGxvzGxsbG/A=="],"C":[8,0,-10,7,10,"fMbGwMDAwMbGfA=="],"D":[8,0,-10,7,10,"+MzGxsbGxsbM+A=="],"E":[8,0,-10,7,10,"/sDAwPjAwMDA/g=="],"F":[8,0,-10,7,10,"/sDAwPjAwMDAwA=="],"G":[8,0,-10,7,10,"fMbGwMDexsbGfA=="],"H":[8,0,-10,7,10,"xsbGxv7GxsbGxg=="],"I":[8,2,-10,4,10,"8GBgYGBgYGBg8A=="],"J":[8,0,-10,7,10,"HgwMDAwMDMzMeA=="],"K":[8,0,-10,7,10,"xsbM2PDw2MzGxg=="],"L":[8,0,-10,7,10,"wMDAwMDAwMDA/g=="],"M":[8,0,-10,7,10,"gsbu/tbGxsbGxg=="],"N":[8,0,-10,7,10,"xsbG5vbezsbGxg=="],"O":[8,0,-10,7,10,"fMbGxsbGxsbGfA=="],"P":[8,0,-10,7,10,"/MbGxsb8wMDAwA=="],"Q":[8,0,-10,7,11,"fMbGxsbGxsbefAY="],"R":[8,0,-10,7,10,"/MbGxsb88NjMxg=="],"S":[8,0,-10,7,10,"fMbAwHwGBsbGfA=="],"T":[8,0,-10,8,10,"/xgYGBgYGBgYGA=="],"U":[8,0,-10,7,10,"xsbGxsbGxsbGfA=="],"V":[8,0,-10,7,10,"xsbGxsZsbGw4OA=="],"W":[8,0,-10,7,10,"xsbGxsbW/u7Ggg=="],"X":[8,0,-10,7,10,"xsZsbDg4bGzGxg=="],"Y":[8,0,-10,8,10,"w8NmZjwYGBgYGA=="],"Z":[8,0,-10,7,10,"/gYGDBgwYMDA/g=="],"!":[8,3,-10,2,10,"wMDAwMDAwADAwA=="],"\"":[8,1,-11,6,3,"zMzM"],"#":[8,0,-10,7,10,"bGxs/mxs/mxsbA=="],"$":[8,0,-11,7,13,"EBB81tDQfBYW1nwQEA=="],"%":[8,0,-10,8,10,"ZtZsDBgYMDZrZg=="],"&":[8,0,-10,7,10,"OGxsOHbczMzcdg=="],"'":[8,3,-11,2,3,"wMDA"],"(":[8,2,-10,4,10,"MGDAwMDAwMBgMA=="],")":[8,2,-10,4,10,"wGAwMDAwMDBgwA=="],"*":[8,0,-7,7,5,"bDj+OGw="],"+":[8,1,-7,6,5,"MDD8MDA="],",":[8,2,-2,3,3,"YGDA"],"-":[8,0,-5,7,1,"/g=="],".":[8,3,-2,2,2,"wMA="],"/":[8,1,-10,6,10,"DAwYGDAwYGDAwA=="],":":[8,3,-7,2,7,"wMAAAADAwA=="],";":[8,2,-7,3,8,"YGAAAABgYMA="],"<":[8,1,-9,6,9,"DBgwYMBgMBgM"],"=":[8,0,-7,7,4,"/gAA/g=="],">":[8,1,-9,6,9,"wGAwGAwYMGDA"],"?":[8,0,-10,7,10,"fMbGxgwYGAAYGA=="],"@":[8,0,-10,7,10,"fMbO1tbW1s7Afg=="],"[":[8,2,-10,4,10,"8MDAwMDAwMDA8A=="],"\\":[8,1,-10,6,10,"wMBgYDAwGBgMDA=="],"]":[8,2,-10,4,10,"8DAwMDAwMDAw8A=="],"^":[8,1,-11,6,3,"MHjM"],"_":[8,0,1,7,1,"/g=="],"`":[8,2,-12,3,2,"wGA="],"{":[8,1,-10,5,10,"OGBgYMBgYGBgOA=="],"|":[8,3,-10,2,10,"wMDAwMDAwMDAwA=="],"}":[8,1,-10,5,10,"4DAwMBgwMDAw4A=="],"~":[8,0,-11,8,3,"c9vO"]," ":[8,0,0,0,0,""],"ä":[8,0,-10,7,10,"bGwAfAZ+xsbGfg=="],"ö":[8,0,-10,7,10,"bGwAfMbGxsbGfA=="],"ü":[8,0,-10,7,10,"bGwAxsbGxsbGfg=="],"Ä":[8,0,-12,7,12,"bGwAfMbGxv7GxsbG"],"Ö":[8,0,-12,7,12,"bGwAfMbGxsbGxsZ8"],"Ü":[8,0,-12,7,12,"bGwAxsbGxsbGxsZ8"],"ß":[8,0,-10,7,10,"eMzMyPzGxsbm3A=="],"é":[8,0,-10,7,10,"GDAAfMbG/sDAfA=="],"è":[8,0,-10,7,10,"MBgAfMbG/sDAfA=="],"á":[8,0,-10,7,10,"GDAAfAZ+xsbGfg=="],"à":[8,0,-10,7,10,"MBgAfAZ+xsbGfg=="],"ç":[8,0,-7,7,10,"fMbAwMDGfDAwYA=="],"É":[8,0,-12,7,12,"GDAA/sDAwPjAwMD+"],"–":[8,0,-5,7,1,"/g=="]}};
+
+;
+"use strict";
+const OMGermanMonth = (() => {
+  const week=["SO","MO","DI","MI","DO","FR","SA"];
+  const shortNames={Neujahr:"Neuj.",Karfreitag:"Karfr.",Ostermontag:"Ost-Mo.","Tag der Arbeit":"1. Mai","Christi Himmelfahrt":"Himm.",Pfingstmontag:"Pf.-Mo.","Tag der Deutschen Einheit":"Einheit","Erster Weihnachtstag":"1. Weih.","Zweiter Weihnachtstag":"2. Weih.",Heiligabend:"Hl. Ab.",Silvester:"Silv.",Ostersonntag:"Ostern",Pfingstsonntag:"Pfing."};
+  const uses=p=>p.code==="DE" && /^de(?:-|$)/i.test(p.locale);
+  function unpack(g){
+    const [advance,dx,dy,w,h,bits]=g;
+    return {advance,dx,dy,w:w||1,h:h||1,bytes:bits?Uint8Array.from(atob(bits),s=>s.charCodeAt(0)):Uint8Array.of(0)};
+  }
+  function label(value,role,compact,maxWidth,fallback) {
+    const font=OMGermanFont[role],chars=Array.from(value);
+    if(chars.some(c=>!font[c])){
+      const s=fallback(value,compact?12:15,maxWidth,true);
+      return {...s,advance:s.w,dx:0,dy:compact?-10:-13};
+    }
+    function compose(letters){
+      const parts=[];let advance=0,top=0,bottom=0;
+      for(const c of letters){
+        const g=unpack(font[c]);parts.push([g,advance+(compact?0:g.dx)]);
+        advance+=compact?(c===" "?3:g.w)+1:g.advance;
+        if(c!==" "){top=Math.min(top,g.dy);bottom=Math.max(bottom,g.dy+g.h);}
+      }
+      if(compact)advance--;
+      const w=Math.max(1,advance),h=Math.max(1,bottom-top),stride=Math.ceil(w/8),bytes=new Uint8Array(stride*h);
+      for(const [g,x] of parts)for(let j=0;j<g.h;j++)for(let i=0;i<g.w;i++){
+        if(g.bytes[j*Math.ceil(g.w/8)+(i>>3)]&(128>>(i%8)))bytes[(j+g.dy-top)*stride+((x+i)>>3)]|=128>>((x+i)%8);
+      }
+      return {advance:w,dx:0,dy:top,w,h,bytes};
+    }
+    let s=compose(chars);
+    while(s.w>maxWidth && chars.length){chars.pop();s=compose([...chars,"."]);}
+    return s;
+  }
+  function recordParts(p,fallback){
+    const f=OMGermanFont,sprites=[],events=[],ids=new Map();
+    const fixed=(role,s)=>sprites.push(unpack(f[role][s]));
+    if(p.name==="Deutschland")fixed("meta","DEUTSCHLAND");
+    else sprites.push(label(p.name.toLocaleUpperCase("de"),"status",false,112,fallback));
+    Object.keys(f.title).forEach(m=>fixed("title",m));
+    week.forEach(w=>fixed("meta",w));
+    for(const role of ["day","dense"])for(let d=1;d<=31;d++)fixed(role,String(d));
+    for(let d=0;d<=9;d++)fixed("year",String(d));
+    fixed("meta","HEUTE");sprites.push(label("Feiertagsdaten fehlen","detail",false,240,fallback));
+    for(let c=32;c<=126;c++)fixed("status",String.fromCharCode(c));
+    for(const [year,configured] of Object.entries(p.years)){
+      const days=new Map(configured.map(e=>[e.month*32+e.day,{...e,kind:Number(e.off)}]));
+      const observe=(month,day,name)=>{const key=month*32+day;if(!days.has(key))days.set(key,{month,day,name,kind:2});};
+      for(const e of configured){
+        if(e.name!=="Ostermontag" && e.name!=="Pfingstmontag")continue;
+        const sun=new Date(Date.UTC(+year,e.month-1,e.day-1));
+        observe(sun.getUTCMonth()+1,sun.getUTCDate(),e.name==="Ostermontag"?"Ostersonntag":"Pfingstsonntag");
+      }
+      observe(12,24,"Heiligabend");observe(12,31,"Silvester");
+      for(const e of [...days.values()].sort((a,b)=>a.month-b.month||a.day-b.day)){
+        const name=e.name||(e.kind===1?"Frei":"Arbeitstag");
+        if(!ids.has(name)){
+          ids.set(name,sprites.length);
+          sprites.push(label(Object.hasOwn(shortNames,name)?shortNames[name]:name,"status",true,51,fallback),label(name,"detail",false,244,fallback));
+        }
+        events.push({...e,year:+year,id:ids.get(name)});
+      }
+    }
+    return {sprites,events};
+  }
+  // Sprite indices and integer baselines match the SDK's region_calendar.c.
+  function render(canvas,date,bytes,{model=5,deviceName="",millivolts=0}={}){
+    const d=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),u=i=>d.getUint16(i,true);
+    const years=u(12),eventPos=24+2*years+6*u(14),desc=eventPos+7*u(16),start=bytes[10],weekend=bytes[11];
+    const ctx=canvas.getContext("2d"),black="#000",red="#b81928",yellow=model===2?red:"#ffd200",white="#fff";
+    function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
+    function draw(id,x,y,c){
+      const a=desc+7*id,w=bytes[a],h=bytes[a+1],pos=u(a+2);
+      x+=d.getInt8(a+5);y+=d.getInt8(a+6);
+      for(let j=0;j<h;j++)for(let i=0;i<w;i++)if(bytes[pos+j*Math.ceil(w/8)+(i>>3)]&(128>>(i%8)))rect(x+i,y+j,1,1,c);
+      return bytes[a+4];
+    }
+    function status(s,x,y,c){for(const ch of s){const n=ch.charCodeAt(0);x+=draw(94+(n>=32&&n<=126?n:63)-32,x,y,c);}}
+    const year=date.getFullYear(),month=date.getMonth()+1,today=date.getDate(),wd=date.getDay(),days=new Date(year,month,0).getDate();
+    const first=(new Date(year,month-1,1).getDay()+7-start)%7,rows=Math.max(5,Math.ceil((first+days)/7)),dense=rows===6,marks=[];
+    for(let i=0;i<u(16);i++){const a=eventPos+i*7;if(u(a)===year&&bytes[a+2]===month)marks[bytes[a+3]]={kind:bytes[a+4],id:u(a+5)};}
+    rect(0,0,400,300,white);let x=19+draw(month,10,38,black);
+    for(const c of String(year))x+=draw(82+Number(c),x,38,black);
+    draw(0,373-bytes[desc+4],30,black);rect(378,20,13,3,black);rect(378,23,13,3,red);rect(378,26,13,3,model===2?white:yellow);
+    rect(9,47,382,2,black);
+    for(let col=0;col<7;col++){const w=(start+col)%7;draw(13+w,13+55*col,65,(weekend>>w)&1?red:black);}
+    rect(9,70,382,1,black);
+    for(let n=1;n<=days;n++){
+      const cell=first+n-1,x=9+55*(cell%7),y=72+Math.floor(Math.floor(cell/7)*175/rows);
+      const ev=marks[n],ink=ev?.kind===1?red:black,id=(dense?51:20)+n-1;
+      if(n===today)rect(x+1,y,Math.max(21,bytes[desc+id*7+4]+8),dense?16:20,ink);
+      draw(id,x+5,y+(dense?14:18),n===today?white:ink);
+      if(ev){
+        const base=y+(dense?27:32),a=desc+ev.id*7,pad=dense?0:1;
+        if(ev.kind===2)rect(x+3+d.getInt8(a+5),base+d.getInt8(a+6)-pad,bytes[a]+2,bytes[a+1]+2*pad,yellow);
+        draw(ev.id,x+4,base,ink);
+      }
+    }
+    rect(9,249,382,1,black);draw(92,10,267,black);
+    status(week[wd]+" "+String(today).padStart(2,"0")+"."+String(month).padStart(2,"0")+".",62,267,black);
+    if(marks[today])draw(marks[today].id+1,144,268,marks[today].kind===1?red:black);
+    else if(!Array.from({length:years},(_,i)=>u(24+2*i)).includes(year))draw(93,144,268,black);
+    rect(9,277,382,1,black);status(deviceName||"--",11,293,black);
+    const volts=millivolts?(Math.round(millivolts/10)/100).toFixed(2)+" V":"-- V",vx=390-volts.length*8-17;
+    rect(vx,285,11,1,black);rect(vx,291,11,1,black);rect(vx,286,1,5,black);rect(vx+10,286,1,5,black);rect(vx+11,287,2,3,black);
+    status(volts,390-volts.length*8,293,millivolts&&millivolts<2800?red:black);
+  }
+  return {uses,recordParts,render};
+})();
+
+;
 "use strict";
 // Layout shared with firmware/sdk/region_calendar.c. Times in UTC seconds, offsets in minutes.
 const OMRegionRecord = (() => {
@@ -3015,35 +3129,44 @@ const OMRegionRecord = (() => {
   function pack(p,rasterize=sprite) {
     const key=JSON.stringify(p);
     if(rasterize===sprite && cache?.key===key)return cache.record;
-    const years=Object.keys(p.years).map(Number),zones=transitions(p.timeZone),events=[],sprites=[],ids=new Map();
-    const add=(s,n,w,b=false)=>{sprites.push(rasterize(s,n,w,b));return sprites.length-1;};
-    add(p.name,19,240,true);
-    const monthFmt=new Intl.DateTimeFormat(p.locale,{month:"long",calendar:"gregory",timeZone:"UTC"});
-    const weekFmt=new Intl.DateTimeFormat(p.locale,{weekday:"short",timeZone:"UTC"});
-    for(let i=0;i<12;i++)add(monthFmt.format(Date.UTC(2024,i,15)),19,180,true);
-    for(let i=0;i<7;i++)add(weekFmt.format(Date.UTC(2024,0,7+i)),14,52);
-    for(let i=0;i<10;i++)add(String(i),20,16,true);
-    const lang=p.locale.split("-")[0],labels=lang==="de"?["Feiertagsdaten fehlen","Frei","Arbeitstag"]:lang==="zh"?["假期数据待更新","休息日","补班"]:["Holiday data unavailable","Day off","Workday"];
-    for(const s of labels)add(s,14,230);
-    for(const year of years)for(const {month,day,off,name} of p.years[year]){
-      let id=off?31:32;
-      if(name){if(!ids.has(name))ids.set(name,add(name,14,228));id=ids.get(name);}
-      events.push({year,month,day,off,id});
+    const years=Object.keys(p.years).map(Number),zones=transitions(p.timeZone);
+    const german=OMGermanMonth.uses(p);
+    const {events,sprites}=german?OMGermanMonth.recordParts(p,rasterize):{events:[],sprites:[]};
+    if(!german){
+      const ids=new Map();
+      const add=(s,n,w,b=false)=>{sprites.push(rasterize(s,n,w,b));return sprites.length-1;};
+      add(p.name,19,240,true);
+      const monthFmt=new Intl.DateTimeFormat(p.locale,{month:"long",calendar:"gregory",timeZone:"UTC"});
+      const weekFmt=new Intl.DateTimeFormat(p.locale,{weekday:"short",timeZone:"UTC"});
+      for(let i=0;i<12;i++)add(monthFmt.format(Date.UTC(2024,i,15)),19,180,true);
+      for(let i=0;i<7;i++)add(weekFmt.format(Date.UTC(2024,0,7+i)),14,52);
+      for(let i=0;i<10;i++)add(String(i),20,16,true);
+      const lang=p.locale.split("-")[0],labels=lang==="de"?["Feiertagsdaten fehlen","Frei","Arbeitstag"]:lang==="zh"?["假期数据待更新","休息日","补班"]:["Holiday data unavailable","Day off","Workday"];
+      for(const s of labels)add(s,14,230);
+      for(const year of years)for(const {month,day,off,name} of p.years[year]){
+        let id=off?31:32;
+        if(name){if(!ids.has(name))ids.set(name,add(name,14,228));id=ids.get(name);}
+        events.push({year,month,day,off,id});
+      }
     }
     const header=24,descriptors=header+years.length*2+zones.length*6+events.length*7;
-    let pos=descriptors+sprites.length*4;
+    const step=german?7:4;
+    let pos=descriptors+sprites.length*step;
     const used=pos+sprites.reduce((n,s)=>n+s.bytes.length,0);
     if(used>30000)throw Error("地区配置超过设备单个应用槽的 30 KB 容量，请减少年份或缩短节日名称。");
     const record=new Uint8Array(30000),d=new DataView(record.buffer),u16=(at,v)=>d.setUint16(at,v,true);
-    record.set(new TextEncoder().encode("ELREG01"));u16(8,used);record[10]=p.weekStart;record[11]=p.weekend.reduce((n,v)=>n|(1<<v),0);
+    record.set(new TextEncoder().encode(german?"ELREG02":"ELREG01"));u16(8,used);record[10]=p.weekStart;record[11]=p.weekend.reduce((n,v)=>n|(1<<v),0);
     u16(12,years.length);u16(14,zones.length);u16(16,events.length);u16(18,sprites.length);
     let at=header;for(const year of years){u16(at,year);at+=2;}
     for(const [epoch,minutes] of zones){d.setUint32(at,epoch,true);d.setInt16(at+4,minutes,true);at+=6;}
-    for(const e of events){u16(at,e.year);record[at+2]=e.month;record[at+3]=e.day;record[at+4]=Number(e.off);u16(at+5,e.id);at+=7;}
-    for(const s of sprites){record[at]=s.w;record[at+1]=s.h;u16(at+2,pos);record.set(s.bytes,pos);pos+=s.bytes.length;at+=4;}
+    for(const e of events){u16(at,e.year);record[at+2]=e.month;record[at+3]=e.day;record[at+4]=german?e.kind:Number(e.off);u16(at+5,e.id);at+=7;}
+    for(const s of sprites){record[at]=s.w;record[at+1]=s.h;u16(at+2,pos);
+      if(german){record[at+4]=s.advance;record[at+5]=s.dx;record[at+6]=s.dy;}
+      record.set(s.bytes,pos);pos+=s.bytes.length;at+=step;}
     if(rasterize===sprite)cache={key,record};return record;
   }
-  function render(canvas,p,date,bytes=pack(p)){
+  function render(canvas,p,date,bytes=pack(p),options={}){
+    if(bytes[6]===50)return OMGermanMonth.render(canvas,date,bytes,options);
     const d=new DataView(bytes.buffer),u16=i=>d.getUint16(i,true);
     const events=24+2*u16(12)+6*u16(14),desc=events+7*u16(16);
     const ctx=canvas.getContext("2d"),white="#fff",black="#000",red="#b81928";
@@ -3068,6 +3191,7 @@ const OMRegionRecord = (() => {
     else if(next){number(bytes[next+2],8,275,black);rect(39,291,3,3,black);number(bytes[next+3],48,275,black);draw(u16(next+5),90,279,bytes[next+4]?red:black);}
   }
   async function apply(client,p,progress,date=new Date()){
+    if(OMGermanMonth.uses(p) && client.sdkRevision<33)throw Error("德国点阵月历需要 SDK 33，请在设置中升级固件。");
     if(!OMRegional.supported(client))throw Error("地区方案离线换日需要 SDK 32，请在设置中升级固件。");
     return OMSchool.apply(client,{country:0,date},false,progress,{format:5,style:15,supported:OMRegional.supported,bytes:pack(p)});
   }
@@ -3092,6 +3216,7 @@ const OMScreen = (() => {
        !integer(p.page,0,15) || ![0,1].includes(p.source) || !(p.slot===255 || integer(p.slot,0,44)) ||
        !["prepared","contain"].includes(p.fit) || ![0,3,4,5].includes(p.frequency))throw Error("屏幕方案设置超出范围");
     if(p.date)CourseTable.dateValue(p.date);
+    if(p.content==="calendar")p.update="auto";
     if(p.update==="auto")p.date="";
     if(p.content==="stock")p.update="snapshot";
     if(["day","week","reminder"].includes(p.content))p.language="zh";
@@ -3131,14 +3256,14 @@ const OMScreen = (() => {
   function persist(){
     if(!hooks)return;const data=OMFeatures.clone(hooks.read());data.screenProfile=capture();data.settings.calendarCountry=data.screenProfile.country;data.settings.calendarLanguage=data.screenProfile.language;hooks.save(data);status();
   }
-  function fields(p){
+  function fields(p,previewDate=p.date){
     $("screen-content").value=p.content;$("screen-update").value=p.update;$("calendar-layout").value=String(p.country);$("calendar-language").value=p.language;
     $("photo-country").value=String(p.country);$("photo-language").value=p.language;
-    $("sdk-month-style").value=String(p.style);$("calendar-date").value=p.date;$("school-view").value=p.content==="day"?"day":"week";$("school-page").value=String(p.page+1);
+    $("sdk-month-style").value=String(p.style);$("calendar-date").value=previewDate;$("school-view").value=p.content==="day"?"day":"week";$("school-page").value=String(p.page+1);
     $("todo-title").value=p.reminderTitle;
     $("todo-mode").value=p.reminderId?"single":"list";$("todo-selected").value=p.reminderId;
     $("gallery-source").value=$("photo-source").value=String(p.source);$("photo-fit").value=p.fit;$("auto-frequency").value=String(p.frequency);
-    $("calendar-date").disabled=p.update==="auto";
+    $("calendar-date").disabled=p.update==="auto" && p.content!=="calendar";
     if(p.slot!==255 && !Array.from($("photo-slot").options||[]).some(o=>o.value===String(p.slot))){const o=document.createElement("option");o.value=String(p.slot);o.textContent="位置 "+p.slot;$("photo-slot").append(o);}
     $("photo-slot").value=p.slot===255?"":String(p.slot);
   }
@@ -3155,11 +3280,12 @@ const OMScreen = (() => {
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
     for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
-    $("screen-update").disabled=!!state.busy||p.content==="stock";
-    $("calendar-date").disabled=!!state.busy||p.update==="auto";
+    $("screen-update-field").hidden=p.content==="calendar" || p.content==="stock";
+    $("screen-update").disabled=!!state.busy || $("screen-update-field").hidden;
+    $("calendar-date").disabled=!!state.busy || (p.update==="auto" && p.content!=="calendar");
     $("screen-update-note").textContent=p.content==="stock"?OMI18n.t("请使用桌面工具推送股票行情。"):p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     if(p.content==="calendar" && state.regional && p.update==="auto" && state.ready && !state.regionSupported)
-      $("screen-update-note").textContent="此地区方案离线换日需要 SDK 32，可在设置中升级。";
+      $("screen-update-note").textContent="此地区方案离线换日需要 SDK "+state.regionRevision+"，可在设置中升级。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
   }
   function device(state){last=state;if(hooks)status();}
@@ -3172,12 +3298,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.31";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.32";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.31";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.32";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -3213,7 +3339,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.31";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.32";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -3245,7 +3371,10 @@ const OMScreen = (() => {
     $("screen-content").addEventListener("change",()=>{if(["calendar","photo"].includes($("screen-content").value))$("screen-update").value="auto";const p=capture();fields(p);persist();hooks.show(p.content);if(["day","week"].includes(p.content))openCourse();});
     $("school-view").addEventListener("change",()=>{$("screen-content").value=$("school-view").value;persist();hooks.preview();});
     for(const id of ["screen-update","school-page","calendar-date","sdk-month-style","calendar-layout","calendar-language","photo-country","photo-language","photo-fit","photo-slot","gallery-source","auto-frequency"])
-      $(id).addEventListener("change",()=>{const p=capture();fields(p);persist();hooks.preview();});
+      $(id).addEventListener("change",()=>{
+        if(id==="calendar-date" && $("screen-content").value==="calendar"){hooks.preview();return;}
+        const p=capture();fields(p,p.content==="calendar"?$("calendar-date").value:p.date);persist();hooks.preview();
+      });
     $("screen-apply").addEventListener("click",()=>hooks.apply(capture()));
     $("course-open-editor").addEventListener("click",()=>openCourse());
     $("course-frame").addEventListener("load",sendSelection);
@@ -3497,7 +3626,8 @@ const OMScreen = (() => {
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
-    OMScreen.device({regional,regionSupported:OMRegional.supported(client),ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
+    const regionRevision=regional && OMGermanMonth.uses(activeRegion())?33:32;
+    OMScreen.device({regional,regionRevision,regionSupported:OMRegional.supported(client)&&client.sdkRevision>=regionRevision,ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -3505,18 +3635,42 @@ const OMScreen = (() => {
   }
   function context() { return {title: $("template-title").value, content: $("template-content").value, todos: store.data.todos, weather: store.data.weather, saying}; }
   function newCanvas() { const canvas = document.createElement("canvas"); canvas.width = 400; canvas.height = 300; return canvas; }
+  function alignGermanPreview(){
+    const panel=$("preview"),box=$("preview-scroll"),dpr=window.devicePixelRatio||1;
+    if(!panel || !box || !box.classList.contains("pixel-scroll"))return;
+    const zoom=Number($("pixel-zoom").value)||1;
+    panel.style.width=(400*zoom/dpr)+"px";panel.style.height=(300*zoom/dpr)+"px";
+    box.style.marginLeft="0";box.style.marginTop="0";
+    const origin=box.getBoundingClientRect();
+    function snap(value){
+      for(let p=Math.ceil(value);p<value+8;p++)if(Math.abs(p*dpr-Math.round(p*dpr))<0.00001)return p-value;
+      return Math.ceil(value*dpr)/dpr-value;
+    }
+    box.style.marginLeft=snap(origin.left)+"px";box.style.marginTop=snap(origin.top)+"px";
+  }
+  window.addEventListener("resize",alignGermanPreview);
+  $("pixel-zoom").addEventListener("change",alignGermanPreview);
+  function watchScale(){
+    window.matchMedia?.("(resolution: "+window.devicePixelRatio+"dppx)")?.addEventListener?.("change",()=>{alignGermanPreview();watchScale();},{once:true});
+  }
+  watchScale();
   async function preview() {
     const token = ++previewToken; frame = null; update();
     const calendarTab=tab==="calendar" || tab==="photo-calendar";
     if(tab==="calendar")renderPresets();
     $("preview-panel").hidden = (!drawable.has(tab) && !calendarTab);
+    const german=tab==="calendar" && usesRegionRecord() && OMGermanMonth.uses(activeRegion());
+    $("pixel-zoom-label").hidden=!german;$("preview-scroll").classList.toggle("pixel-scroll",german);
+    $("preview-wrap").classList.toggle("native-wrap",german);
+    if(german)alignGermanPreview();
+    else{$("preview").style.width=$("preview").style.height="";$("preview-scroll").style.marginLeft=$("preview-scroll").style.marginTop="";}
     if (!drawable.has(tab) && !calendarTab) return;
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings), chosenModel = model();let pageLabel="";
       if(calendarTab){
         if(tab==="calendar" && usesRegionRecord()){
           const p=activeRegion(),date=$("calendar-date").value?CourseTable.dateValue($("calendar-date").value):OMRegional.localDate(p);
-          OMRegionRecord.render(canvas,p,date);
+          OMRegionRecord.render(canvas,p,date,undefined,{model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
           frame=OMProtocol.planes(canvas.getContext("2d").getImageData(0,0,400,300).data,false,chosenModel);
           $("preview").getContext("2d").drawImage(canvas,0,0);
           $("preview-label").textContent=p.name+" · "+p.timeZone+" · 400 × 300";
