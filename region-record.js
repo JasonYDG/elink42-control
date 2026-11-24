@@ -32,35 +32,44 @@ const OMRegionRecord = (() => {
   function pack(p,rasterize=sprite) {
     const key=JSON.stringify(p);
     if(rasterize===sprite && cache?.key===key)return cache.record;
-    const years=Object.keys(p.years).map(Number),zones=transitions(p.timeZone),events=[],sprites=[],ids=new Map();
-    const add=(s,n,w,b=false)=>{sprites.push(rasterize(s,n,w,b));return sprites.length-1;};
-    add(p.name,19,240,true);
-    const monthFmt=new Intl.DateTimeFormat(p.locale,{month:"long",calendar:"gregory",timeZone:"UTC"});
-    const weekFmt=new Intl.DateTimeFormat(p.locale,{weekday:"short",timeZone:"UTC"});
-    for(let i=0;i<12;i++)add(monthFmt.format(Date.UTC(2024,i,15)),19,180,true);
-    for(let i=0;i<7;i++)add(weekFmt.format(Date.UTC(2024,0,7+i)),14,52);
-    for(let i=0;i<10;i++)add(String(i),20,16,true);
-    const lang=p.locale.split("-")[0],labels=lang==="de"?["Feiertagsdaten fehlen","Frei","Arbeitstag"]:lang==="zh"?["假期数据待更新","休息日","补班"]:["Holiday data unavailable","Day off","Workday"];
-    for(const s of labels)add(s,14,230);
-    for(const year of years)for(const {month,day,off,name} of p.years[year]){
-      let id=off?31:32;
-      if(name){if(!ids.has(name))ids.set(name,add(name,14,228));id=ids.get(name);}
-      events.push({year,month,day,off,id});
+    const years=Object.keys(p.years).map(Number),zones=transitions(p.timeZone);
+    const german=OMGermanMonth.uses(p);
+    const {events,sprites}=german?OMGermanMonth.recordParts(p,rasterize):{events:[],sprites:[]};
+    if(!german){
+      const ids=new Map();
+      const add=(s,n,w,b=false)=>{sprites.push(rasterize(s,n,w,b));return sprites.length-1;};
+      add(p.name,19,240,true);
+      const monthFmt=new Intl.DateTimeFormat(p.locale,{month:"long",calendar:"gregory",timeZone:"UTC"});
+      const weekFmt=new Intl.DateTimeFormat(p.locale,{weekday:"short",timeZone:"UTC"});
+      for(let i=0;i<12;i++)add(monthFmt.format(Date.UTC(2024,i,15)),19,180,true);
+      for(let i=0;i<7;i++)add(weekFmt.format(Date.UTC(2024,0,7+i)),14,52);
+      for(let i=0;i<10;i++)add(String(i),20,16,true);
+      const lang=p.locale.split("-")[0],labels=lang==="de"?["Feiertagsdaten fehlen","Frei","Arbeitstag"]:lang==="zh"?["假期数据待更新","休息日","补班"]:["Holiday data unavailable","Day off","Workday"];
+      for(const s of labels)add(s,14,230);
+      for(const year of years)for(const {month,day,off,name} of p.years[year]){
+        let id=off?31:32;
+        if(name){if(!ids.has(name))ids.set(name,add(name,14,228));id=ids.get(name);}
+        events.push({year,month,day,off,id});
+      }
     }
     const header=24,descriptors=header+years.length*2+zones.length*6+events.length*7;
-    let pos=descriptors+sprites.length*4;
+    const step=german?7:4;
+    let pos=descriptors+sprites.length*step;
     const used=pos+sprites.reduce((n,s)=>n+s.bytes.length,0);
     if(used>30000)throw Error("地区配置超过设备单个应用槽的 30 KB 容量，请减少年份或缩短节日名称。");
     const record=new Uint8Array(30000),d=new DataView(record.buffer),u16=(at,v)=>d.setUint16(at,v,true);
-    record.set(new TextEncoder().encode("ELREG01"));u16(8,used);record[10]=p.weekStart;record[11]=p.weekend.reduce((n,v)=>n|(1<<v),0);
+    record.set(new TextEncoder().encode(german?"ELREG02":"ELREG01"));u16(8,used);record[10]=p.weekStart;record[11]=p.weekend.reduce((n,v)=>n|(1<<v),0);
     u16(12,years.length);u16(14,zones.length);u16(16,events.length);u16(18,sprites.length);
     let at=header;for(const year of years){u16(at,year);at+=2;}
     for(const [epoch,minutes] of zones){d.setUint32(at,epoch,true);d.setInt16(at+4,minutes,true);at+=6;}
-    for(const e of events){u16(at,e.year);record[at+2]=e.month;record[at+3]=e.day;record[at+4]=Number(e.off);u16(at+5,e.id);at+=7;}
-    for(const s of sprites){record[at]=s.w;record[at+1]=s.h;u16(at+2,pos);record.set(s.bytes,pos);pos+=s.bytes.length;at+=4;}
+    for(const e of events){u16(at,e.year);record[at+2]=e.month;record[at+3]=e.day;record[at+4]=german?e.kind:Number(e.off);u16(at+5,e.id);at+=7;}
+    for(const s of sprites){record[at]=s.w;record[at+1]=s.h;u16(at+2,pos);
+      if(german){record[at+4]=s.advance;record[at+5]=s.dx;record[at+6]=s.dy;}
+      record.set(s.bytes,pos);pos+=s.bytes.length;at+=step;}
     if(rasterize===sprite)cache={key,record};return record;
   }
-  function render(canvas,p,date,bytes=pack(p)){
+  function render(canvas,p,date,bytes=pack(p),options={}){
+    if(bytes[6]===50)return OMGermanMonth.render(canvas,date,bytes,options);
     const d=new DataView(bytes.buffer),u16=i=>d.getUint16(i,true);
     const events=24+2*u16(12)+6*u16(14),desc=events+7*u16(16);
     const ctx=canvas.getContext("2d"),white="#fff",black="#000",red="#b81928";
@@ -85,6 +94,7 @@ const OMRegionRecord = (() => {
     else if(next){number(bytes[next+2],8,275,black);rect(39,291,3,3,black);number(bytes[next+3],48,275,black);draw(u16(next+5),90,279,bytes[next+4]?red:black);}
   }
   async function apply(client,p,progress,date=new Date()){
+    if(OMGermanMonth.uses(p) && client.sdkRevision<33)throw Error("德国点阵月历需要 SDK 33，请在设置中升级固件。");
     if(!OMRegional.supported(client))throw Error("地区方案离线换日需要 SDK 32，请在设置中升级固件。");
     return OMSchool.apply(client,{country:0,date},false,progress,{format:5,style:15,supported:OMRegional.supported,bytes:pack(p)});
   }

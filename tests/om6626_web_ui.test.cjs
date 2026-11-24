@@ -14,7 +14,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   const ctx={getImageData:()=>({data:pixels}),putImageData(){},drawImage(){},fillRect(){},fillText(){},measureText(text){return {width:String(text).length*8};}};
   function element(tag="div",id=""){
     const attrs={},classes=new Set();
-    return {id,tagName:tag,children:[],value:"",checked:false,disabled:false,hidden:false,textContent:"",listeners:{},dataset:{},files:[],
+    return {id,tagName:tag,children:[],value:"",checked:false,disabled:false,hidden:false,textContent:"",listeners:{},dataset:{},style:{},files:[],
       classList:{contains:c=>classes.has(c),toggle(c,on){on?classes.add(c):classes.delete(c);}},setAttribute(k,v){attrs[k]=v;},getAttribute:k=>attrs[k],removeAttribute(k){delete attrs[k];},
       addEventListener(k,f){const previous=this.listeners[k];this.listeners[k]=previous?async e=>{await previous(e);return f(e);}:f;},append(...nodes){this.children.push(...nodes);if(tag==="select"&&!this.value&&nodes.length)this.value=nodes[0].value;},
       replaceChildren(...nodes){this.children=[];if(tag==="select")this.value="";this.append(...nodes);},querySelector(selector){return this.children.find(child=>child.tagName===selector)||null;},getContext:()=>ctx,focus(){},
@@ -100,7 +100,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
     OMSdkPreview:initial.sdkRevision?{async calendar(...args){rendered.push({kind:'sdk-calendar',args});}}:undefined,
     OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});if(k==='stockCalendar')return initial.stockRender?.(...args);}]))};
   // Mock only course pixels here; real date helpers run, and verify-school.py checks actual rendering.
-  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","regional-calendar.js","region-record.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
+  const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","regional-calendar.js","german-font.js","german-month.js","region-record.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
   const context=vm.createContext(sandbox),api=vm.runInContext(code,context);
   return {get,httpRequests,catalogRequests,packets,pixels,rendered,downloads,local,session,device,stored,windowListeners,alerts,confirmations,versionQueries,idleTimers,scriptRequests:()=>scriptRequests,finishFirmware(){vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);pendingScript.onload();},expireIdle(){const [timer,callback]=[...idleTimers].at(-1);clearTimeout(timer);idleTimers.delete(timer);callback();},confirmation(value){confirm=value;},requestOptions:()=>requestOptions,lastFetchURL:()=>lastFetchURL,fetchCount:()=>fetchCount,failFetch(error=new TypeError("Failed to fetch")){rejectFetch(error);},respond(value,status=200){assert.ok(respond);respond(value,status);},advance(ms){clockTime+=ms;},async tick(){await interval?.();},async click(id){await get(id).listeners.click();await new Promise(setImmediate);},async input(id,value,event="input"){
@@ -603,7 +603,7 @@ test("existing full-screen gallery images default to uncropped calendar fitting"
 });
 
 test("country holiday summaries show local upcoming holidays and China overrides stay scoped",async()=>{
- const u=ui(5,false,"en");await u.click("connect");await u.input("screen-update","snapshot","change");await u.input("calendar-date","2026-11-04","change");await u.input("calendar-layout","3","change");
+ const u=ui(5,false,"en");await u.click("connect");await u.input("calendar-date","2026-11-04","change");await u.input("calendar-layout","3","change");
  assert.match(u.get("holiday-summary").textContent,/Taiwan: government-office calendar/);assert.equal(u.get("holiday-read").disabled,true);assert.equal(u.get("holiday-write").disabled,true);
  await u.input("calendar-layout","2","change");assert.match(u.get("holiday-summary").textContent,/Next holiday: Deepavali/);
  await u.input("calendar-layout","0","change");assert.equal(u.get("holiday-read").disabled,false);assert.equal(u.get("holiday-write").disabled,false);
@@ -780,4 +780,18 @@ test('calendar profiles round trip without device writes or changes to personal 
   const backup=state();await choose('SG');await upload(backup);
   assert.equal(u.get('region-profile').value,'custom:DE-NW');assert.deepEqual(state().regionProfiles,backup.regionProfiles);
   assert.equal(u.packets.length,0);
+});
+
+test('standard calendars restore old static plans as automatic and keep preview dates off the device',async()=>{
+  const u=ui();await u.click('nav-calendar');await u.input('region-profile','DE','change');
+  const plan=JSON.parse(u.local.get('om6626-workspace-v1'));
+  plan.screenProfile.update='snapshot';plan.screenProfile.date='2026-12-25';
+  await u.file('workspace-import',new Blob([JSON.stringify(plan)]));
+  assert.equal(u.get('screen-update-field').hidden,true);
+  assert.equal(u.get('screen-update').value,'auto');
+  assert.equal(u.get('calendar-date').value,'');assert.equal(u.get('calendar-date').disabled,false);
+  await u.input('calendar-date','2027-04-02','change');assert.equal(u.get('calendar-date').value,'2027-04-02');
+  const saved=JSON.parse(u.local.get('om6626-workspace-v1')).screenProfile;
+  assert.equal(saved.update,'auto');assert.equal(saved.date,'');assert.equal(u.packets.length,0);
+  await u.click('nav-photo');assert.equal(u.get('screen-update-field').hidden,false);
 });

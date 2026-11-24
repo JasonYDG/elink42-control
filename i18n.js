@@ -1,5 +1,7 @@
 "use strict";
 const OMTranslations = {
+  "预览倍率":"Preview zoom",
+  "自动换日使用设备时钟。":"Automatic date changes follow the device clock.",
   "SDK 30 已撤回，请选择 SDK 31 或后续版本。": "SDK 30 has been withdrawn. Select SDK 31 or later.",
   "正在加载图库…":"Loading wallpapers…",
   "重试":"Retry",

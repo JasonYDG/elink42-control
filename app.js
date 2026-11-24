@@ -231,7 +231,8 @@
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
-    OMScreen.device({regional,regionSupported:OMRegional.supported(client),ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
+    const regionRevision=regional && OMGermanMonth.uses(activeRegion())?33:32;
+    OMScreen.device({regional,regionRevision,regionSupported:OMRegional.supported(client)&&client.sdkRevision>=regionRevision,ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
@@ -239,18 +240,42 @@
   }
   function context() { return {title: $("template-title").value, content: $("template-content").value, todos: store.data.todos, weather: store.data.weather, saying}; }
   function newCanvas() { const canvas = document.createElement("canvas"); canvas.width = 400; canvas.height = 300; return canvas; }
+  function alignGermanPreview(){
+    const panel=$("preview"),box=$("preview-scroll"),dpr=window.devicePixelRatio||1;
+    if(!panel || !box || !box.classList.contains("pixel-scroll"))return;
+    const zoom=Number($("pixel-zoom").value)||1;
+    panel.style.width=(400*zoom/dpr)+"px";panel.style.height=(300*zoom/dpr)+"px";
+    box.style.marginLeft="0";box.style.marginTop="0";
+    const origin=box.getBoundingClientRect();
+    function snap(value){
+      for(let p=Math.ceil(value);p<value+8;p++)if(Math.abs(p*dpr-Math.round(p*dpr))<0.00001)return p-value;
+      return Math.ceil(value*dpr)/dpr-value;
+    }
+    box.style.marginLeft=snap(origin.left)+"px";box.style.marginTop=snap(origin.top)+"px";
+  }
+  window.addEventListener("resize",alignGermanPreview);
+  $("pixel-zoom").addEventListener("change",alignGermanPreview);
+  function watchScale(){
+    window.matchMedia?.("(resolution: "+window.devicePixelRatio+"dppx)")?.addEventListener?.("change",()=>{alignGermanPreview();watchScale();},{once:true});
+  }
+  watchScale();
   async function preview() {
     const token = ++previewToken; frame = null; update();
     const calendarTab=tab==="calendar" || tab==="photo-calendar";
     if(tab==="calendar")renderPresets();
     $("preview-panel").hidden = (!drawable.has(tab) && !calendarTab);
+    const german=tab==="calendar" && usesRegionRecord() && OMGermanMonth.uses(activeRegion());
+    $("pixel-zoom-label").hidden=!german;$("preview-scroll").classList.toggle("pixel-scroll",german);
+    $("preview-wrap").classList.toggle("native-wrap",german);
+    if(german)alignGermanPreview();
+    else{$("preview").style.width=$("preview").style.height="";$("preview-scroll").style.marginLeft=$("preview-scroll").style.marginTop="";}
     if (!drawable.has(tab) && !calendarTab) return;
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings), chosenModel = model();let pageLabel="";
       if(calendarTab){
         if(tab==="calendar" && usesRegionRecord()){
           const p=activeRegion(),date=$("calendar-date").value?CourseTable.dateValue($("calendar-date").value):OMRegional.localDate(p);
-          OMRegionRecord.render(canvas,p,date);
+          OMRegionRecord.render(canvas,p,date,undefined,{model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
           frame=OMProtocol.planes(canvas.getContext("2d").getImageData(0,0,400,300).data,false,chosenModel);
           $("preview").getContext("2d").drawImage(canvas,0,0);
           $("preview-label").textContent=p.name+" · "+p.timeZone+" · 400 × 300";

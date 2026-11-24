@@ -15,6 +15,7 @@ const OMScreen = (() => {
        !integer(p.page,0,15) || ![0,1].includes(p.source) || !(p.slot===255 || integer(p.slot,0,44)) ||
        !["prepared","contain"].includes(p.fit) || ![0,3,4,5].includes(p.frequency))throw Error("屏幕方案设置超出范围");
     if(p.date)CourseTable.dateValue(p.date);
+    if(p.content==="calendar")p.update="auto";
     if(p.update==="auto")p.date="";
     if(p.content==="stock")p.update="snapshot";
     if(["day","week","reminder"].includes(p.content))p.language="zh";
@@ -54,14 +55,14 @@ const OMScreen = (() => {
   function persist(){
     if(!hooks)return;const data=OMFeatures.clone(hooks.read());data.screenProfile=capture();data.settings.calendarCountry=data.screenProfile.country;data.settings.calendarLanguage=data.screenProfile.language;hooks.save(data);status();
   }
-  function fields(p){
+  function fields(p,previewDate=p.date){
     $("screen-content").value=p.content;$("screen-update").value=p.update;$("calendar-layout").value=String(p.country);$("calendar-language").value=p.language;
     $("photo-country").value=String(p.country);$("photo-language").value=p.language;
-    $("sdk-month-style").value=String(p.style);$("calendar-date").value=p.date;$("school-view").value=p.content==="day"?"day":"week";$("school-page").value=String(p.page+1);
+    $("sdk-month-style").value=String(p.style);$("calendar-date").value=previewDate;$("school-view").value=p.content==="day"?"day":"week";$("school-page").value=String(p.page+1);
     $("todo-title").value=p.reminderTitle;
     $("todo-mode").value=p.reminderId?"single":"list";$("todo-selected").value=p.reminderId;
     $("gallery-source").value=$("photo-source").value=String(p.source);$("photo-fit").value=p.fit;$("auto-frequency").value=String(p.frequency);
-    $("calendar-date").disabled=p.update==="auto";
+    $("calendar-date").disabled=p.update==="auto" && p.content!=="calendar";
     if(p.slot!==255 && !Array.from($("photo-slot").options||[]).some(o=>o.value===String(p.slot))){const o=document.createElement("option");o.value=String(p.slot);o.textContent="位置 "+p.slot;$("photo-slot").append(o);}
     $("photo-slot").value=p.slot===255?"":String(p.slot);
   }
@@ -78,11 +79,12 @@ const OMScreen = (() => {
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
     for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
-    $("screen-update").disabled=!!state.busy||p.content==="stock";
-    $("calendar-date").disabled=!!state.busy||p.update==="auto";
+    $("screen-update-field").hidden=p.content==="calendar" || p.content==="stock";
+    $("screen-update").disabled=!!state.busy || $("screen-update-field").hidden;
+    $("calendar-date").disabled=!!state.busy || (p.update==="auto" && p.content!=="calendar");
     $("screen-update-note").textContent=p.content==="stock"?OMI18n.t("请使用桌面工具推送股票行情。"):p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     if(p.content==="calendar" && state.regional && p.update==="auto" && state.ready && !state.regionSupported)
-      $("screen-update-note").textContent="此地区方案离线换日需要 SDK 32，可在设置中升级。";
+      $("screen-update-note").textContent="此地区方案离线换日需要 SDK "+state.regionRevision+"，可在设置中升级。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
   }
   function device(state){last=state;if(hooks)status();}
@@ -95,12 +97,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.31";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.32";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.31";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.32";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -136,7 +138,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.31";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.32";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -168,7 +170,10 @@ const OMScreen = (() => {
     $("screen-content").addEventListener("change",()=>{if(["calendar","photo"].includes($("screen-content").value))$("screen-update").value="auto";const p=capture();fields(p);persist();hooks.show(p.content);if(["day","week"].includes(p.content))openCourse();});
     $("school-view").addEventListener("change",()=>{$("screen-content").value=$("school-view").value;persist();hooks.preview();});
     for(const id of ["screen-update","school-page","calendar-date","sdk-month-style","calendar-layout","calendar-language","photo-country","photo-language","photo-fit","photo-slot","gallery-source","auto-frequency"])
-      $(id).addEventListener("change",()=>{const p=capture();fields(p);persist();hooks.preview();});
+      $(id).addEventListener("change",()=>{
+        if(id==="calendar-date" && $("screen-content").value==="calendar"){hooks.preview();return;}
+        const p=capture();fields(p,p.content==="calendar"?$("calendar-date").value:p.date);persist();hooks.preview();
+      });
     $("screen-apply").addEventListener("click",()=>hooks.apply(capture()));
     $("course-open-editor").addEventListener("click",()=>openCourse());
     $("course-frame").addEventListener("load",sendSelection);
