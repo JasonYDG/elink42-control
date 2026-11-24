@@ -154,31 +154,6 @@ const OMRender = (() => {
     if (rows.length * size * 1.8 > 210 || rows.some(row => ctx.measureText(row).width > 1600)) throw Error(OMI18n.t("当天课表内容过多"));
     textBlock(ctx, rows.join("\n"), 20, 78, 360, 200, size);
   }
-  function weatherIcon(ctx, text, x, y, w, h, color) {
-    ctx.save(); ctx.translate(x, y); ctx.scale(w / 100, h / 100); ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = 4;
-    if (/雨|雪|雷|rain|snow|thunder/i.test(text)) {
-      ctx.beginPath(); ctx.arc(50, 32, 23, Math.PI, 0); ctx.lineTo(86, 60); ctx.lineTo(15, 60); ctx.closePath(); ctx.fill();
-      for (let i = 0; i < 4; i++) line(ctx, 25 + i * 17, 72, 19 + i * 17, 88);
-    } else if (/云|阴|cloud|overcast/i.test(text)) {
-      ctx.beginPath(); ctx.arc(45, 42, 28, Math.PI, 0); ctx.arc(72, 53, 19, -Math.PI/2, Math.PI/2); ctx.lineTo(17, 72); ctx.arc(17, 55, 17, Math.PI/2, -Math.PI/2); ctx.fill();
-    } else {
-      ctx.beginPath(); ctx.arc(50, 50, 22, 0, Math.PI * 2); ctx.fill();
-      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; line(ctx, 50 + Math.cos(a) * 32, 50 + Math.sin(a) * 32, 50 + Math.cos(a) * 44, 50 + Math.sin(a) * 44); }
-    }
-    ctx.restore();
-  }
-  function weather(canvas, data) {
-    if (!data) throw Error(OMI18n.t("请先获取天气"));
-    OMFeatures.weather(data);
-    const ctx = start(canvas); ctx.fillStyle = COLORS.red;
-    textBlock(ctx, data.city + OMI18n.t(" · 天气"), 20, 14, 360, 35, 24); line(ctx, 20, 55, 380, 55);
-    ctx.fillStyle = COLORS.black;
-    textBlock(ctx, `${data.current?.temperature ?? "—"}°`, 20, 70, 220, 65, 48);
-    textBlock(ctx, data.current?.text || "", 20, 140, 240, 38, 24);
-    weatherIcon(ctx, data.current?.text || "", 265, 70, 105, 105, COLORS.red);
-    data.days.slice(0, 3).forEach((day, i) => textBlock(ctx, `${day.date}\n${day.text}\n${day.low}–${day.high}°`, 20 + i * 123, 194, 117, 73, 13));
-    textBlock(ctx, OMI18n.t("数据更新 ") + new Date(data.updated).toLocaleString(OMI18n.locale), 20, 282, 360, 16, 10);
-  }
   async function template(canvas, spec, context) {
     OMFeatures.template(spec);
     const images = new Map();
@@ -196,7 +171,6 @@ const OMRender = (() => {
         if (e.type === "rect") { if (e.outline) ctx.strokeRect(e.x, e.y, e.width, e.height); else ctx.fillRect(e.x, e.y, e.width, e.height); }
         if (e.type === "line") line(ctx, e.x, e.y, e.x + e.width, e.y + e.height);
         if (e.type === "image") ctx.drawImage(images.get(e), e.x, e.y, e.width, e.height);
-        if (e.type === "weather") weatherIcon(ctx, context.weather?.current?.text || "", e.x, e.y, e.width, e.height, COLORS[e.color]);
         ctx.restore();
       }
     } finally { for (const bitmap of images.values()) bitmap.close(); }
@@ -238,11 +212,11 @@ const OMRender = (() => {
       ctx.fillStyle=up?COLORS.red:COLORS.black;text(percentText,386,y+7,font.measure(percentText,2,10)<=72?2:1,"right",10);
       ctx.fillStyle=COLORS.black;if(i<quotes.length-1)ctx.fillRect(12,y+height-1,376,1);
     });
-    ctx.fillStyle=COLORS.black;if(!quotes.length)text("请先获取行情",14,112,2);
+    ctx.fillStyle=COLORS.black;if(!quotes.length)text("请先导入行情",14,112,2);
     ctx.fillRect(12,277,376,1);text(font.fit(options.deviceName||"设备未连接",280),11,283);
     const voltage=options.millivolts?`${(Math.round(options.millivolts/10)/100).toFixed(2)} V`:"电量未读取",battery=388-font.measure(voltage)-16;
     ctx.fillRect(battery,286,11,1);ctx.fillRect(battery,292,11,1);ctx.fillRect(battery,287,1,5);ctx.fillRect(battery+10,287,1,5);ctx.fillRect(battery+11,288,2,3);
     ctx.fillStyle=options.millivolts&&options.millivolts<2800?COLORS.red:COLORS.black;text(voltage,388,283,1,"right");
   }
-  return {todo, todos, image, calendar, course, weather, template, textBlock,reminderCalendar,stockCalendar};
+  return {todo, todos, image, calendar, course, template, textBlock,reminderCalendar,stockCalendar};
 })();

@@ -2058,31 +2058,6 @@ const OMRender = (() => {
     if (rows.length * size * 1.8 > 210 || rows.some(row => ctx.measureText(row).width > 1600)) throw Error(OMI18n.t("当天课表内容过多"));
     textBlock(ctx, rows.join("\n"), 20, 78, 360, 200, size);
   }
-  function weatherIcon(ctx, text, x, y, w, h, color) {
-    ctx.save(); ctx.translate(x, y); ctx.scale(w / 100, h / 100); ctx.strokeStyle = ctx.fillStyle = color; ctx.lineWidth = 4;
-    if (/雨|雪|雷|rain|snow|thunder/i.test(text)) {
-      ctx.beginPath(); ctx.arc(50, 32, 23, Math.PI, 0); ctx.lineTo(86, 60); ctx.lineTo(15, 60); ctx.closePath(); ctx.fill();
-      for (let i = 0; i < 4; i++) line(ctx, 25 + i * 17, 72, 19 + i * 17, 88);
-    } else if (/云|阴|cloud|overcast/i.test(text)) {
-      ctx.beginPath(); ctx.arc(45, 42, 28, Math.PI, 0); ctx.arc(72, 53, 19, -Math.PI/2, Math.PI/2); ctx.lineTo(17, 72); ctx.arc(17, 55, 17, Math.PI/2, -Math.PI/2); ctx.fill();
-    } else {
-      ctx.beginPath(); ctx.arc(50, 50, 22, 0, Math.PI * 2); ctx.fill();
-      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; line(ctx, 50 + Math.cos(a) * 32, 50 + Math.sin(a) * 32, 50 + Math.cos(a) * 44, 50 + Math.sin(a) * 44); }
-    }
-    ctx.restore();
-  }
-  function weather(canvas, data) {
-    if (!data) throw Error(OMI18n.t("请先获取天气"));
-    OMFeatures.weather(data);
-    const ctx = start(canvas); ctx.fillStyle = COLORS.red;
-    textBlock(ctx, data.city + OMI18n.t(" · 天气"), 20, 14, 360, 35, 24); line(ctx, 20, 55, 380, 55);
-    ctx.fillStyle = COLORS.black;
-    textBlock(ctx, `${data.current?.temperature ?? "—"}°`, 20, 70, 220, 65, 48);
-    textBlock(ctx, data.current?.text || "", 20, 140, 240, 38, 24);
-    weatherIcon(ctx, data.current?.text || "", 265, 70, 105, 105, COLORS.red);
-    data.days.slice(0, 3).forEach((day, i) => textBlock(ctx, `${day.date}\n${day.text}\n${day.low}–${day.high}°`, 20 + i * 123, 194, 117, 73, 13));
-    textBlock(ctx, OMI18n.t("数据更新 ") + new Date(data.updated).toLocaleString(OMI18n.locale), 20, 282, 360, 16, 10);
-  }
   async function template(canvas, spec, context) {
     OMFeatures.template(spec);
     const images = new Map();
@@ -2100,7 +2075,6 @@ const OMRender = (() => {
         if (e.type === "rect") { if (e.outline) ctx.strokeRect(e.x, e.y, e.width, e.height); else ctx.fillRect(e.x, e.y, e.width, e.height); }
         if (e.type === "line") line(ctx, e.x, e.y, e.x + e.width, e.y + e.height);
         if (e.type === "image") ctx.drawImage(images.get(e), e.x, e.y, e.width, e.height);
-        if (e.type === "weather") weatherIcon(ctx, context.weather?.current?.text || "", e.x, e.y, e.width, e.height, COLORS[e.color]);
         ctx.restore();
       }
     } finally { for (const bitmap of images.values()) bitmap.close(); }
@@ -2142,13 +2116,13 @@ const OMRender = (() => {
       ctx.fillStyle=up?COLORS.red:COLORS.black;text(percentText,386,y+7,font.measure(percentText,2,10)<=72?2:1,"right",10);
       ctx.fillStyle=COLORS.black;if(i<quotes.length-1)ctx.fillRect(12,y+height-1,376,1);
     });
-    ctx.fillStyle=COLORS.black;if(!quotes.length)text("请先获取行情",14,112,2);
+    ctx.fillStyle=COLORS.black;if(!quotes.length)text("请先导入行情",14,112,2);
     ctx.fillRect(12,277,376,1);text(font.fit(options.deviceName||"设备未连接",280),11,283);
     const voltage=options.millivolts?`${(Math.round(options.millivolts/10)/100).toFixed(2)} V`:"电量未读取",battery=388-font.measure(voltage)-16;
     ctx.fillRect(battery,286,11,1);ctx.fillRect(battery,292,11,1);ctx.fillRect(battery,287,1,5);ctx.fillRect(battery+10,287,1,5);ctx.fillRect(battery+11,288,2,3);
     ctx.fillStyle=options.millivolts&&options.millivolts<2800?COLORS.red:COLORS.black;text(voltage,388,283,1,"right");
   }
-  return {todo, todos, image, calendar, course, weather, template, textBlock,reminderCalendar,stockCalendar};
+  return {todo, todos, image, calendar, course, template, textBlock,reminderCalendar,stockCalendar};
 })();
 
 ;
@@ -2989,6 +2963,7 @@ const OMGermanFont={"title":{"Januar":[96,1,-20,93,20,"AfwAAAAAAAAAAAAAAfwAAAAAA
 const OMGermanMonth = (() => {
   const week=["SO","MO","DI","MI","DO","FR","SA"];
   const shortNames={Neujahr:"Neuj.",Karfreitag:"Karfr.",Ostermontag:"Ost-Mo.","Tag der Arbeit":"1. Mai","Christi Himmelfahrt":"Himm.",Pfingstmontag:"Pf.-Mo.","Tag der Deutschen Einheit":"Einheit","Erster Weihnachtstag":"1. Weih.","Zweiter Weihnachtstag":"2. Weih.",Heiligabend:"Hl. Ab.",Silvester:"Silv.",Ostersonntag:"Ostern",Pfingstsonntag:"Pfing."};
+  const agendaNames=Object.assign(Object.create(null),{"Tag der Deutschen Einheit":"Deutsche Einheit","Erster Weihnachtstag":"1. Weihnachtstag","Zweiter Weihnachtstag":"2. Weihnachtstag"});
   const uses=p=>p.code==="DE" && /^de(?:-|$)/i.test(p.locale);
   function unpack(g){
     const [advance,dx,dy,w,h,bits]=g;
@@ -3042,7 +3017,7 @@ const OMGermanMonth = (() => {
         const name=e.name||(e.kind===1?"Frei":"Arbeitstag");
         if(!ids.has(name)){
           ids.set(name,sprites.length);
-          sprites.push(label(Object.hasOwn(shortNames,name)?shortNames[name]:name,"status",true,51,fallback),label(name,"detail",false,244,fallback));
+          sprites.push(label(Object.hasOwn(shortNames,name)?shortNames[name]:name,"status",true,51,fallback),label(agendaNames[name] || name,"status",false,160,fallback));
         }
         events.push({...e,year:+year,id:ids.get(name)});
       }
@@ -3052,7 +3027,7 @@ const OMGermanMonth = (() => {
   // Sprite indices and integer baselines match the SDK's region_calendar.c.
   function render(canvas,date,bytes,{model=5,deviceName="",millivolts=0}={}){
     const d=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),u=i=>d.getUint16(i,true);
-    const years=u(12),eventPos=24+2*years+6*u(14),desc=eventPos+7*u(16),start=bytes[10],weekend=bytes[11];
+    const years=u(12),eventPos=24+2*years+6*u(14),desc=eventPos+7*u(16),start=bytes[10];
     const ctx=canvas.getContext("2d"),black="#000",red="#b81928",yellow=model===2?red:"#ffd200",white="#fff";
     function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
     function draw(id,x,y,c){
@@ -3062,34 +3037,71 @@ const OMGermanMonth = (() => {
       return bytes[a+4];
     }
     function status(s,x,y,c){for(const ch of s){const n=ch.charCodeAt(0);x+=draw(94+(n>=32&&n<=126?n:63)-32,x,y,c);}}
-    const year=date.getFullYear(),month=date.getMonth()+1,today=date.getDate(),wd=date.getDay(),days=new Date(year,month,0).getDate();
-    const first=(new Date(year,month-1,1).getDay()+7-start)%7,rows=Math.max(5,Math.ceil((first+days)/7)),dense=rows===6,marks=[];
-    for(let i=0;i<u(16);i++){const a=eventPos+i*7;if(u(a)===year&&bytes[a+2]===month)marks[bytes[a+3]]={kind:bytes[a+4],id:u(a+5)};}
-    rect(0,0,400,300,white);let x=19+draw(month,10,38,black);
-    for(const c of String(year))x+=draw(82+Number(c),x,38,black);
-    draw(0,373-bytes[desc+4],30,black);rect(378,20,13,3,black);rect(378,23,13,3,red);rect(378,26,13,3,model===2?white:yellow);
-    rect(9,47,382,2,black);
-    for(let col=0;col<7;col++){const w=(start+col)%7;draw(13+w,13+55*col,65,(weekend>>w)&1?red:black);}
-    rect(9,70,382,1,black);
-    for(let n=1;n<=days;n++){
-      const cell=first+n-1,x=9+55*(cell%7),y=72+Math.floor(Math.floor(cell/7)*175/rows);
-      const ev=marks[n],ink=ev?.kind===1?red:black,id=(dense?51:20)+n-1;
-      if(n===today)rect(x+1,y,Math.max(21,bytes[desc+id*7+4]+8),dense?16:20,ink);
-      draw(id,x+5,y+(dense?14:18),n===today?white:ink);
-      if(ev){
-        const base=y+(dense?27:32),a=desc+ev.id*7,pad=dense?0:1;
-        if(ev.kind===2)rect(x+3+d.getInt8(a+5),base+d.getInt8(a+6)-pad,bytes[a]+2,bytes[a+1]+2*pad,yellow);
-        draw(ev.id,x+4,base,ink);
-      }
+    const year=date.getFullYear(),month=date.getMonth()+1,today=date.getDate();
+    const days=new Date(year,month,0).getDate(),first=(new Date(year,month-1,1).getDay()+7-start)%7;
+    const rows=Math.ceil((first+days)/7),step=rows===6?27:33,cellH=step-3,marks=[];
+    for(let i=0;i<u(16);i++){
+      const a=eventPos+i*7;
+      if(u(a)===year&&bytes[a+2]===month)marks[bytes[a+3]]={kind:bytes[a+4],id:u(a+5)};
     }
-    rect(9,249,382,1,black);draw(92,10,267,black);
-    status(week[wd]+" "+String(today).padStart(2,"0")+"."+String(month).padStart(2,"0")+".",62,267,black);
-    if(marks[today])draw(marks[today].id+1,144,268,marks[today].kind===1?red:black);
-    else if(!Array.from({length:years},(_,i)=>u(24+2*i)).includes(year))draw(93,144,268,black);
+    const sprite=id=>desc+7*id;
+    function centered(id,x,y,w,h,c){
+      const a=sprite(id);
+      draw(id,x+Math.floor((w-bytes[a])/2)-d.getInt8(a+5),y+Math.floor((h-bytes[a+1])/2)-d.getInt8(a+6),c);
+    }
+    function smallNumber(s,x,y,h,c){
+      // KW and 1- or 2-digit numbers all have the same ten ink rows.
+      const firstGlyph=sprite(94+s.charCodeAt(0)-32),last=sprite(94+s.charCodeAt(s.length-1)-32);
+      const left=d.getInt8(firstGlyph+5),w=(s.length-1)*8+d.getInt8(last+5)+bytes[last]-left;
+      status(s,x+Math.floor((24-w)/2)-left,y+Math.floor((h-10)/2)+10,c);
+    }
+    function outline(x,y,w,h,c){
+      rect(x,y,w,1,c);rect(x,y+h-1,w,1,c);rect(x,y+1,1,h-2,c);rect(x+w-1,y+1,1,h-2,c);
+    }
+    const todayFill=model===2?black:yellow,todayInk=model===2?white:black;
+    rect(0,0,400,300,white);
+    const m=sprite(month);
+    let x=19+draw(month,9-d.getInt8(m+5),10-d.getInt8(m+6),black);
+    for(const c of String(year))x+=draw(82+Number(c),x,30,black);
+    draw(0,373-bytes[desc+4],29,black);
+    rect(378,16,13,3,black);rect(378,19,13,3,red);if(model!==2)rect(378,22,13,3,yellow);
+    rect(9,38,382,2,black);smallNumber("KW",8,43,16,black);
+    for(let col=0;col<7;col++)centered(13+(start+col)%7,38+51*col,43,48,16,black);
+    for(let row=0;row<rows;row++){
+      const th=new Date(Date.UTC(year,month-1,1-first+7*row+(4-start+7)%7));
+      const kw=1+Math.floor((th.getTime()-Date.UTC(th.getUTCFullYear(),0,1))/(7*86400000));
+      smallNumber(String(kw),8,62+row*step,cellH,black);
+    }
+    const list=[];
+    for(let n=1;n<=days;n++){
+      const cell=first+n-1,left=38+51*(cell%7),y=62+step*Math.floor(cell/7);
+      const off=marks[n]?.kind===1,selected=n===today;
+      if(off||selected)rect(left,y,48,cellH,off?red:todayFill);
+      if(!off)outline(left,y,48,cellH,black);
+      if(off&&selected)outline(left+2,y+2,44,cellH-4,white);
+      centered(19+n,left,y,48,cellH,off?white:selected?todayInk:black);
+      if(marks[n])list.push(n);
+    }
+    rect(9,230,382,1,black);
+    const known=Array.from({length:years},(_,i)=>u(24+2*i)).includes(year);
+    if(!known)draw(93,10,254,black);
+    else{
+      if(list.length<4&&!marks[today]){list.push(today);list.sort((a,b)=>a-b);}
+      const upcoming=list.filter(n=>n<today).length;
+      const begin=Math.max(0,Math.min(upcoming,list.length-4));
+      list.slice(begin,begin+4).forEach((n,i)=>{
+        const left=i%2?202:9,y=i<2?235:255,ev=marks[n],off=ev?.kind===1,selected=n===today;
+        if(off||selected)rect(left,y,24,15,off?red:todayFill);
+        else outline(left,y,24,15,black);
+        smallNumber(String(n).padStart(2,"0"),left,y,15,off?white:selected?todayInk:black);
+        const full=ev?ev.id+1:92,id=ev&&bytes[sprite(full)]>160?ev.id:full,a=sprite(id);
+        draw(id,left+29-d.getInt8(a+5),y+Math.trunc((15-bytes[a+1])/2)-d.getInt8(a+6),black);
+      });
+    }
     rect(9,277,382,1,black);status(deviceName||"--",11,293,black);
-    const volts=millivolts?(Math.round(millivolts/10)/100).toFixed(2)+" V":"-- V",vx=390-volts.length*8-17;
-    rect(vx,285,11,1,black);rect(vx,291,11,1,black);rect(vx,286,1,5,black);rect(vx+10,286,1,5,black);rect(vx+11,287,2,3,black);
-    status(volts,390-volts.length*8,293,millivolts&&millivolts<2800?red:black);
+    const volts=millivolts?(Math.round(millivolts/10)/100).toFixed(2)+" V":"-- V",vx=392-volts.length*8;
+    outline(vx-19,284,11,8,black);rect(vx-8,286,2,4,black);
+    status(volts,vx,293,millivolts&&millivolts<2800?red:black);
   }
   return {uses,recordParts,render};
 })();
@@ -3191,7 +3203,7 @@ const OMRegionRecord = (() => {
     else if(next){number(bytes[next+2],8,275,black);rect(39,291,3,3,black);number(bytes[next+3],48,275,black);draw(u16(next+5),90,279,bytes[next+4]?red:black);}
   }
   async function apply(client,p,progress,date=new Date()){
-    if(OMGermanMonth.uses(p) && client.sdkRevision<33)throw Error("德国点阵月历需要 SDK 33，请在设置中升级固件。");
+    if(OMGermanMonth.uses(p) && client.sdkRevision<34)throw Error("德国方格月历需要 SDK 34，请在设置中升级固件。");
     if(!OMRegional.supported(client))throw Error("地区方案离线换日需要 SDK 32，请在设置中升级固件。");
     return OMSchool.apply(client,{country:0,date},false,progress,{format:5,style:15,supported:OMRegional.supported,bytes:pack(p)});
   }
@@ -3275,7 +3287,7 @@ const OMScreen = (() => {
     $("plan-state").textContent=tableDirty?"课表有未保存修改：请先保存表格，再应用或导出。":same?"最近确认 "+new Date(saved.at).toLocaleTimeString()+" · "+saved.name:hooks.read().screenProfile?"方案已在本机保存 · 有修改待应用":"初始方案 · 调整后自动保存";
     $("screen-apply").textContent=OMI18n.t(state.runtime?.bootId && saved?.bootId && state.runtime.bootId!==saved.bootId?"恢复方案到屏幕":p.update==="snapshot"?"发送当前画面":"应用并自动更新");
     const requiredSDK=OMProtocol.calendarStyleRevision(p.style);
-    const scene=["calendar","photo-calendar","course","todo"].includes(context),ready=state.ready&&!state.busy;
+    const scene=["calendar","photo-calendar","course","todo","stock"].includes(context),ready=state.ready&&!state.busy;
     $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && state.regional && !state.regionSupported) || (p.content==="calendar" && !state.regional && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
@@ -3283,7 +3295,7 @@ const OMScreen = (() => {
     $("screen-update-field").hidden=p.content==="calendar" || p.content==="stock";
     $("screen-update").disabled=!!state.busy || $("screen-update-field").hidden;
     $("calendar-date").disabled=!!state.busy || (p.update==="auto" && p.content!=="calendar");
-    $("screen-update-note").textContent=p.content==="stock"?OMI18n.t("请使用桌面工具推送股票行情。"):p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
+    $("screen-update-note").textContent=p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     if(p.content==="calendar" && state.regional && p.update==="auto" && state.ready && !state.regionSupported)
       $("screen-update-note").textContent="此地区方案离线换日需要 SDK "+state.regionRevision+"，可在设置中升级。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
@@ -3298,12 +3310,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.32";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.33";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.32";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.33";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -3339,7 +3351,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.32";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.33";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -3398,11 +3410,11 @@ const OMScreen = (() => {
   const $ = id => document.getElementById(id), F = OMFeatures, C = OMCalendar;
   const sdkOnly=document.documentElement.dataset?.firmwareFamily==="sdk";
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
-  let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
+  let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, elementImage = "", transientWorkspace = false;
   let otaPackage = null,firmwareRequest=null;
   let sdkPackage=null, pendingIdentityReceipt=null;
   const presetButtons=[];
-  let stockFetching=false,stockProxy=false;
+  let stockImporting=false;
   let libraryKind="full",libraryCategory="all",selectedWallpaper=null,libraryObserver=null;
   let wallpaperRequest=null;
   const bundledFirmwareRevision=33;
@@ -3505,8 +3517,7 @@ const OMScreen = (() => {
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
     for(const name of Object.keys(sectionViews))$("nav-"+name).disabled=busy;
     for(const button of $("feature-tabs").children)button.disabled=busy;
-    $("stock-save").disabled=busy||stockFetching;
-    $("stock-import").disabled=busy||stockFetching;
+    $("stock-import").disabled=busy||stockImporting;
     $("school-view").disabled=$("school-page").disabled=busy;
     $("transfer-status").classList.toggle("busy",busy);
     if(!client.ready)client.offlineRotation=null;
@@ -3626,14 +3637,14 @@ const OMScreen = (() => {
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
-    const regionRevision=regional && OMGermanMonth.uses(activeRegion())?33:32;
+    const regionRevision=regional && OMGermanMonth.uses(activeRegion())?34:32;
     OMScreen.device({regional,regionRevision,regionSupported:OMRegional.supported(client)&&client.sdkRevision>=regionRevision,ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
     return OMProtocol.planes(pixels, $("rotate").checked && !(tab==="image" && $("image-target").value==="calendar"), chosenModel);
   }
-  function context() { return {title: $("template-title").value, content: $("template-content").value, todos: store.data.todos, weather: store.data.weather, saying}; }
+  function context() { return {title: $("template-title").value, content: $("template-content").value, todos: store.data.todos}; }
   function newCanvas() { const canvas = document.createElement("canvas"); canvas.width = 400; canvas.height = 300; return canvas; }
   function alignGermanPreview(){
     const panel=$("preview"),box=$("preview-scroll"),dpr=window.devicePixelRatio||1;
@@ -4110,7 +4121,7 @@ const OMScreen = (() => {
   async function applyScreen(p){
     if(model()!==client.config?.model)throw Error("预览屏型与已连接设备不一致，请重新连接后核对。");
     OMScreen.persist();p=OMScreen.capture();
-    if(p.content==="stock")throw Error(OMI18n.t("请使用桌面工具推送股票行情。"));
+    if(p.content==="stock" && !store.data.stocks?.quotes.length)throw Error(OMI18n.t("请先导入行情。"));
     await preview();let applied=OMScreen.signature(screenData(),p);
     if(!frame || loading || OMScreen.dirty())throw Error("请先保存表格并等待预览完成");
     if(p.update==="snapshot")await client.publish(frame,progress);
@@ -4282,7 +4293,7 @@ const OMScreen = (() => {
     $(id).addEventListener("input", preview);
   $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
   function refreshLists() {
-    if(store.data.stocks){$("stock-text").value=store.data.stocks.symbols.join(",");$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"上次获取 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
+    if(store.data.stocks){$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"已保存 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
     options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
     options("template-list", store.data.templates.map(t => [t.id, t.name]));
@@ -4352,11 +4363,6 @@ const OMScreen = (() => {
     const spec = await OMArchive.unpack(await file.arrayBuffer()); spec.id = uid(); change(data => data.templates.push(spec)); loadDraft(spec);
   }, OMI18n.t("网页模板已导入，原有模板保留。")));
   function daysInput(value) { const days = value.split(/[,，\s]+/).filter(Boolean).map(Number); if (days.length !== 7 || days.some(d => !Number.isInteger(d))) throw Error(OMI18n.t("请提供周一到周日的七个整数槽位")); return [days[6], ...days.slice(0, 6)]; }
-  bind("saying-fetch", async () => {
-    const hosted=document.documentElement.dataset.hosting==="github-pages";
-    const response = await fetch(hosted?"https://uapis.cn/api/v1/saying":"/saying", {headers:hosted?{}:{"X-OM6626-Request":"1"},credentials:"omit",referrerPolicy:"no-referrer",signal: AbortSignal.timeout(18000)}); if (!response.ok) throw Error(OMI18n.t("一言获取失败"));
-    const value = await response.json(); saying = String(value.text || "").slice(0, 500); $("saying-text").textContent = saying; await preview();
-  }, OMI18n.t("一言已更新。"));
   async function readGallery() {
     gallery = await client.gallery(external());renderGallery();
   }
@@ -4440,8 +4446,7 @@ const OMScreen = (() => {
     schedulerRunning = true; update();
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings);
-      if (job.kind === "weather") throw Error("天气任务已停用；股票更新请在股票日历设置。");
-      else if (job.kind === "template") {
+      if (job.kind === "template") {
         const spec = store.data.templates.find(t => t.id === job.templateId); if (!spec) throw Error(OMI18n.t("任务模板已删除"));
         await OMRender.template(canvas, spec, {...context(), title: job.title, content: job.text});
       } else OMRender.todos(canvas, [{title: job.title, description: job.text, done: false, due: job.at}], job.title, settings, true);
@@ -4453,7 +4458,7 @@ const OMScreen = (() => {
       await client.publish(image, progress);
       change(data => { const i = data.jobs.findIndex(j => j.id === job.id); if (i >= 0) data.jobs[i] = {...(manual ? data.jobs[i] : F.nextJob(job)), status: OMI18n.t("已发送，实物待确认")}; });
     } catch (error) {
-      change(data => { const current = data.jobs.find(j => j.id === job.id); if (current) { current.enabled = false; current.status = job.kind === "weather" ? error.message : OMI18n.t("失败或结果不确定，请检查后手动重试"); } }); throw error;
+      change(data => { const current = data.jobs.find(j => j.id === job.id); if (current) { current.enabled = false; current.status = OMI18n.t("失败或结果不确定，请检查后手动重试"); } }); throw error;
     } finally { schedulerRunning = false; update(); }
   }
   async function tick() {
@@ -4523,57 +4528,18 @@ const OMScreen = (() => {
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) $("preview").addEventListener(event, () => { drag = null; });
   $("compatibility").textContent = supported ? OMI18n.t("浏览器支持蓝牙，连接由你点击发起。") : OMI18n.t("此浏览器不支持网页蓝牙，仍可选图和预览。连接设备请使用支持 Web Bluetooth 的浏览器。");
-  async function refreshStocks(){
-    if(stockFetching)return;
-    const symbols=F.stockSymbols($("stock-text").value),key=symbols.join(",");stockFetching=true;$("stock-save").disabled=true;$("stock-state").textContent="正在获取行情…";
-    try{
-      const local=["127.0.0.1","localhost"].includes(location.hostname);
-      const proxyUrl="/api/stock/quote?symbols="+encodeURIComponent(key);
-      let quote=await F.stockTransport(local?[(stockProxy?"http://127.0.0.1:8290":"")+proxyUrl]:F.stockUrls(symbols),()=>{
-        $("stock-state").textContent="主行情通道暂不可用，正在尝试腾讯备用通道…";
-        return true;
-      });
-      if(local&&!stockProxy&&location.port==="8289"&&quote.response.status===404){
-        quote=await F.stockTransport(["http://127.0.0.1:8290"+proxyUrl]);
-        if(quote.response.ok)stockProxy=true;
-      }
-      const {response,bytes}=quote;
-      if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
-      const next=F.stockTencent(F.stockText(bytes),symbols);
-      if(F.stockSymbols($("stock-text").value).join(",")!==key)throw Error("代码已修改，本次结果未保存，请重新获取。");
-      change(data=>{data.stocks=next;});
-    }catch(error){
-      const message=error.name==="TypeError"&&/fetch/i.test(error.message)?(["127.0.0.1","localhost"].includes(location.hostname)?"无法连接本地行情接口，请确认本地控制端正在运行":"主、备用行情通道均无法连接，请检查网络或拦截设置，也可使用配套本地控制端"):error.name==="TimeoutError"?"行情服务响应超时，请稍后重新获取":error.message;
-      $("stock-state").textContent="获取或同步失败："+message+"。上次行情保留，时间见预览。";throw Error(message);
-    }
-    finally{stockFetching=false;update();}
-  }
-  bind("stock-save",refreshStocks,"");
-  bind("stock-local-download",async()=>{
-    const symbols=F.stockSymbols($("stock-text").value);
-    const files=[$("stock-local-download").dataset.template,$("i18n-script").src,$("features-script").src];
-    const [template,...scripts]=await Promise.all(files.map(async url=>{
-      const response=await fetch(url,{signal:AbortSignal.timeout(15000),redirect:"error"});
-      if(!response.ok)throw Error("无法生成本地股票页，请刷新控制台后重试。");
-      return response.text();
-    }));
-    const code=scripts.join("\n");
-    if(/<\/script/i.test(code)||!template.includes("<!-- STOCK_LIBRARIES -->")||!template.includes("STOCK_DEFAULT_CODES"))throw Error("本地股票页模板无效");
-    const html=template.replace("STOCK_DEFAULT_CODES",symbols.join(",")).replace("<!-- STOCK_LIBRARIES -->",()=>`<script>${code}</script>`);
-    download("elink42-stock.html",new Blob([html],{type:"text/html;charset=utf-8"}));
-  },"本地股票页已生成，双击下载的 HTML 文件打开。");
   $("stock-import").addEventListener("change",event=>action(async()=>{
     const file=event.target.files[0];event.target.value="";
     if(!file)return;
-    if(stockFetching||uiBusy||client.busy)throw Error("已有操作正在进行，请完成后再导入行情。");
-    stockFetching=true;update();
+    if(stockImporting||uiBusy||client.busy)throw Error("已有操作正在进行，请完成后再导入行情。");
+    stockImporting=true;update();
     try{
       if(file.size>100000)throw Error("行情文件最大 100 KB");
       const data=JSON.parse(await file.text());
-      if(data?.format!=="elink42-stock-v1"||typeof data.codes!=="string")throw Error("请选择本地股票页导出的行情文件。");
+      if(data?.format!=="elink42-stock-v1"||typeof data.codes!=="string")throw Error("请选择已保存的行情 JSON 文件。");
       const next=F.stockTencent(data.text,F.stockSymbols(data.codes));
       change(workspace=>{workspace.stocks=next;});
-    }finally{stockFetching=false;update();}
+    }finally{stockImporting=false;update();}
   },""));
   setupShell();regionOptions();showRegionYear(OMRegional.localDate(activeRegion()).getFullYear());applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   OMI18n.onChange=()=>{

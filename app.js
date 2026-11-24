@@ -3,11 +3,11 @@
   const $ = id => document.getElementById(id), F = OMFeatures, C = OMCalendar;
   const sdkOnly=document.documentElement.dataset?.firmwareFamily==="sdk";
   let tab = "calendar", frame = null, bitmap = null, loading = false, previewToken = 0, imageToken = 0, uiBusy = false;
-  let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, saying = "", elementImage = "", transientWorkspace = false;
+  let gallery = null, scheduler = null, schedulerRunning = false, wakeLock = null, elementImage = "", transientWorkspace = false;
   let otaPackage = null,firmwareRequest=null;
   let sdkPackage=null, pendingIdentityReceipt=null;
   const presetButtons=[];
-  let stockFetching=false,stockProxy=false;
+  let stockImporting=false;
   let libraryKind="full",libraryCategory="all",selectedWallpaper=null,libraryObserver=null;
   let wallpaperRequest=null;
   const bundledFirmwareRevision=33;
@@ -110,8 +110,7 @@
     const busy = client.busy || uiBusy || schedulerRunning, ready = client.ready && !busy;
     for(const name of Object.keys(sectionViews))$("nav-"+name).disabled=busy;
     for(const button of $("feature-tabs").children)button.disabled=busy;
-    $("stock-save").disabled=busy||stockFetching;
-    $("stock-import").disabled=busy||stockFetching;
+    $("stock-import").disabled=busy||stockImporting;
     $("school-view").disabled=$("school-page").disabled=busy;
     $("transfer-status").classList.toggle("busy",busy);
     if(!client.ready)client.offlineRotation=null;
@@ -231,14 +230,14 @@
     if([18,20,23,27,29,31].includes(revision)) for(const id of ["native-calendar","calendar-style","set-time","background-clear","holiday-write",
       "photo-calendar-start","native-clock","publish","store-frame","slot-display","slot-delete",
       "slot-background","slot-remark-save","rotation-save","scheduler-start","quick-change","auto-apply"] ) $(id).disabled=true;
-    const regionRevision=regional && OMGermanMonth.uses(activeRegion())?33:32;
+    const regionRevision=regional && OMGermanMonth.uses(activeRegion())?34:32;
     OMScreen.device({regional,regionRevision,regionSupported:OMRegional.supported(client)&&client.sdkRevision>=regionRevision,ready:client.ready,revision:client.sdkRevision,busy,frame:!!frame&&!loading&&(tab!=="stock"||!!store.data.stocks?.quotes.length),school:OMSchool.supported(client),reminder:OMReminder.supported(client),runtime:client.runtime});
   }
   function frameFrom(canvas, settings = store.data.settings, chosenModel = model()) {
     const pixels = OMFeatures.process(canvas.getContext("2d").getImageData(0, 0, 400, 300).data, chosenModel, settings);
     return OMProtocol.planes(pixels, $("rotate").checked && !(tab==="image" && $("image-target").value==="calendar"), chosenModel);
   }
-  function context() { return {title: $("template-title").value, content: $("template-content").value, todos: store.data.todos, weather: store.data.weather, saying}; }
+  function context() { return {title: $("template-title").value, content: $("template-content").value, todos: store.data.todos}; }
   function newCanvas() { const canvas = document.createElement("canvas"); canvas.width = 400; canvas.height = 300; return canvas; }
   function alignGermanPreview(){
     const panel=$("preview"),box=$("preview-scroll"),dpr=window.devicePixelRatio||1;
@@ -715,7 +714,7 @@
   async function applyScreen(p){
     if(model()!==client.config?.model)throw Error("预览屏型与已连接设备不一致，请重新连接后核对。");
     OMScreen.persist();p=OMScreen.capture();
-    if(p.content==="stock")throw Error(OMI18n.t("请使用桌面工具推送股票行情。"));
+    if(p.content==="stock" && !store.data.stocks?.quotes.length)throw Error(OMI18n.t("请先导入行情。"));
     await preview();let applied=OMScreen.signature(screenData(),p);
     if(!frame || loading || OMScreen.dirty())throw Error("请先保存表格并等待预览完成");
     if(p.update==="snapshot")await client.publish(frame,progress);
@@ -887,7 +886,7 @@
     $(id).addEventListener("input", preview);
   $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
   function refreshLists() {
-    if(store.data.stocks){$("stock-text").value=store.data.stocks.symbols.join(",");$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"上次获取 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
+    if(store.data.stocks){$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"已保存 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
     options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
     options("template-list", store.data.templates.map(t => [t.id, t.name]));
@@ -957,11 +956,6 @@
     const spec = await OMArchive.unpack(await file.arrayBuffer()); spec.id = uid(); change(data => data.templates.push(spec)); loadDraft(spec);
   }, OMI18n.t("网页模板已导入，原有模板保留。")));
   function daysInput(value) { const days = value.split(/[,，\s]+/).filter(Boolean).map(Number); if (days.length !== 7 || days.some(d => !Number.isInteger(d))) throw Error(OMI18n.t("请提供周一到周日的七个整数槽位")); return [days[6], ...days.slice(0, 6)]; }
-  bind("saying-fetch", async () => {
-    const hosted=document.documentElement.dataset.hosting==="github-pages";
-    const response = await fetch(hosted?"https://uapis.cn/api/v1/saying":"/saying", {headers:hosted?{}:{"X-OM6626-Request":"1"},credentials:"omit",referrerPolicy:"no-referrer",signal: AbortSignal.timeout(18000)}); if (!response.ok) throw Error(OMI18n.t("一言获取失败"));
-    const value = await response.json(); saying = String(value.text || "").slice(0, 500); $("saying-text").textContent = saying; await preview();
-  }, OMI18n.t("一言已更新。"));
   async function readGallery() {
     gallery = await client.gallery(external());renderGallery();
   }
@@ -1045,8 +1039,7 @@
     schedulerRunning = true; update();
     try {
       const canvas = newCanvas(), settings = F.clone(store.data.settings);
-      if (job.kind === "weather") throw Error("天气任务已停用；股票更新请在股票日历设置。");
-      else if (job.kind === "template") {
+      if (job.kind === "template") {
         const spec = store.data.templates.find(t => t.id === job.templateId); if (!spec) throw Error(OMI18n.t("任务模板已删除"));
         await OMRender.template(canvas, spec, {...context(), title: job.title, content: job.text});
       } else OMRender.todos(canvas, [{title: job.title, description: job.text, done: false, due: job.at}], job.title, settings, true);
@@ -1058,7 +1051,7 @@
       await client.publish(image, progress);
       change(data => { const i = data.jobs.findIndex(j => j.id === job.id); if (i >= 0) data.jobs[i] = {...(manual ? data.jobs[i] : F.nextJob(job)), status: OMI18n.t("已发送，实物待确认")}; });
     } catch (error) {
-      change(data => { const current = data.jobs.find(j => j.id === job.id); if (current) { current.enabled = false; current.status = job.kind === "weather" ? error.message : OMI18n.t("失败或结果不确定，请检查后手动重试"); } }); throw error;
+      change(data => { const current = data.jobs.find(j => j.id === job.id); if (current) { current.enabled = false; current.status = OMI18n.t("失败或结果不确定，请检查后手动重试"); } }); throw error;
     } finally { schedulerRunning = false; update(); }
   }
   async function tick() {
@@ -1128,57 +1121,18 @@
   });
   for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) $("preview").addEventListener(event, () => { drag = null; });
   $("compatibility").textContent = supported ? OMI18n.t("浏览器支持蓝牙，连接由你点击发起。") : OMI18n.t("此浏览器不支持网页蓝牙，仍可选图和预览。连接设备请使用支持 Web Bluetooth 的浏览器。");
-  async function refreshStocks(){
-    if(stockFetching)return;
-    const symbols=F.stockSymbols($("stock-text").value),key=symbols.join(",");stockFetching=true;$("stock-save").disabled=true;$("stock-state").textContent="正在获取行情…";
-    try{
-      const local=["127.0.0.1","localhost"].includes(location.hostname);
-      const proxyUrl="/api/stock/quote?symbols="+encodeURIComponent(key);
-      let quote=await F.stockTransport(local?[(stockProxy?"http://127.0.0.1:8290":"")+proxyUrl]:F.stockUrls(symbols),()=>{
-        $("stock-state").textContent="主行情通道暂不可用，正在尝试腾讯备用通道…";
-        return true;
-      });
-      if(local&&!stockProxy&&location.port==="8289"&&quote.response.status===404){
-        quote=await F.stockTransport(["http://127.0.0.1:8290"+proxyUrl]);
-        if(quote.response.ok)stockProxy=true;
-      }
-      const {response,bytes}=quote;
-      if(!response.ok)throw Error(local&&response.status===404?"当前是静态预览服务，无法获取行情；请启动配套本地控制端":local&&response.status===502?"本地控制端暂时无法取得行情，请稍后重试":"行情服务返回 HTTP "+response.status);
-      const next=F.stockTencent(F.stockText(bytes),symbols);
-      if(F.stockSymbols($("stock-text").value).join(",")!==key)throw Error("代码已修改，本次结果未保存，请重新获取。");
-      change(data=>{data.stocks=next;});
-    }catch(error){
-      const message=error.name==="TypeError"&&/fetch/i.test(error.message)?(["127.0.0.1","localhost"].includes(location.hostname)?"无法连接本地行情接口，请确认本地控制端正在运行":"主、备用行情通道均无法连接，请检查网络或拦截设置，也可使用配套本地控制端"):error.name==="TimeoutError"?"行情服务响应超时，请稍后重新获取":error.message;
-      $("stock-state").textContent="获取或同步失败："+message+"。上次行情保留，时间见预览。";throw Error(message);
-    }
-    finally{stockFetching=false;update();}
-  }
-  bind("stock-save",refreshStocks,"");
-  bind("stock-local-download",async()=>{
-    const symbols=F.stockSymbols($("stock-text").value);
-    const files=[$("stock-local-download").dataset.template,$("i18n-script").src,$("features-script").src];
-    const [template,...scripts]=await Promise.all(files.map(async url=>{
-      const response=await fetch(url,{signal:AbortSignal.timeout(15000),redirect:"error"});
-      if(!response.ok)throw Error("无法生成本地股票页，请刷新控制台后重试。");
-      return response.text();
-    }));
-    const code=scripts.join("\n");
-    if(/<\/script/i.test(code)||!template.includes("<!-- STOCK_LIBRARIES -->")||!template.includes("STOCK_DEFAULT_CODES"))throw Error("本地股票页模板无效");
-    const html=template.replace("STOCK_DEFAULT_CODES",symbols.join(",")).replace("<!-- STOCK_LIBRARIES -->",()=>`<script>${code}</script>`);
-    download("elink42-stock.html",new Blob([html],{type:"text/html;charset=utf-8"}));
-  },"本地股票页已生成，双击下载的 HTML 文件打开。");
   $("stock-import").addEventListener("change",event=>action(async()=>{
     const file=event.target.files[0];event.target.value="";
     if(!file)return;
-    if(stockFetching||uiBusy||client.busy)throw Error("已有操作正在进行，请完成后再导入行情。");
-    stockFetching=true;update();
+    if(stockImporting||uiBusy||client.busy)throw Error("已有操作正在进行，请完成后再导入行情。");
+    stockImporting=true;update();
     try{
       if(file.size>100000)throw Error("行情文件最大 100 KB");
       const data=JSON.parse(await file.text());
-      if(data?.format!=="elink42-stock-v1"||typeof data.codes!=="string")throw Error("请选择本地股票页导出的行情文件。");
+      if(data?.format!=="elink42-stock-v1"||typeof data.codes!=="string")throw Error("请选择已保存的行情 JSON 文件。");
       const next=F.stockTencent(data.text,F.stockSymbols(data.codes));
       change(workspace=>{workspace.stocks=next;});
-    }finally{stockFetching=false;update();}
+    }finally{stockImporting=false;update();}
   },""));
   setupShell();regionOptions();showRegionYear(OMRegional.localDate(activeRegion()).getFullYear());applySettings(); refreshLists(); loadDraft(store.data.templates[0] || F.defaultTemplates()[0]);
   OMI18n.onChange=()=>{
