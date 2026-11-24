@@ -1,0 +1,51 @@
+name: Retire verified historical wired release assets
+on:
+  push:
+    branches: [maintenance/retire-wired-20261125]
+    paths: [.github/workflows/retire-wired-20261125.yml]
+permissions:
+  contents: write
+jobs:
+  remove-archived-assets:
+    if: github.repository == 'JasonYDG/elink42-control'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Retire only privately archived wired assets with matching IDs and digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import json, subprocess
+          from collections import defaultdict
+          repo = 'JasonYDG/elink42-control'
+          verified = [{"tag":"sdk-v24","name":"elink42-sdk-v24-fourcolor-jd79668-wired.zip","size":266248,"id":764497885,"digest":"sha256:0ef6c121caa2b07673fed2c9da14449b212c7222ee221124d3d19b26d1a949ea"},{"tag":"sdk-v24","name":"elink42-sdk-v24-tricolor-ssd1619-wired.zip","size":266242,"id":764498027,"digest":"sha256:69276443f364a4af4629795ffc115644f1a1a10130bd06cc0c391fbc3e96d137"},{"tag":"sdk-v9","name":"elink42-sdk-v9-fourcolor-jd79668.hex","size":571440,"id":738016397,"digest":"sha256:479ab9019e5bd03e3cae917b12948de155b84e5478fd68e25944e2d5f5f40396"},{"tag":"sdk-v9","name":"elink42-sdk-v9-tricolor-ssd1619.hex","size":571440,"id":738016492,"digest":"sha256:7e6fcc9d485dffd812945f590eaa56d38a2ed97a345da4156925b7e6ace1f521"},{"tag":"sdk-v9","name":"elink42-sdk-v9.zip","size":67571108,"id":738016086,"digest":"sha256:58ca9dfe55927e70186969e5f9240ff1ab12f457fca003bf735ff5e98d53ed39"},{"tag":"sdk-v12","name":"elink42-sdk-v12-fourcolor-jd79668.hex","size":584850,"id":738253929,"digest":"sha256:857501a677250ccc92a467cc18aca1991d0d6fb8a9f4e53195259dfddd004e8b"},{"tag":"sdk-v12","name":"elink42-sdk-v12-tricolor-ssd1619.hex","size":584850,"id":738254007,"digest":"sha256:71f1f6a01da11ac4b893701b15b84f9d98d149ef81c4fd2adeacc51c736a808b"},{"tag":"sdk-v12","name":"elink42-sdk-v12-web-0.7.7.zip","size":67656605,"id":738253126,"digest":"sha256:18deea7d3871ee6a215b6dee03967aadf35dc0c57dad7a8d8e25992f99b248ff"},{"tag":"sdk-v12","name":"elink42-sdk-v12-web-0.7.8.zip","size":67656547,"id":738309165,"digest":"sha256:10bba23c09f2b37ad706c530e0ad68348e0970a5376125091e87ba5a530d882f"},{"tag":"sdk-v12","name":"elink42-sdk-v12.zip","size":67682258,"id":738612556,"digest":"sha256:0fd049d14b04a4eadbfa0985898cd82aa68c58bfd960a7b42c62840a26e12dcd"},{"tag":"sdk-v10","name":"elink42-sdk-v10-fourcolor-jd79668.hex","size":584130,"id":738092235,"digest":"sha256:49a0bfb44b47942c8bd80c7b10c17a3aa4b7834f87c18399b88e6477331deb20"},{"tag":"sdk-v10","name":"elink42-sdk-v10-tricolor-ssd1619.hex","size":584130,"id":738092268,"digest":"sha256:d1c06bdadfd71e35190a2395be9f4f143f4aa676749d20f23d69b0aded39cd56"},{"tag":"sdk-v10","name":"elink42-sdk-v10.zip","size":67621812,"id":738091964,"digest":"sha256:cf9225d0af505344f874ba6e989f7ac6726c23a376c381d71985f68aad25bf18"},{"tag":"sdk-v8","name":"elink42-sdk-v8-fourcolor-jd79668.hex","size":552090,"id":736736086,"digest":"sha256:82c95da456d4c659df9253731e9ed243bb7f614cba230a99eabd4c6784a61169"},{"tag":"sdk-v8","name":"elink42-sdk-v8-tricolor-ssd1619.hex","size":552090,"id":736736163,"digest":"sha256:2982b3097c0f92f0c72478d69ad438b9412da2fccba4983e80cc06ec391cbc19"},{"tag":"sdk-v8","name":"elink42-sdk-v8.zip","size":67549129,"id":736735065,"digest":"sha256:95e347a1286059be1763ad308fe0beb33f3ef073d0b52a2415de2445b9f95cd4"},{"tag":"sdk-v7","name":"elink42-sdk-v7-fourcolor-jd79668.hex","size":549300,"id":736621310,"digest":"sha256:bd060dfe92b880fb44d08011ee02c2b22671f5815b2b840966764432ef9de77c"},{"tag":"sdk-v7","name":"elink42-sdk-v7-tricolor-ssd1619.hex","size":549300,"id":736621394,"digest":"sha256:3bbb4225c23edb3e97d38a3fd45f44290595602c4f6d58f5ace637d0a98a915b"},{"tag":"sdk-v7","name":"elink42-sdk-v7.zip","size":67517196,"id":736620080,"digest":"sha256:ae1e021610babe7e01d1141e51f479fcdece72d6b5bf06d71d3305ed07ef2bf1"}]
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repo + path], text=True))
+          groups = defaultdict(list)
+          for asset in verified:
+              groups[asset['tag']].append(asset)
+          survivors = {}
+          pending = []
+          for tag, selected in groups.items():
+              release = api('/releases/tags/' + tag)
+              current = {a['id']: a for a in release['assets']}
+              selected_ids = {a['id'] for a in selected}
+              survivors[tag] = {i: a['digest'] for i, a in current.items() if i not in selected_ids}
+              for a in selected:
+                  entry = current.get(a['id'])
+                  if entry is None:
+                      continue
+                  if any(entry[k] != a[k] for k in ('name', 'size', 'digest')):
+                      raise RuntimeError('Public asset identity changed: ' + a['name'])
+                  if not a['name'].endswith(('.hex', '.zip')) or a['name'].endswith('.e42ota'):
+                      raise RuntimeError('Unexpected file type')
+                  pending.append(a)
+          for asset in pending:
+              subprocess.run(['gh','api','--method','DELETE','repos/' + repo + '/releases/assets/' + str(asset['id'])], check=True)
+              print('Removed verified wired asset:', asset['tag'], asset['name'], flush=True)
+          for tag, keep in survivors.items():
+              after = {a['id']: a['digest'] for a in api('/releases/tags/' + tag)['assets']}
+              if after != keep:
+                  raise RuntimeError('Release asset verification failed: ' + tag)
+          print('Verified preserved OTA and checksum files on', len(survivors), 'releases.')
