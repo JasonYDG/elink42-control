@@ -126,8 +126,8 @@ const OMSdkOTA=(()=>{
     if(!info?.mac || info.mac==="01:BF:66:26:A1:00")
       throw failure("尚未读到更新后的蓝牙地址，请重新连接屏幕。");
     const name=device.name;
-    if(/^ELINK42-[34]C[0-9A-F]{4}$/i.test(name) &&
-       name.toUpperCase()!=="ELINK42-"+(receipt.model===5?"4C":"3C")+info.mac.replaceAll(":","").slice(-4))
+    const formattedName = receipt.revision >= 35 ? /^ELINK42-[0-9A-F]{6}$/i : /^ELINK42-[34]C[0-9A-F]{4}$/i;
+    if(formattedName.test(name) && name.toUpperCase()!==OMProtocol.sdkDeviceName(receipt.revision, receipt.model, info.mac))
       throw failure("设备广播名与读回的地址不符，请重新选择屏幕。");
     return verifyBoot(client,receipt,device,progress);
   }

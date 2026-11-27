@@ -356,6 +356,24 @@ test('SDK 12 reads the restored address and verifies the selected screen without
  assert.equal((await SdkOTA.confirmRestoredAddress(client,original)).runningCrc,original.crc);
  assert.equal(reads,2);
 });
+test('SDK 36 confirms the six MAC digits after an address migration on both panels',async()=>{
+  for(const model of [2,5]){
+    const mac="D1:A2:B3:C4:97:2B", device={name:"ELINK42-CC972B",gatt:{connected:true}}, client=new Client();
+    const receipt={identityChange:true,model,revision:36,crc:123};
+    Object.assign(client,{device,ready:true,board:{id:1,name:P.SDK_MARKER},sdkCapabilities:9,sdkRevision:36,config:{model}});
+    client.readDeviceInfo=async()=>({mac});
+    client.operation=async fn=>fn();
+    client.initialize=async()=>{};
+    client.request=async bytes=>{
+      assert.equal(bytes[0],0x60);
+      const reply=new Uint8Array(28);reply.set([0x70,bytes[1],1,0,0,model]);
+      const view=new DataView(reply.buffer);view.setUint32(8,36,true);view.setUint32(24,123,true);return reply;
+    };
+    await assert.rejects(SdkOTA.confirmRestoredAddress(client,receipt),/广播名/);
+    device.name="ELINK42-C4972B";
+    assert.equal((await SdkOTA.confirmRestoredAddress(client,receipt)).runningCrc,123);
+  }
+});
 test('missing consent and already-current v32 never send DFU control/data',async()=>{
  const a=peripheral(5,14);await assert.rejects(a.client.ota(await parsed,{}),/确认目标/);assert.equal(a.commands.length,0);
  const b=peripheral(5,32);await assert.rejects(b.client.ota(await parsed,consent),e=>e.code==='OTA_PRECHECK');assert.equal(b.commands.length,0);assert.equal(b.device.gatt.connected,true);

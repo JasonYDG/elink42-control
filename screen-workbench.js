@@ -97,12 +97,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.33";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.34";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.33";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.34";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -138,7 +138,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.33";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.34";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
