@@ -39,7 +39,7 @@
       const hex = mac.replaceAll(":", "").toUpperCase();
       const panel = client.config?.model;
       if (client.sdkRevision >= 11 && (panel === 2 || panel === 5))
-        return "ELINK42-" + (panel === 5 ? "4C" : "3C") + hex.slice(-4);
+        return OMProtocol.sdkDeviceName(client.sdkRevision, panel, mac);
       return client.device.name || "ELINK42-" + hex.slice(-6);
     }
     return client.device.name || "";

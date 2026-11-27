@@ -99,6 +99,11 @@ const OMProtocol = (() => {
   const ONMICRO_DFU_SERVICE = "000001bf-5f00-0000-0000-4f4d2d4f5441";
   const sdkBoard = board => board?.id === 1 && board.name === SDK_MARKER;
   const independentBoard = board => board?.id === 1 && [MARKER, "BOARD_ZKOTA", OTA_MARKER, SDK_MARKER].includes(board.name);
+  function sdkDeviceName(revision, model, mac) {
+    const hex = mac.replaceAll(":", "").toUpperCase();
+    const suffix = revision >= 35 ? hex.slice(-6) : (model === 5 ? "4C" : "3C") + hex.slice(-4);
+    return "ELINK42-" + suffix;
+  }
   const WIDTH = 400, HEIGHT = 300, PLANE_BYTES = 15000;
   const FOUR_COLORS = [[0, 0, 0], [255, 255, 255], [255, 210, 0], [184, 25, 40]];
   const text = bytes => new TextDecoder().decode(bytes).replace(/\0.*$/s, "");
@@ -281,7 +286,7 @@ const OMProtocol = (() => {
     if (style >= 9) return 22;
     return style === 5 ? 8 : 7;
   }
-  return {calendarStyle, calendarStyleRevision, SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
+  return {calendarStyle, calendarStyleRevision, SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, sdkDeviceName, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
     planes, rgba, integer, crc16, remarkBytes, remarkText, storage, storageLayout, metadata, imageBytes, rotation, holidays};
 })();
 
@@ -1763,8 +1768,8 @@ const OMSdkOTA=(()=>{
     if(!info?.mac || info.mac==="01:BF:66:26:A1:00")
       throw failure("尚未读到更新后的蓝牙地址，请重新连接屏幕。");
     const name=device.name;
-    if(/^ELINK42-[34]C[0-9A-F]{4}$/i.test(name) &&
-       name.toUpperCase()!=="ELINK42-"+(receipt.model===5?"4C":"3C")+info.mac.replaceAll(":","").slice(-4))
+    const formattedName = receipt.revision >= 35 ? /^ELINK42-[0-9A-F]{6}$/i : /^ELINK42-[34]C[0-9A-F]{4}$/i;
+    if(formattedName.test(name) && name.toUpperCase()!==OMProtocol.sdkDeviceName(receipt.revision, receipt.model, info.mac))
       throw failure("设备广播名与读回的地址不符，请重新选择屏幕。");
     return verifyBoot(client,receipt,device,progress);
   }
@@ -3310,12 +3315,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.33";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.34";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.33";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.34";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -3351,7 +3356,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.33";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.34";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -3446,7 +3451,7 @@ const OMScreen = (() => {
       const hex = mac.replaceAll(":", "").toUpperCase();
       const panel = client.config?.model;
       if (client.sdkRevision >= 11 && (panel === 2 || panel === 5))
-        return "ELINK42-" + (panel === 5 ? "4C" : "3C") + hex.slice(-4);
+        return OMProtocol.sdkDeviceName(client.sdkRevision, panel, mac);
       return client.device.name || "ELINK42-" + hex.slice(-6);
     }
     return client.device.name || "";

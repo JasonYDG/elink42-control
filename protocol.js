@@ -9,6 +9,11 @@ const OMProtocol = (() => {
   const ONMICRO_DFU_SERVICE = "000001bf-5f00-0000-0000-4f4d2d4f5441";
   const sdkBoard = board => board?.id === 1 && board.name === SDK_MARKER;
   const independentBoard = board => board?.id === 1 && [MARKER, "BOARD_ZKOTA", OTA_MARKER, SDK_MARKER].includes(board.name);
+  function sdkDeviceName(revision, model, mac) {
+    const hex = mac.replaceAll(":", "").toUpperCase();
+    const suffix = revision >= 35 ? hex.slice(-6) : (model === 5 ? "4C" : "3C") + hex.slice(-4);
+    return "ELINK42-" + suffix;
+  }
   const WIDTH = 400, HEIGHT = 300, PLANE_BYTES = 15000;
   const FOUR_COLORS = [[0, 0, 0], [255, 255, 255], [255, 210, 0], [184, 25, 40]];
   const text = bytes => new TextDecoder().decode(bytes).replace(/\0.*$/s, "");
@@ -191,6 +196,6 @@ const OMProtocol = (() => {
     if (style >= 9) return 22;
     return style === 5 ? 8 : 7;
   }
-  return {calendarStyle, calendarStyleRevision, SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
+  return {calendarStyle, calendarStyleRevision, SERVICE, CONTROL, MARKER, OTA_MARKER, SDK_MARKER, ONMICRO_DFU_SERVICE, sdkBoard, sdkDeviceName, independentBoard, WIDTH, HEIGHT, PLANE_BYTES, FOUR_COLORS, text, board, config, time, led,
     planes, rgba, integer, crc16, remarkBytes, remarkText, storage, storageLayout, metadata, imageBytes, rotation, holidays};
 })();
