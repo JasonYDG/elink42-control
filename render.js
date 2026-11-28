@@ -186,7 +186,7 @@ const OMRender = (() => {
     ctx.font=`10px ${FONT}`;ctx.fillText(fit(ctx,options.deviceName||"设备未连接",285),12,287);ctx.textAlign="right";ctx.fillText(options.millivolts?`${(options.millivolts/1000).toFixed(2)} V`:"电量未读取",388,287);ctx.textAlign="left";
     return ctx;
   }
-  async function reminderCalendar(canvas,items,options={}){return OMReminder.render(canvas,{...options,todos:items});}
+  async function reminderCalendar(canvas,options){return OMReminder.render(canvas,options);}
   async function stockCalendar(canvas,stocks,options={}){
     await Promise.all([OMCalendarFont.load(10),OMCalendarFont.load(12)]);
     const ctx=start(canvas),font=OMCalendarFont,date=options.date||new Date(),session=OMFeatures.stockSession(date),quotes=stocks?.quotes||[];

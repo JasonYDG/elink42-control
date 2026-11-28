@@ -2124,7 +2124,7 @@ const OMRender = (() => {
     ctx.font=`10px ${FONT}`;ctx.fillText(fit(ctx,options.deviceName||"设备未连接",285),12,287);ctx.textAlign="right";ctx.fillText(options.millivolts?`${(options.millivolts/1000).toFixed(2)} V`:"电量未读取",388,287);ctx.textAlign="left";
     return ctx;
   }
-  async function reminderCalendar(canvas,items,options={}){return OMReminder.render(canvas,{...options,todos:items});}
+  async function reminderCalendar(canvas,options){return OMReminder.render(canvas,options);}
   async function stockCalendar(canvas,stocks,options={}){
     await Promise.all([OMCalendarFont.load(10),OMCalendarFont.load(12)]);
     const ctx=start(canvas),font=OMCalendarFont,date=options.date||new Date(),session=OMFeatures.stockSession(date),quotes=stocks?.quotes||[];
@@ -2823,8 +2823,8 @@ const OMReminder = (() => {
   const fixed="日程提醒项待办月日周一二三四五六还有天今天逾期待安排尚未设置日期其他提醒没有其他待办暂无今天，轻松一点设备未连接电量未读取…";
   const baselines=[6,7,5,-1]; // BDF baseline relative to each firmware text anchor.
   let cache;
-  const supported=client=>client.sdkRevision>=18 && !!(client.sdkCapabilities&256);
-  function title(value,max=100){
+  const supported=client=>client.sdkRevision>=38 && !!(client.sdkCapabilities&256);
+  function title(value,max=10){
     if(typeof value!=="string" || !value.trim() || value.length>max || /[\u0000-\u001f\u007f]/.test(value))throw Error("提醒标题为空、过长或包含控制字符");
     if(/\p{Extended_Pictographic}/u.test(value))throw Error("离线提醒暂不支持表情符号，请使用文字标题");
     return value.trim();
@@ -2846,30 +2846,27 @@ const OMReminder = (() => {
     deadline(due,calendarDay(Math.floor(+date/1000),zone),zone);
   }
   function entries(options){
-    if(!Array.isArray(options.todos))throw Error("提醒数据需要待办列表");
     const date=options.date||new Date(),now=Math.floor(+date/1000);
     if(!Number.isFinite(now))throw Error("提醒预览时间无效");
-    const zone=reminderZone(options.country,date),today=calendarDay(now,zone);
-    const rows=options.todos.filter(item=>{if(!item || typeof item.done!=="boolean")throw Error("提醒完成状态无效");return !item.done;}).map(item=>{
-      const name=title(item.title);
-      if(!item.due)return {id:item.id,title:name,day:none,minute:none,second:0,at:0xFFFFFFFF};
-      const {at,local,day}=deadline(item.due,today,zone);
-      return {id:item.id,title:name,day,minute:local.getUTCHours()*60+local.getUTCMinutes(),second:local.getUTCSeconds(),at};
-    });
-    if(rows.length>64)throw Error("离线提醒最多64条未完成事项；请完成或精简后再同步，设备旧数据未改动。");
+    const zone=reminderZone(options.country,date),today=calendarDay(now,zone),rows=[];
+    if(options.text?.trim()){
+      const name=title(options.text);
+      if(options.due){
+        const civil=Date.parse(options.due+"Z");
+        if(!Number.isFinite(civil))throw Error("截止时间无效");
+        const {at,local,day}=deadline(new Date(civil-zone*3600000).toISOString(),today,zone);
+        rows.push({title:name,day,minute:local.getUTCHours()*60+local.getUTCMinutes(),second:local.getUTCSeconds(),at});
+      }else rows.push({title:name,day:none,minute:none,second:0,at:0xFFFFFFFF});
+    }
     return {rows,zone,heading,now,today};
   }
   function model(options){
-    const {now,today,...data}=entries(options);
-    const order=data.rows.map((_,i)=>i).sort((a,b)=>data.rows[a].at-data.rows[b].at);
-    const reached=order.filter(i=>data.rows[i].day===today && data.rows[i].at<=now).at(-1);
-    if(reached!==undefined){order.splice(order.indexOf(reached),1);order.unshift(reached);}
-    const focus=order[0],item=data.rows[focus],kind=!item?0:item.day===none?1:item.day===today?3:item.day<today?4:2;
+    const data=entries(options),{now,today}=data,item=data.rows[0];
+    const kind=!item?0:item.day===none?1:item.day===today?(item.at<=now?5:3):item.day<today?4:2;
     let content=2166136261;const mix=b=>{content=Math.imul(content^b,16777619)>>>0;};
     for(const row of data.rows){for(const n of [row.day,row.minute,row.second]){mix(n&255);mix(n>>8);}encoder.encode(row.title+"\0").forEach(mix);}
     encoder.encode(data.heading+"\0").forEach(mix);
-    const future=data.rows.filter(row=>row.at!==0xFFFFFFFF && row.at>now).map(row=>row.at);
-    return {...data,count:data.rows.length,kind,days:item&&item.day!==none?Math.abs(item.day-today):0,focus:focus??0xFFFFFFFF,next:future.length?Math.min(...future):0,content,order};
+    return {...data,count:data.rows.length,kind,days:item&&item.day!==none?Math.abs(item.day-today):0,focus:item?0:0xFFFFFFFF,next:item&&item.day!==none&&item.at>now?item.at:0,content};
   }
   function lineBreak(value,measure,width=152){
     if(measure(value)<=width)return 0;
@@ -2894,7 +2891,7 @@ const OMReminder = (() => {
     const [hanSmall,hanMain,latinSmall,latinMain]=await Promise.all([
       "wenquanyi_9pt.bdf.gz","wenquanyi_12pt.bdf.gz","ter-u14b.bdf.gz","ter-u24b.bdf.gz"
     ].map(OMCalendarFont.nativeStrike));
-    const sets=[new Set(fixed+device),new Set(" 日程提醒还有天今天逾期待安排月日周一二三四五六0123456789…"),new Set("0123456789月暂无待办…"),new Set("…")];
+    const sets=[new Set(fixed+device),new Set(" 日程提醒还有天今天逾期已到期待安排月日周一二三四五六0123456789…"),new Set("0123456789月暂无待办…"),new Set("…")];
     for(let code=32;code<127;code++)sets[0].add(String.fromCodePoint(code));
     for(const row of data.rows)for(const char of row.title)for(const face of [0,2,3])sets[face].add(char);
     const glyphs=[],advances=sets.map(()=>new Map());
@@ -2936,7 +2933,7 @@ const OMReminder = (() => {
     canvas.width=400;canvas.height=300;canvas.getContext("2d").putImageData(new ImageData(OMProtocol.rgba(planes),400,300),0,0);return result.proof;
   }
   async function apply(client,options,external,progress=()=>{}){
-    if(!supported(client))throw Error("新版字体的离线提醒需要 SDK 18；当前固件可发送当前画面。");
+    if(!supported(client))throw Error("红底大字离线提醒需要 SDK 38。");
     const bytes=await pack(options);await frame(options,bytes);
     return OMSchool.apply(client,options,external,progress,{bytes,supported,format:4});
   }
@@ -3277,9 +3274,9 @@ const OMScreen = (() => {
     if(!value || typeof value!=="object" || Array.isArray(value))throw Error("屏幕方案格式无效");
     const p={version:1,content:value.content??"calendar",update:value.update??"auto",country:value.country??0,
       language:value.language??"zh",style:OMProtocol.calendarStyle(value.style??0),date:value.date??"",page:value.page??0,source:value.source??0,
-      slot:value.slot??255,fit:value.fit??"contain",frequency:value.frequency??0,reminderTitle:value.reminderTitle??"日程提醒",reminderId:value.reminderId??"",background:value.background??null,confirmed:value.confirmed??null};
-    if(typeof p.reminderTitle!=="string" || !p.reminderTitle.trim() || p.reminderTitle.length>24)throw Error("提醒日历标题无效");
-    if(typeof p.reminderId!=="string" || p.reminderId.length>80)throw Error("提醒选择无效");
+      slot:value.slot??255,fit:value.fit??"contain",frequency:value.frequency??0,reminderText:value.reminderText??"",reminderDue:value.reminderDue??"",background:value.background??null,confirmed:value.confirmed??null};
+    if(typeof p.reminderText!=="string" || p.reminderText.length>10)throw Error("提醒内容最多 10 个字");
+    if(typeof p.reminderDue!=="string" || (p.reminderDue && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(p.reminderDue)))throw Error("截止时间无效");
     if(value.version!==undefined && value.version!==1 || !types.includes(p.content) || !["auto","snapshot"].includes(p.update) ||
        ![0,2,3].includes(p.country) || !["zh","en"].includes(p.language) || ![0,1,2,4,5,10,11,12,14].includes(p.style) ||
        !integer(p.page,0,15) || ![0,1].includes(p.source) || !(p.slot===255 || integer(p.slot,0,44)) ||
@@ -3314,7 +3311,7 @@ const OMScreen = (() => {
     const old=current();return normalise({...old,content:$("screen-content").value,update:$("screen-update").value,
       country:Number($("calendar-layout").value),language:$("calendar-language").value,style:Number($("sdk-month-style").value)||0,
       date:$("screen-update").value==="auto"?"":$("calendar-date").value,page:Number($("school-page").value)-1,
-      source:Number($("gallery-source").value),slot:$("screen-content").value==="photo"?($("photo-slot").value===""?255:Number($("photo-slot").value)):old.slot,fit:$("photo-fit").value,frequency:Number($("auto-frequency").value)||0,reminderTitle:$("todo-title").value,reminderId:$("todo-mode").value==="single"?$("todo-selected").value:""});
+      source:Number($("gallery-source").value),slot:$("screen-content").value==="photo"?($("photo-slot").value===""?255:Number($("photo-slot").value)):old.slot,fit:$("photo-fit").value,frequency:Number($("auto-frequency").value)||0,reminderText:$("reminder-text").value,reminderDue:$("reminder-due").value});
   }
   function signature(data,p){
     const clean={...p,confirmed:null};let h=2166136261;
@@ -3329,8 +3326,8 @@ const OMScreen = (() => {
     $("screen-content").value=p.content;$("screen-update").value=p.update;$("calendar-layout").value=String(p.country);$("calendar-language").value=p.language;
     $("photo-country").value=String(p.country);$("photo-language").value=p.language;
     $("sdk-month-style").value=String(p.style);$("calendar-date").value=previewDate;$("school-view").value=p.content==="day"?"day":"week";$("school-page").value=String(p.page+1);
-    $("todo-title").value=p.reminderTitle;
-    $("todo-mode").value=p.reminderId?"single":"list";$("todo-selected").value=p.reminderId;
+    $("reminder-text").value=p.reminderText;
+    $("reminder-due").value=p.reminderDue;
     $("gallery-source").value=$("photo-source").value=String(p.source);$("photo-fit").value=p.fit;$("auto-frequency").value=String(p.frequency);
     $("calendar-date").disabled=p.update==="auto" && p.content!=="calendar";
     if(p.slot!==255 && !Array.from($("photo-slot").options||[]).some(o=>o.value===String(p.slot))){const o=document.createElement("option");o.value=String(p.slot);o.textContent="位置 "+p.slot;$("photo-slot").append(o);}
@@ -3345,14 +3342,14 @@ const OMScreen = (() => {
     $("screen-apply").textContent=OMI18n.t(state.runtime?.bootId && saved?.bootId && state.runtime.bootId!==saved.bootId?"恢复方案到屏幕":p.update==="snapshot"?"发送当前画面":"应用并自动更新");
     const requiredSDK=OMProtocol.calendarStyleRevision(p.style);
     const scene=["calendar","photo-calendar","course","todo","stock"].includes(context),ready=state.ready&&!state.busy;
-    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && state.regional && !state.regionSupported) || (p.content==="calendar" && !state.regional && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
+    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || (p.content==="reminder" && !p.reminderText.trim()) || tableDirty || (p.content==="calendar" && p.update==="auto" && state.regional && !state.regionSupported) || (p.content==="calendar" && !state.regional && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
-    for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
+    for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language","reminder-text","reminder-due"])$(id).disabled=!!state.busy;
     $("screen-update-field").hidden=p.content==="calendar" || p.content==="stock";
     $("screen-update").disabled=!!state.busy || $("screen-update-field").hidden;
     $("calendar-date").disabled=!!state.busy || (p.update==="auto" && p.content!=="calendar");
-    $("screen-update-note").textContent=p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
+    $("screen-update-note").textContent=p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"红底大字离线提醒需要 SDK 38。升级后可按设备时钟自动更新。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     if(p.content==="calendar" && state.regional && p.update==="auto" && state.ready && !state.regionSupported)
       $("screen-update-note").textContent="此地区方案离线换日需要 SDK "+state.regionRevision+"，可在设置中升级。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
@@ -3367,12 +3364,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.34";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.36";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.34";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.36";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -3408,7 +3405,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.34";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.36";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -3435,8 +3432,7 @@ const OMScreen = (() => {
   }
   function init(callbacks){
     hooks=callbacks;
-    $("todo-title").addEventListener("input",persist);
-    for(const id of ["todo-mode","todo-selected"])$(id).addEventListener("change",()=>{persist();hooks.preview();});
+    for(const id of ["reminder-text","reminder-due"])$(id).addEventListener("input",()=>{persist();hooks.preview();});
     $("screen-content").addEventListener("change",()=>{if(["calendar","photo"].includes($("screen-content").value))$("screen-update").value="auto";const p=capture();fields(p);persist();hooks.show(p.content);if(["day","week"].includes(p.content))openCourse();});
     $("school-view").addEventListener("change",()=>{$("screen-content").value=$("school-view").value;persist();hooks.preview();});
     for(const id of ["screen-update","school-page","calendar-date","sdk-month-style","calendar-layout","calendar-language","photo-country","photo-language","photo-fit","photo-slot","gallery-source","auto-frequency"])
@@ -3476,7 +3472,7 @@ const OMScreen = (() => {
   let wallpaperRequest=null;
   const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",photo:"photo-calendar",reminder:"todo",course:"course",stock:"stock",gallery:"image",settings:"settings"};
-  let draft = F.defaultTemplates()[0], editingTodo = null, store;
+  let draft = F.defaultTemplates()[0], reminderTimer = 0, store;
   const lines = [], drawable = new Set(["image", "todo", "template", "course", "stock"]);
   const supported = window.isSecureContext && !!navigator.bluetooth;
   function result(text, error = false) { $("result").textContent = OMI18n.t(text) + (transientWorkspace ? OMI18n.t("（临时工作区，请导出保存）") : ""); $("result").classList.toggle("error", error); }
@@ -3723,6 +3719,7 @@ const OMScreen = (() => {
   }
   watchScale();
   async function preview() {
+    clearTimeout(reminderTimer);
     const token = ++previewToken; frame = null; update();
     const calendarTab=tab==="calendar" || tab==="photo-calendar";
     if(tab==="calendar")renderPresets();
@@ -3765,8 +3762,16 @@ const OMScreen = (() => {
         if (!bitmap || loading) { OMRender.image(canvas, null); $("preview").getContext("2d").drawImage(canvas, 0, 0);$("preview-label").textContent=OMI18n.t("尚未选择图片"); return; }
         OMRender.image(canvas, bitmap, {target:$("image-target").value,fit: $("image-fit").value, angle: Number($("image-angle").value), zoom: Number($("image-zoom").value), x: Number($("image-x").value), y: Number($("image-y").value)});
       } else if (tab === "todo") {
-        const p=OMScreen.capture(),items=p.reminderId?store.data.todos.filter(t=>t.id===p.reminderId):store.data.todos;
-        await OMRender.reminderCalendar(canvas,items,{date:p.date?new Date(p.date+"T12:00:00"):new Date(),country:p.country,title:p.reminderTitle,model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
+        const p=OMScreen.capture(), date=p.date?new Date(p.date+"T12:00:00"):new Date();
+        const zone=C.zone(C.byId(p.country)?.code||"CN",date);
+        $("reminder-due").max=new Date(+date+(zone*3600+9999*86400)*1000).toISOString().slice(0,10)+"T23:59";
+        const proof=await OMRender.reminderCalendar(canvas,{text:p.reminderText,due:p.reminderDue,date,country:p.country,model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
+        if(token!==previewToken)return;
+        if(!p.date){
+          const midnight=(proof.today+1)*86400-proof.zone*3600;
+          const next=Math.min(midnight,proof.next||midnight);
+          reminderTimer=setTimeout(preview,Math.max(20,next*1000-Date.now()));
+        }
       } else if (tab === "template") await OMRender.template(canvas, F.clone(draft), context());
       else if (tab === "course") {
         const p=OMScreen.capture(),date=p.update==="snapshot"&&p.date?CourseTable.dateValue(p.date):C.localDate((C.byId(Number($("calendar-layout").value)) || C.regions[0]).code);
@@ -3782,7 +3787,7 @@ const OMScreen = (() => {
       $("preview-label").textContent = {image: OMI18n.t("图片"), todo: "提醒日历",stock:"股票日历", template: OMI18n.t("模板"), course: OMI18n.t("周日程 / 课表")}[tab] +
         ` · 400 × 300 · ${chosenModel === 5 ? OMI18n.t("四色（黑白黄红）") : OMI18n.t("三色（黑白红）")}`+pageLabel;
       $("preview").setAttribute("aria-label", $("preview-label").textContent + OMI18n.t("预览"));
-    } catch (error) { if (token === previewToken) { frame = null; result(error.message, true); } }
+    } catch (error) { if (token === previewToken) { frame = null; if(tab==="todo"){$("preview").getContext("2d").clearRect(0,0,400,300);$("preview-label").textContent=error.message;} result(error.message, true); } }
     finally { if (token === previewToken) update(); }
   }
   function snapshot() { if (!frame || loading || (!drawable.has(tab) && !["calendar","photo-calendar"].includes(tab))) throw Error(OMI18n.t("当前没有可发送的画面")); return frame.packed ? {packed: frame.packed.slice()} : {black: frame.black.slice(), red: frame.red.slice()}; }
@@ -4184,8 +4189,7 @@ const OMScreen = (() => {
     if(p.update==="snapshot")await client.publish(frame,progress);
     else if(p.content==="calendar" && usesRegionRecord())await OMRegionRecord.apply(client,activeRegion(),progress);
     else if(p.content==="reminder"){
-      const todos=p.reminderId?screenData().todos.filter(t=>t.id===p.reminderId):screenData().todos;
-      const saved=await OMReminder.apply(client,{todos:F.clone(todos),date:new Date(),country:p.country,title:p.reminderTitle,model:client.config.model,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
+      const saved=await OMReminder.apply(client,{text:p.reminderText,due:p.reminderDue,date:new Date(),country:p.country,model:client.config.model,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
       log("离线提醒已应用并核对完整内容：位置 "+saved.slot);client.offlineRotation=null;
     }else if(["day","week"].includes(p.content)){
       const saved=await OMSchool.apply(client,{...F.clone(screenData()),date:new Date(),country:p.country,view:p.content,page:p.page,panel:client.config.model===5?"four":"three",deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
@@ -4346,43 +4350,20 @@ const OMScreen = (() => {
     const slot=current.active?current.slot:client.config.photoSlot;
     await OMRotation.configure(client,{frequency:Number($("auto-frequency").value),slot,source,photo});
   }));
-  for (const id of ["image-target", "image-fit", "image-angle", "image-zoom", "image-x", "image-y", "rotate", "preview-model", "todo-title", "todo-mode", "todo-selected", "template-title", "template-content"])
+  for (const id of ["image-target", "image-fit", "image-angle", "image-zoom", "image-x", "image-y", "rotate", "preview-model", "template-title", "template-content"])
     $(id).addEventListener("input", preview);
   $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
   function refreshLists() {
     if(store.data.stocks){$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"已保存 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
-    options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
     options("template-list", store.data.templates.map(t => [t.id, t.name]));
     options("job-template", store.data.templates.map(t => [t.id, t.name]));
-    $("todo-list").replaceChildren();
-    for (const item of store.data.todos) row("todo-list", `${item.done ? "✓" : "□"} ${item.title}${item.due ? " · " + new Date(item.due).toLocaleString(OMI18n.locale) : ""}`, [
-      button(item.done ? OMI18n.t("未完成") : OMI18n.t("完成"), () => change(data => { data.todos.find(t => t.id === item.id).done = !item.done; })),
-      button(OMI18n.t("编辑"), () => { editingTodo = item.id; $("todo-item-title").value = item.title; $("todo-description").value = item.description;
-        $("todo-due").value = item.due ? localDate(new Date(item.due)) : ""; $("todo-add").textContent = OMI18n.t("保存修改"); }),
-      button(OMI18n.t("删除"), () => change(data => { data.todos = data.todos.filter(t => t.id !== item.id); }))]);
     $("job-list").replaceChildren();
     for (const job of store.data.jobs) row("job-list", `${job.title} · ${new Date(job.at).toLocaleString(OMI18n.locale)} · ${job.status || (job.enabled ? OMI18n.t("等待") : OMI18n.t("已停用"))}`, [
       button(job.enabled ? OMI18n.t("停用") : OMI18n.t("启用"), () => change(data => { const j = data.jobs.find(j => j.id === job.id); j.enabled = !j.enabled; j.status = ""; })),
       button(OMI18n.t("立即发送"), () => runJob(job, true)), button(OMI18n.t("删除"), () => change(data => { data.jobs = data.jobs.filter(j => j.id !== job.id); }))]);
     update();
   }
-  function localDate(date) { return new Date(+date - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
-  bind("todo-add", () => {
-    const title = $("todo-item-title").value.trim(), due = $("todo-due").value;
-    if (!title) throw Error(OMI18n.t("请输入待办标题"));
-    const item = {id: editingTodo || uid(), title, description: $("todo-description").value, due: due ? new Date(due).toISOString() : "", done: false};
-    OMReminder.validateDeadline(item.due, Number($("calendar-layout").value));
-    change(data => { const old = data.todos.findIndex(t => t.id === item.id); if (old < 0) data.todos.push(item); else data.todos[old] = {...item, done: data.todos[old].done}; });
-    editingTodo = null; $("todo-add").textContent = OMI18n.t("添加待办"); $("todo-item-title").value = $("todo-description").value = $("todo-due").value = "";
-  }, OMI18n.t("待办已保存到本地工作区。"));
-  bind("todo-export", () => jsonDownload("om6626-todos.json", {version: 1, todos: store.data.todos}), OMI18n.t("已导出待办。"));
-  $("todo-import").addEventListener("change", e => action(async () => {
-    const value = await jsonFile(e.target.files[0]); if (value.version !== 1 || !Array.isArray(value.todos)) throw Error(OMI18n.t("待办文件格式不符"));
-    const country=Number($("calendar-layout").value),now=new Date();
-    for(const item of value.todos)if(!item?.done)OMReminder.validateDeadline(item?.due,country,now);
-    const merged = F.clone(store.data); merged.todos = [...merged.todos, ...value.todos.map(t => ({...t, id: uid()}))]; store.commit(merged); refreshLists(); await preview();
-  }, OMI18n.t("待办已导入，并保留原有待办。")));
   function elementOptions() { options("element-list", draft.elements.map((e, i) => [i, `${i + 1}. ${e.type} ${e.text?.slice(0, 14) || ""}`])); }
   function loadDraft(spec) { draft = F.clone(spec); $("template-name").value = draft.name; elementOptions(); loadElement(); preview(); }
   function loadElement() {

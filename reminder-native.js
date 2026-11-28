@@ -4,8 +4,8 @@ const OMReminder = (() => {
   const fixed="日程提醒项待办月日周一二三四五六还有天今天逾期待安排尚未设置日期其他提醒没有其他待办暂无今天，轻松一点设备未连接电量未读取…";
   const baselines=[6,7,5,-1]; // BDF baseline relative to each firmware text anchor.
   let cache;
-  const supported=client=>client.sdkRevision>=18 && !!(client.sdkCapabilities&256);
-  function title(value,max=100){
+  const supported=client=>client.sdkRevision>=38 && !!(client.sdkCapabilities&256);
+  function title(value,max=10){
     if(typeof value!=="string" || !value.trim() || value.length>max || /[\u0000-\u001f\u007f]/.test(value))throw Error("提醒标题为空、过长或包含控制字符");
     if(/\p{Extended_Pictographic}/u.test(value))throw Error("离线提醒暂不支持表情符号，请使用文字标题");
     return value.trim();
@@ -27,30 +27,27 @@ const OMReminder = (() => {
     deadline(due,calendarDay(Math.floor(+date/1000),zone),zone);
   }
   function entries(options){
-    if(!Array.isArray(options.todos))throw Error("提醒数据需要待办列表");
     const date=options.date||new Date(),now=Math.floor(+date/1000);
     if(!Number.isFinite(now))throw Error("提醒预览时间无效");
-    const zone=reminderZone(options.country,date),today=calendarDay(now,zone);
-    const rows=options.todos.filter(item=>{if(!item || typeof item.done!=="boolean")throw Error("提醒完成状态无效");return !item.done;}).map(item=>{
-      const name=title(item.title);
-      if(!item.due)return {id:item.id,title:name,day:none,minute:none,second:0,at:0xFFFFFFFF};
-      const {at,local,day}=deadline(item.due,today,zone);
-      return {id:item.id,title:name,day,minute:local.getUTCHours()*60+local.getUTCMinutes(),second:local.getUTCSeconds(),at};
-    });
-    if(rows.length>64)throw Error("离线提醒最多64条未完成事项；请完成或精简后再同步，设备旧数据未改动。");
+    const zone=reminderZone(options.country,date),today=calendarDay(now,zone),rows=[];
+    if(options.text?.trim()){
+      const name=title(options.text);
+      if(options.due){
+        const civil=Date.parse(options.due+"Z");
+        if(!Number.isFinite(civil))throw Error("截止时间无效");
+        const {at,local,day}=deadline(new Date(civil-zone*3600000).toISOString(),today,zone);
+        rows.push({title:name,day,minute:local.getUTCHours()*60+local.getUTCMinutes(),second:local.getUTCSeconds(),at});
+      }else rows.push({title:name,day:none,minute:none,second:0,at:0xFFFFFFFF});
+    }
     return {rows,zone,heading,now,today};
   }
   function model(options){
-    const {now,today,...data}=entries(options);
-    const order=data.rows.map((_,i)=>i).sort((a,b)=>data.rows[a].at-data.rows[b].at);
-    const reached=order.filter(i=>data.rows[i].day===today && data.rows[i].at<=now).at(-1);
-    if(reached!==undefined){order.splice(order.indexOf(reached),1);order.unshift(reached);}
-    const focus=order[0],item=data.rows[focus],kind=!item?0:item.day===none?1:item.day===today?3:item.day<today?4:2;
+    const data=entries(options),{now,today}=data,item=data.rows[0];
+    const kind=!item?0:item.day===none?1:item.day===today?(item.at<=now?5:3):item.day<today?4:2;
     let content=2166136261;const mix=b=>{content=Math.imul(content^b,16777619)>>>0;};
     for(const row of data.rows){for(const n of [row.day,row.minute,row.second]){mix(n&255);mix(n>>8);}encoder.encode(row.title+"\0").forEach(mix);}
     encoder.encode(data.heading+"\0").forEach(mix);
-    const future=data.rows.filter(row=>row.at!==0xFFFFFFFF && row.at>now).map(row=>row.at);
-    return {...data,count:data.rows.length,kind,days:item&&item.day!==none?Math.abs(item.day-today):0,focus:focus??0xFFFFFFFF,next:future.length?Math.min(...future):0,content,order};
+    return {...data,count:data.rows.length,kind,days:item&&item.day!==none?Math.abs(item.day-today):0,focus:item?0:0xFFFFFFFF,next:item&&item.day!==none&&item.at>now?item.at:0,content};
   }
   function lineBreak(value,measure,width=152){
     if(measure(value)<=width)return 0;
@@ -75,7 +72,7 @@ const OMReminder = (() => {
     const [hanSmall,hanMain,latinSmall,latinMain]=await Promise.all([
       "wenquanyi_9pt.bdf.gz","wenquanyi_12pt.bdf.gz","ter-u14b.bdf.gz","ter-u24b.bdf.gz"
     ].map(OMCalendarFont.nativeStrike));
-    const sets=[new Set(fixed+device),new Set(" 日程提醒还有天今天逾期待安排月日周一二三四五六0123456789…"),new Set("0123456789月暂无待办…"),new Set("…")];
+    const sets=[new Set(fixed+device),new Set(" 日程提醒还有天今天逾期已到期待安排月日周一二三四五六0123456789…"),new Set("0123456789月暂无待办…"),new Set("…")];
     for(let code=32;code<127;code++)sets[0].add(String.fromCodePoint(code));
     for(const row of data.rows)for(const char of row.title)for(const face of [0,2,3])sets[face].add(char);
     const glyphs=[],advances=sets.map(()=>new Map());
@@ -117,7 +114,7 @@ const OMReminder = (() => {
     canvas.width=400;canvas.height=300;canvas.getContext("2d").putImageData(new ImageData(OMProtocol.rgba(planes),400,300),0,0);return result.proof;
   }
   async function apply(client,options,external,progress=()=>{}){
-    if(!supported(client))throw Error("新版字体的离线提醒需要 SDK 18；当前固件可发送当前画面。");
+    if(!supported(client))throw Error("红底大字离线提醒需要 SDK 38。");
     const bytes=await pack(options);await frame(options,bytes);
     return OMSchool.apply(client,options,external,progress,{bytes,supported,format:4});
   }
