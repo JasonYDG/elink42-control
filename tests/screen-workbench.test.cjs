@@ -17,8 +17,8 @@ test('old workspace remains importable and a different plan cannot appear alread
  const p=Screen.normalise(),first=Screen.signature(data,p);data.courses[1]='08:00 英语';assert.notEqual(Screen.signature(data,p),first);assert.notEqual(Screen.signature(data,{...p,content:'week'}),first);
 });
 test('reminder titles and render settings survive export and invalidate a prior confirmation',()=>{
- const data=F.defaults(),p=Screen.normalise({content:'reminder',reminderTitle:'放学提醒'});data.screenProfile=p;
- const restored=Screen.parse(JSON.parse(JSON.stringify(data)));assert.equal(restored.screenProfile.reminderTitle,'放学提醒');assert.equal(restored.screenProfile.update,'auto');
- const signature=Screen.signature(data,p);assert.notEqual(Screen.signature(data,{...p,reminderTitle:'周末提醒'}),signature);
- data.settings.fontSize=20;assert.notEqual(Screen.signature(data,p),signature);assert.throws(()=>Screen.normalise({reminderTitle:'x'.repeat(25)}));
+ const data=F.defaults(),p=Screen.normalise({content:'reminder',reminderText:'放学提醒',reminderDue:'2026-12-01T09:30'});data.screenProfile=p;
+ const restored=Screen.parse(JSON.parse(JSON.stringify(data)));assert.equal(restored.screenProfile.reminderText,'放学提醒');assert.equal(restored.screenProfile.update,'auto');assert.equal(restored.screenProfile.reminderDue,'2026-12-01T09:30');
+ const signature=Screen.signature(data,p);assert.notEqual(Screen.signature(data,{...p,reminderText:'周末提醒'}),signature);
+ data.settings.fontSize=20;assert.notEqual(Screen.signature(data,p),signature);assert.throws(()=>Screen.normalise({reminderText:'x'.repeat(11)}));
 });

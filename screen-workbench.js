@@ -7,9 +7,9 @@ const OMScreen = (() => {
     if(!value || typeof value!=="object" || Array.isArray(value))throw Error("屏幕方案格式无效");
     const p={version:1,content:value.content??"calendar",update:value.update??"auto",country:value.country??0,
       language:value.language??"zh",style:OMProtocol.calendarStyle(value.style??0),date:value.date??"",page:value.page??0,source:value.source??0,
-      slot:value.slot??255,fit:value.fit??"contain",frequency:value.frequency??0,reminderTitle:value.reminderTitle??"日程提醒",reminderId:value.reminderId??"",background:value.background??null,confirmed:value.confirmed??null};
-    if(typeof p.reminderTitle!=="string" || !p.reminderTitle.trim() || p.reminderTitle.length>24)throw Error("提醒日历标题无效");
-    if(typeof p.reminderId!=="string" || p.reminderId.length>80)throw Error("提醒选择无效");
+      slot:value.slot??255,fit:value.fit??"contain",frequency:value.frequency??0,reminderText:value.reminderText??"",reminderDue:value.reminderDue??"",background:value.background??null,confirmed:value.confirmed??null};
+    if(typeof p.reminderText!=="string" || p.reminderText.length>10)throw Error("提醒内容最多 10 个字");
+    if(typeof p.reminderDue!=="string" || (p.reminderDue && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(p.reminderDue)))throw Error("截止时间无效");
     if(value.version!==undefined && value.version!==1 || !types.includes(p.content) || !["auto","snapshot"].includes(p.update) ||
        ![0,2,3].includes(p.country) || !["zh","en"].includes(p.language) || ![0,1,2,4,5,10,11,12,14].includes(p.style) ||
        !integer(p.page,0,15) || ![0,1].includes(p.source) || !(p.slot===255 || integer(p.slot,0,44)) ||
@@ -44,7 +44,7 @@ const OMScreen = (() => {
     const old=current();return normalise({...old,content:$("screen-content").value,update:$("screen-update").value,
       country:Number($("calendar-layout").value),language:$("calendar-language").value,style:Number($("sdk-month-style").value)||0,
       date:$("screen-update").value==="auto"?"":$("calendar-date").value,page:Number($("school-page").value)-1,
-      source:Number($("gallery-source").value),slot:$("screen-content").value==="photo"?($("photo-slot").value===""?255:Number($("photo-slot").value)):old.slot,fit:$("photo-fit").value,frequency:Number($("auto-frequency").value)||0,reminderTitle:$("todo-title").value,reminderId:$("todo-mode").value==="single"?$("todo-selected").value:""});
+      source:Number($("gallery-source").value),slot:$("screen-content").value==="photo"?($("photo-slot").value===""?255:Number($("photo-slot").value)):old.slot,fit:$("photo-fit").value,frequency:Number($("auto-frequency").value)||0,reminderText:$("reminder-text").value,reminderDue:$("reminder-due").value});
   }
   function signature(data,p){
     const clean={...p,confirmed:null};let h=2166136261;
@@ -59,8 +59,8 @@ const OMScreen = (() => {
     $("screen-content").value=p.content;$("screen-update").value=p.update;$("calendar-layout").value=String(p.country);$("calendar-language").value=p.language;
     $("photo-country").value=String(p.country);$("photo-language").value=p.language;
     $("sdk-month-style").value=String(p.style);$("calendar-date").value=previewDate;$("school-view").value=p.content==="day"?"day":"week";$("school-page").value=String(p.page+1);
-    $("todo-title").value=p.reminderTitle;
-    $("todo-mode").value=p.reminderId?"single":"list";$("todo-selected").value=p.reminderId;
+    $("reminder-text").value=p.reminderText;
+    $("reminder-due").value=p.reminderDue;
     $("gallery-source").value=$("photo-source").value=String(p.source);$("photo-fit").value=p.fit;$("auto-frequency").value=String(p.frequency);
     $("calendar-date").disabled=p.update==="auto" && p.content!=="calendar";
     if(p.slot!==255 && !Array.from($("photo-slot").options||[]).some(o=>o.value===String(p.slot))){const o=document.createElement("option");o.value=String(p.slot);o.textContent="位置 "+p.slot;$("photo-slot").append(o);}
@@ -75,14 +75,14 @@ const OMScreen = (() => {
     $("screen-apply").textContent=OMI18n.t(state.runtime?.bootId && saved?.bootId && state.runtime.bootId!==saved.bootId?"恢复方案到屏幕":p.update==="snapshot"?"发送当前画面":"应用并自动更新");
     const requiredSDK=OMProtocol.calendarStyleRevision(p.style);
     const scene=["calendar","photo-calendar","course","todo","stock"].includes(context),ready=state.ready&&!state.busy;
-    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || tableDirty || (p.content==="calendar" && p.update==="auto" && state.regional && !state.regionSupported) || (p.content==="calendar" && !state.regional && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
+    $("screen-apply").hidden=!scene;$("screen-apply").disabled=!ready || !state.frame || (p.content==="reminder" && !p.reminderText.trim()) || tableDirty || (p.content==="calendar" && p.update==="auto" && state.regional && !state.regionSupported) || (p.content==="calendar" && !state.regional && p.update==="auto" && p.style>=9 && !(state.revision>=requiredSDK)) || (p.update==="auto" && (["day","week"].includes(p.content) && !state.school || p.content==="reminder" && !state.reminder)) || (p.content==="photo"&&!p.background);
     $("workspace-export").disabled=$("workspace-import").disabled=state.busy||tableDirty;
     $("course-frame").inert=!!state.busy;
-    for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language"])$(id).disabled=!!state.busy;
+    for(const id of ["screen-content","screen-update","calendar-layout","calendar-language","sdk-month-style","school-page","photo-country","photo-language","reminder-text","reminder-due"])$(id).disabled=!!state.busy;
     $("screen-update-field").hidden=p.content==="calendar" || p.content==="stock";
     $("screen-update").disabled=!!state.busy || $("screen-update-field").hidden;
     $("calendar-date").disabled=!!state.busy || (p.update==="auto" && p.content!=="calendar");
-    $("screen-update-note").textContent=p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"新版字体的离线提醒需要 SDK 18；升级后应用方案，即可关闭网页、断开蓝牙。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
+    $("screen-update-note").textContent=p.update==="snapshot"?"将原样发送上方400×300画面，日期不会自行变化。":p.content==="calendar"&&p.style>=9&&state.ready&&!(state.revision>=requiredSDK)?"此款离线日历需要 SDK "+requiredSDK+"，请先升级固件。":p.content==="reminder"&&state.ready&&!state.reminder?"红底大字离线提醒需要 SDK 38。升级后可按设备时钟自动更新。": ["day","week"].includes(p.content)&&state.ready&&!state.school?"当前固件请使用“当前画面”；升级 SDK 16 后可关闭网页自动换日。":"应用后由设备时钟离线更新，可关闭网页、断开蓝牙。需持续供电；重启后重新校时启用。";
     if(p.content==="calendar" && state.regional && p.update==="auto" && state.ready && !state.regionSupported)
       $("screen-update-note").textContent="此地区方案离线换日需要 SDK "+state.regionRevision+"，可在设置中升级。";
     $("screen-device-state").textContent=!state.ready?"设备未连接 · 预览是网页方案":state.runtime?.bootId&&saved?.bootId&&state.runtime.bootId!==saved.bootId?"设备已重新启动 · 网页方案保留，点击恢复":same?"设备已连接 · 最近一次应用已确认":"设备已连接 · 当前网页修改尚未发送";
@@ -97,12 +97,12 @@ const OMScreen = (() => {
       else if(["calendar","photo","reminder"].includes(type)){$("screen-update").value="auto";$("calendar-date").value="";}
       persist();
     }
-    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.34";
+    if(tab==="course"&&!$("course-frame").getAttribute("src"))$("course-frame").src="timetable.html?embedded=1&v=0.8.36";
     status();
   }
   function openCourse(day){
     pendingDay=integer(day,0,6)?day:null;
-    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.34";
+    const frame=$("course-frame");if(!frame.getAttribute("src"))frame.src="timetable.html?embedded=1&v=0.8.36";
     sendSelection();
     frame.scrollIntoView?.({behavior:"smooth",block:"start"});
   }
@@ -138,7 +138,7 @@ const OMScreen = (() => {
       return year;
     }
     const next=parse(input,capture());exportPlan("elink42-screen-plan-before-import.json");hooks.save(next);tableDirty=false;restore();
-    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.34";pendingDay=null;}
+    $("course-frame").removeAttribute("src");if(["day","week"].includes(current().content)){$("course-frame").src="timetable.html?embedded=1&v=0.8.36";pendingDay=null;}
     $("plan-state").textContent="方案已导入到网页；原方案已导出备份。确认预览后再应用到设备。";
   }
   function confirmed(runtime,name,appliedSignature){
@@ -165,8 +165,7 @@ const OMScreen = (() => {
   }
   function init(callbacks){
     hooks=callbacks;
-    $("todo-title").addEventListener("input",persist);
-    for(const id of ["todo-mode","todo-selected"])$(id).addEventListener("change",()=>{persist();hooks.preview();});
+    for(const id of ["reminder-text","reminder-due"])$(id).addEventListener("input",()=>{persist();hooks.preview();});
     $("screen-content").addEventListener("change",()=>{if(["calendar","photo"].includes($("screen-content").value))$("screen-update").value="auto";const p=capture();fields(p);persist();hooks.show(p.content);if(["day","week"].includes(p.content))openCourse();});
     $("school-view").addEventListener("change",()=>{$("screen-content").value=$("school-view").value;persist();hooks.preview();});
     for(const id of ["screen-update","school-page","calendar-date","sdk-month-style","calendar-layout","calendar-language","photo-country","photo-language","photo-fit","photo-slot","gallery-source","auto-frequency"])

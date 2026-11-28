@@ -83,7 +83,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
   class ClockDate extends Date {constructor(...args){super(...(args.length?args:[clockTime]));}static now(){return clockTime;}}
   const sandbox={TextEncoder,TextDecoder,Uint8Array,Uint8ClampedArray,Float32Array,DataView,Blob,DecompressionStream,AbortSignal,console,
     fetch:(url,options)=>(httpRequests.push({url:String(url),options}),fetchCount++,lastFetchURL=String(url),String(url).startsWith('assets/')?Promise.resolve({ok:true,blob:async()=>{const b=fs.readFileSync(path.join(root,url.split("?")[0])),blob=new Blob([b],{type:'image/png'});blob.width=b.readUInt32BE(16);blob.height=b.readUInt32BE(20);return blob;}}):new Promise((resolve,reject)=>{rejectFetch=reject;respond=(value,status=200)=>resolve({ok:status>=200&&status<300,status,json:async()=>value,arrayBuffer:async()=>{if(value instanceof Error)throw value;return value instanceof Uint8Array?Uint8Array.from(value).buffer:new TextEncoder().encode(String(value)).buffer;}});})),
-    Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000)timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
+    Date:ClockDate,atob,btoa,location:{origin:"http://localhost",hostname:initial.hostname||"localhost",port:initial.port||""},setTimeout(callback,ms){const timer=setTimeout(callback,ms===65000?1000:ms===60000&&initial.firmwareFailure==='timeout'?5:ms);if(ms===30000 || callback.name==="preview")timer.unref();if(ms===180000)idleTimers.set(timer,callback);return timer;},clearTimeout(timer){idleTimers.delete(timer);clearTimeout(timer);},setInterval(callback){interval=callback;return 1;},clearInterval(){interval=null;},crypto:{randomUUID:()=>"id-"+(++serial),subtle:require("node:crypto").webcrypto.subtle},URL:class extends URL{static createObjectURL(){return "blob:test"}static revokeObjectURL(){}},
     ImageData:class{constructor(data){this.data=data;}},createImageBitmap:async file=>({width:file.width??400,height:file.height??300,close(){}}),
     localStorage:{getItem:k=>local.get(k)||null,setItem:(k,v)=>local.set(k,v)},window:{isSecureContext:true,alert:text=>alerts.push(text),confirm:text=>{confirmations.push(text);return confirm;},addEventListener(k,f){windowListeners[k]=f;},sessionStorage:{getItem:k=>session.get(k)||null,setItem:(k,v)=>session.set(k,v),removeItem:k=>session.delete(k)}},
     navigator:{bluetooth:{requestDevice:async options=>{requestOptions=options;return device;},getDevices:async()=>[device]}},
@@ -98,7 +98,7 @@ function ui(model=5,ota=false,language="zh",international=true,initial={}){
       setImmediate(()=>{if(scriptRequests===1 && initial.firmwareFailure==='error')script.onerror();else{vm.runInContext(fs.readFileSync(path.join(root,'firmware.js'),'utf8'),context);script.onload();}});
     }}},
     OMSdkPreview:initial.sdkRevision?{async calendar(...args){rendered.push({kind:'sdk-calendar',args});}}:undefined,
-    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});if(k==='stockCalendar')return initial.stockRender?.(...args);}]))};
+    OMRender:Object.fromEntries(["calendar","todos","image","template","course","weather","reminderCalendar","stockCalendar"].map(k=>[k,(...args)=>{rendered.push({kind:k,args});if(k==='reminderCalendar')return {today:Math.floor(clockTime/86400000),zone:0,next:0};if(k==='stockCalendar')return initial.stockRender?.(...args);}]))};
   // Mock only course pixels here; real date helpers run, and verify-school.py checks actual rendering.
   const code=["i18n.js","holidays.js","calendar.js","charset.js","protocol.js","ble.js","features.js","archive.js","ota.js","sdk-ota.js","firmware.js","rotation.js","planner.js","course-table.js","school-native.js","reminder-native.js","regional-calendar.js","german-font.js","german-month.js","region-record.js","screen-workbench.js"].filter(f=>!initial.noBuiltin||f!=='firmware.js').map(f=>fs.readFileSync(path.join(root,f),"utf8")).join("\n")+"\nOMSchool.render=async(...args)=>OMRender.course(...args);"+
     `\nOMI18n.setLanguage('${language}');OMClient.prototype.pause=async()=>{};${initial.corruptBuiltin?"OMFirmware.packages[5].sha256='0'.repeat(64);":''}${initial.otaBootRevision?`OMClient.prototype.ota=async function(){this.firmwareRevision=${initial.otaBootRevision};return {status:"boot-verified"};};`:''}${initial.defaultFails?'OMClient.prototype.internationalCalendar=async()=>{throw Error("refresh unconfirmed");};':''}\n`+fs.readFileSync(path.join(root,"app.js"),"utf8")+";({P:OMProtocol})";
@@ -424,17 +424,17 @@ test("legacy device OTA UI explains wired bootstrap and keeps start disabled",as
 test("English default and Chinese switching update live status without touching content",async()=>{
   const u=ui(5,false,"en");assert.equal(u.get("connection-state").textContent,"Disconnected");
   assert.match(u.get("compatibility").textContent,/Bluetooth is supported/);
-  u.get("todo-item-title").value="不要翻译我的内容";await u.input("ui-language","zh","change");
+  u.get("reminder-text").value="不要翻译我的内容";await u.input("ui-language","zh","change");
   assert.equal(u.get("connection-state").textContent,"未连接");assert.match(u.get("compatibility").textContent,/浏览器支持蓝牙/);
-  assert.equal(u.get("todo-item-title").value,"不要翻译我的内容");assert.equal(u.local.get("elink42-ui-language"),"zh");
+  assert.equal(u.get("reminder-text").value,"不要翻译我的内容");assert.equal(u.local.get("elink42-ui-language"),"zh");
 });
 
 test("Traditional Chinese changes only the interface and keeps v14 calendar bytes in Chinese",async()=>{
   const u=ui(5,false,"en",true,{country:3,flags:2});await u.click("connect");
-  u.get("todo-item-title").value="用户自己的简体标题";
+  u.get("reminder-text").value="用户自己的简体标题";
   await u.input("ui-language","zh-Hant","change");
   assert.equal(u.get("connection-state").textContent,"已連接");assert.match(u.get("compatibility").textContent,/瀏覽器支持藍牙/);
-  assert.equal(u.local.get("elink42-ui-language"),"zh-Hant");assert.equal(u.get("todo-item-title").value,"用户自己的简体标题");
+  assert.equal(u.local.get("elink42-ui-language"),"zh-Hant");assert.equal(u.get("reminder-text").value,"用户自己的简体标题");
   assert.equal(u.get("calendar-language").value,"zh");assert.equal(u.get("calendar-layout").value,"3");
   const before=u.packets.length;await u.click("native-calendar");
   assert.ok(u.packets.slice(before).some(p=>p[0]===0x24&&p.length===5&&p[2]===3&&p[3]===2));
@@ -463,11 +463,11 @@ for(const model of [2,5])test(`UI ${model}: native calendar has no static image 
   if(model===5){u.get("clock-full").checked=true;await u.get("clock-full").listeners.change();assert.equal(u.get("native-clock").disabled,false);}
   await u.click("native-clock");assert.equal(u.packets.filter(p=>p[0]===0x20).at(-1)[6],2);
 });
-for(const model of [2,5])test(`UI ${model}: real todo edit, completion, image and immutable frame transport`,async()=>{
+for(const model of [2,5])test(`UI ${model}: live single reminder, image and immutable frame transport`,async()=>{
   const u=ui(model);await u.click("connect");await u.click("tab-todo");
-  u.get("todo-item-title").value="会议";u.get("todo-description").value="项目复盘";await u.click("todo-add");
-  assert.equal(JSON.parse(u.local.get("om6626-workspace-v1")).todos[0].title,"会议");assert.equal(u.rendered.at(-1).kind,"reminderCalendar");
-  assert.equal(u.get("screen-apply").disabled,true);assert.match(u.get("screen-update-note").textContent,/SDK 18/);
+  await u.input("reminder-text","会议");
+  assert.equal(JSON.parse(u.local.get("om6626-workspace-v1")).screenProfile.reminderText,"会议");assert.equal(u.rendered.at(-1).kind,"reminderCalendar");
+  assert.equal(u.get("screen-apply").disabled,true);assert.match(u.get("screen-update-note").textContent,/SDK 38/);
   await u.input("screen-update","snapshot","change");
   assert.equal(u.get("screen-apply").disabled,false);assert.equal(u.get("publish").disabled,true);
   const operation=u.click("screen-apply");

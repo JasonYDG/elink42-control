@@ -12,7 +12,7 @@
   let wallpaperRequest=null;
   const bundledFirmwareRevision=33;
   const sectionViews={calendar:"calendar",photo:"photo-calendar",reminder:"todo",course:"course",stock:"stock",gallery:"image",settings:"settings"};
-  let draft = F.defaultTemplates()[0], editingTodo = null, store;
+  let draft = F.defaultTemplates()[0], reminderTimer = 0, store;
   const lines = [], drawable = new Set(["image", "todo", "template", "course", "stock"]);
   const supported = window.isSecureContext && !!navigator.bluetooth;
   function result(text, error = false) { $("result").textContent = OMI18n.t(text) + (transientWorkspace ? OMI18n.t("（临时工作区，请导出保存）") : ""); $("result").classList.toggle("error", error); }
@@ -259,6 +259,7 @@
   }
   watchScale();
   async function preview() {
+    clearTimeout(reminderTimer);
     const token = ++previewToken; frame = null; update();
     const calendarTab=tab==="calendar" || tab==="photo-calendar";
     if(tab==="calendar")renderPresets();
@@ -301,8 +302,16 @@
         if (!bitmap || loading) { OMRender.image(canvas, null); $("preview").getContext("2d").drawImage(canvas, 0, 0);$("preview-label").textContent=OMI18n.t("尚未选择图片"); return; }
         OMRender.image(canvas, bitmap, {target:$("image-target").value,fit: $("image-fit").value, angle: Number($("image-angle").value), zoom: Number($("image-zoom").value), x: Number($("image-x").value), y: Number($("image-y").value)});
       } else if (tab === "todo") {
-        const p=OMScreen.capture(),items=p.reminderId?store.data.todos.filter(t=>t.id===p.reminderId):store.data.todos;
-        await OMRender.reminderCalendar(canvas,items,{date:p.date?new Date(p.date+"T12:00:00"):new Date(),country:p.country,title:p.reminderTitle,model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
+        const p=OMScreen.capture(), date=p.date?new Date(p.date+"T12:00:00"):new Date();
+        const zone=C.zone(C.byId(p.country)?.code||"CN",date);
+        $("reminder-due").max=new Date(+date+(zone*3600+9999*86400)*1000).toISOString().slice(0,10)+"T23:59";
+        const proof=await OMRender.reminderCalendar(canvas,{text:p.reminderText,due:p.reminderDue,date,country:p.country,model:chosenModel,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts});
+        if(token!==previewToken)return;
+        if(!p.date){
+          const midnight=(proof.today+1)*86400-proof.zone*3600;
+          const next=Math.min(midnight,proof.next||midnight);
+          reminderTimer=setTimeout(preview,Math.max(20,next*1000-Date.now()));
+        }
       } else if (tab === "template") await OMRender.template(canvas, F.clone(draft), context());
       else if (tab === "course") {
         const p=OMScreen.capture(),date=p.update==="snapshot"&&p.date?CourseTable.dateValue(p.date):C.localDate((C.byId(Number($("calendar-layout").value)) || C.regions[0]).code);
@@ -318,7 +327,7 @@
       $("preview-label").textContent = {image: OMI18n.t("图片"), todo: "提醒日历",stock:"股票日历", template: OMI18n.t("模板"), course: OMI18n.t("周日程 / 课表")}[tab] +
         ` · 400 × 300 · ${chosenModel === 5 ? OMI18n.t("四色（黑白黄红）") : OMI18n.t("三色（黑白红）")}`+pageLabel;
       $("preview").setAttribute("aria-label", $("preview-label").textContent + OMI18n.t("预览"));
-    } catch (error) { if (token === previewToken) { frame = null; result(error.message, true); } }
+    } catch (error) { if (token === previewToken) { frame = null; if(tab==="todo"){$("preview").getContext("2d").clearRect(0,0,400,300);$("preview-label").textContent=error.message;} result(error.message, true); } }
     finally { if (token === previewToken) update(); }
   }
   function snapshot() { if (!frame || loading || (!drawable.has(tab) && !["calendar","photo-calendar"].includes(tab))) throw Error(OMI18n.t("当前没有可发送的画面")); return frame.packed ? {packed: frame.packed.slice()} : {black: frame.black.slice(), red: frame.red.slice()}; }
@@ -720,8 +729,7 @@
     if(p.update==="snapshot")await client.publish(frame,progress);
     else if(p.content==="calendar" && usesRegionRecord())await OMRegionRecord.apply(client,activeRegion(),progress);
     else if(p.content==="reminder"){
-      const todos=p.reminderId?screenData().todos.filter(t=>t.id===p.reminderId):screenData().todos;
-      const saved=await OMReminder.apply(client,{todos:F.clone(todos),date:new Date(),country:p.country,title:p.reminderTitle,model:client.config.model,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
+      const saved=await OMReminder.apply(client,{text:p.reminderText,due:p.reminderDue,date:new Date(),country:p.country,model:client.config.model,deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
       log("离线提醒已应用并核对完整内容：位置 "+saved.slot);client.offlineRotation=null;
     }else if(["day","week"].includes(p.content)){
       const saved=await OMSchool.apply(client,{...F.clone(screenData()),date:new Date(),country:p.country,view:p.content,page:p.page,panel:client.config.model===5?"four":"three",deviceName:connectedName(),millivolts:client.deviceInfo?.millivolts},!!p.source,progress);
@@ -882,43 +890,20 @@
     const slot=current.active?current.slot:client.config.photoSlot;
     await OMRotation.configure(client,{frequency:Number($("auto-frequency").value),slot,source,photo});
   }));
-  for (const id of ["image-target", "image-fit", "image-angle", "image-zoom", "image-x", "image-y", "rotate", "preview-model", "todo-title", "todo-mode", "todo-selected", "template-title", "template-content"])
+  for (const id of ["image-target", "image-fit", "image-angle", "image-zoom", "image-x", "image-y", "rotate", "preview-model", "template-title", "template-content"])
     $(id).addEventListener("input", preview);
   $("image-target").addEventListener("change",()=>action(()=>{store.change(d=>{d.settings.imageTarget=$("image-target").value;});preview();},""));
   function refreshLists() {
     if(store.data.stocks){$("stock-state").textContent=(store.data.stocks.stale?"上游缓存 · ":"已保存 · ")+new Date(store.data.stocks.updated).toLocaleString()+" · 行情时间见预览";}
     options("saved-device", store.data.devices.map(d => [d.id, d.name]));
-    options("todo-selected", store.data.todos.map(t => [t.id, t.title]));
     options("template-list", store.data.templates.map(t => [t.id, t.name]));
     options("job-template", store.data.templates.map(t => [t.id, t.name]));
-    $("todo-list").replaceChildren();
-    for (const item of store.data.todos) row("todo-list", `${item.done ? "✓" : "□"} ${item.title}${item.due ? " · " + new Date(item.due).toLocaleString(OMI18n.locale) : ""}`, [
-      button(item.done ? OMI18n.t("未完成") : OMI18n.t("完成"), () => change(data => { data.todos.find(t => t.id === item.id).done = !item.done; })),
-      button(OMI18n.t("编辑"), () => { editingTodo = item.id; $("todo-item-title").value = item.title; $("todo-description").value = item.description;
-        $("todo-due").value = item.due ? localDate(new Date(item.due)) : ""; $("todo-add").textContent = OMI18n.t("保存修改"); }),
-      button(OMI18n.t("删除"), () => change(data => { data.todos = data.todos.filter(t => t.id !== item.id); }))]);
     $("job-list").replaceChildren();
     for (const job of store.data.jobs) row("job-list", `${job.title} · ${new Date(job.at).toLocaleString(OMI18n.locale)} · ${job.status || (job.enabled ? OMI18n.t("等待") : OMI18n.t("已停用"))}`, [
       button(job.enabled ? OMI18n.t("停用") : OMI18n.t("启用"), () => change(data => { const j = data.jobs.find(j => j.id === job.id); j.enabled = !j.enabled; j.status = ""; })),
       button(OMI18n.t("立即发送"), () => runJob(job, true)), button(OMI18n.t("删除"), () => change(data => { data.jobs = data.jobs.filter(j => j.id !== job.id); }))]);
     update();
   }
-  function localDate(date) { return new Date(+date - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
-  bind("todo-add", () => {
-    const title = $("todo-item-title").value.trim(), due = $("todo-due").value;
-    if (!title) throw Error(OMI18n.t("请输入待办标题"));
-    const item = {id: editingTodo || uid(), title, description: $("todo-description").value, due: due ? new Date(due).toISOString() : "", done: false};
-    OMReminder.validateDeadline(item.due, Number($("calendar-layout").value));
-    change(data => { const old = data.todos.findIndex(t => t.id === item.id); if (old < 0) data.todos.push(item); else data.todos[old] = {...item, done: data.todos[old].done}; });
-    editingTodo = null; $("todo-add").textContent = OMI18n.t("添加待办"); $("todo-item-title").value = $("todo-description").value = $("todo-due").value = "";
-  }, OMI18n.t("待办已保存到本地工作区。"));
-  bind("todo-export", () => jsonDownload("om6626-todos.json", {version: 1, todos: store.data.todos}), OMI18n.t("已导出待办。"));
-  $("todo-import").addEventListener("change", e => action(async () => {
-    const value = await jsonFile(e.target.files[0]); if (value.version !== 1 || !Array.isArray(value.todos)) throw Error(OMI18n.t("待办文件格式不符"));
-    const country=Number($("calendar-layout").value),now=new Date();
-    for(const item of value.todos)if(!item?.done)OMReminder.validateDeadline(item?.due,country,now);
-    const merged = F.clone(store.data); merged.todos = [...merged.todos, ...value.todos.map(t => ({...t, id: uid()}))]; store.commit(merged); refreshLists(); await preview();
-  }, OMI18n.t("待办已导入，并保留原有待办。")));
   function elementOptions() { options("element-list", draft.elements.map((e, i) => [i, `${i + 1}. ${e.type} ${e.text?.slice(0, 14) || ""}`])); }
   function loadDraft(spec) { draft = F.clone(spec); $("template-name").value = draft.name; elementOptions(); loadElement(); preview(); }
   function loadElement() {
