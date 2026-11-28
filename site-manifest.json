@@ -1,6 +1,6 @@
 {
-  "version": "0.8.34",
-  "sdk_revision": 36,
+  "version": "0.8.35",
+  "sdk_revision": 37,
   "repository": "JasonYDG/elink42-control",
   "pages_url": "https://jasonydg.github.io/elink42-control/",
   "content": "web-control-with-bundled-signed-ota",
@@ -18,7 +18,7 @@
     }
   },
   "assets": {
-    "index.html": "8ba9348d3a61250c61d2257687747f97eec6fb9a49122ae55fab76cbbba5d8ca",
+    "index.html": "6e60604166fca2cd5fe09bc702662f0c036581d0463b31e516ed448f387d6a00",
     "style.css": "e38e9697d1e9618e477c4ffaf2ec67c54cbc96776e9a34f0e572144924fc0eff",
     "i18n.js": "2fc24f1c9bf69f3df5244e2530fa4d8c7244e4e6ebec73a3e314fcfcef4a3411",
     "holidays.js": "19fcbf9ccffc67c15987cafaf6e49364fc038d142568e58467f27e3be3a01655",
@@ -26,7 +26,7 @@
     "charset.js": "a4b7af5659696803276cd0ae4ddd169e0d045ac1dec3fbb188eab3531379a6fa",
     "protocol.js": "8d38f7cbba943b12852eae85759fdf6756fad9e85a0234c157e140e0903a47d5",
     "sdk-preview.js": "00ad361999a14307e1f9ebe2039c0e97cc42054f8ee956023c2af36e1b5051b8",
-    "sdk-preview.wasm": "4c7f7f9569bac58752e87da847fb0f4a21621c055c58df6014b987ad674e0f53",
+    "sdk-preview.wasm": "549a83b71342a6e30bb9e59a630d57858896284f740d213881ebcb46da84623c",
     "sdk6-preview.wasm": "61648cc20564fea08b7a86d3e7d0e11bd70650a56d83dbcbf6ed34ea80ba7803",
     "sdk7-preview.wasm": "5d43d3755ca80dc35a3fc946a5ca580f7a44c9488217295c5970a3025f018a9b",
     "sdk8-preview.wasm": "ae9f983ee531b149a7f67215751a8f99fa1a214125df5b0139015d86e9bc5f1b",
@@ -42,14 +42,14 @@
     "render.js": "972ee015a6f5edfbe45a3a617892546da4c36937c110d73e71c181c40dbe496a",
     "wallpapers.js": "ee459e93ed534e97a1e862d64b07652c87035f3acbe5e404ed9a0329f47dd03c",
     "rotation.js": "e0d4aa3009648a36faef8b5199ac362e5005cc4b6deeeb2980d1643a1ccf5def",
-    "app.js": "fec8a09ad5ffb10c07b7edef1ea42ba65ea61f7620c922cf29d7b3a2034a5ca5",
+    "app.js": "5c31b14eb95530559c4804789ca6c8a0c27c39e00771570b7dc5f1654bce08fd",
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "timetable.html": "ee49caad5a18fc7b2a81ee78154006d6594c7603f9dec85abd6f48181a94d8a6",
     "timetable.css": "f30f78336cd5c563115a09f2633131df0aa7491c11ffe2c296ddbe9c6a7e7135",
     "planner.js": "5103de4f25a932bc32e9999e8f9fdcde8bb16698acf735104bb24739c4404d39",
     "course-table.js": "503d7e3cd40624e690e3e29a257aad5b337ade6ea20af47e926a1026b3f4dee4",
     "school-native.js": "71e71d7d102f90c658d381501c7481cf52b59dd288e5e4a8e0caf3ea6364dbc2",
-    "reminder-native.js": "a809af985bacc91ac1d5df19b570063acd4ffcccfb42d5f284f9c356f7314830",
+    "reminder-native.js": "bb2a328c650c8527f7cf562c326e1dc1343eed6057374bc7d3f883a9b866c41c",
     "course-editor.js": "8a55a0447f8ae6059c43ce43261c1947dbd0f6663c87ed2af05cd4d9dd8fff7e",
     "course-import.js": "ce7cd41b7fe359a0a84f65889ca83178d7270b5c172920c99786b31c408dd79d",
     "timetable-template.xlsx": "a52bf7b75980b898a260bee75fc4320e6c8cbc9e61c90d684b74c00746b8b8b3",
@@ -65,7 +65,7 @@
     "firmware/LICENSES.txt": "cea9a9243ec4d5aae35c3d1e5a16998da09d25873920f3f534023810bdd1dbd1",
     "firmware/elink42-sdk-v36-tricolor-ssd1619.e42ota": "358f9b34e4dfd5c81e5a90399ed7fc1edb7bfff8b33db49da1a04ff8f257e606",
     "firmware/elink42-sdk-v36-fourcolor-jd79668.e42ota": "4b141892a70a16454063757a55be0fe211dcc751be678e69225f3ac3fb99c431",
-    "calendar-font.js": "683b8f01635f14d60f9eac93a1874da02c66c64cb9abdbec9d5a5e9c89f4ac07",
+    "calendar-font.js": "2db8e5440ddc64c8843c317f739aacbf53401991829bdeaed76ec634f4101608",
     "fonts/fusion-pixel-10px-monospaced-zh_hans.bdf.gz": "f9a37b40f3dd350a2cad858a5be25d825423a2e013e790d1ecd129227f1f1b2d",
     "fonts/fusion-pixel-12px-monospaced-zh_hans.bdf.gz": "1cc43ef154f2b223d085889d0d2f6ace35b56e11488db7897768d06de6f10ae4",
     "fonts/OFL.txt": "23a24fc6f9d6b6f6cc96430a695e0efe758eed7ce08874ac35978cd086d62fbb",
@@ -355,6 +355,13 @@
     "assets/wallpapers/thumbs/full-63-yellow.webp": "2a43887eadced565b2b32070fac4983269d3db951981b73bc244c3c937ecfe81",
     "assets/wallpapers/thumbs/full-64-yellow.webp": "7bdce64b497204865673c8605bd5497e5e930784eddd877199c92074b45f41bc",
     "assets/wallpapers/thumbs/full-65-yellow.webp": "eb9fba8cbcd29115e7170baeee2987c17c610dd50e9eb7f43f442fe237778af0",
-    "console.js": "72a89c3eb6d379c424b4e729d45262168e9645c4b450373c121b756ec303c965"
+    "console.js": "05cdbd5bd7291d05aad4e3c6671460a39620eb209eb37db16999e5afff18709d",
+    "firmware/elink42-sdk-v37-fourcolor-jd79668.e42ota": "a3d59e988b0fa2c685061c3b8f3f356247b6145c8dbc1d519c78166340a697b5",
+    "firmware/elink42-sdk-v37-tricolor-ssd1619.e42ota": "63f27c4702d973b897f5595e3c22f3fe81640668d5515e4d3e0bbb27888e807a",
+    "fonts/ter-u24b.bdf.gz": "8febb140d3c86a4839e419bf4590337e644e47d34b44acf706d74ed0dc084f5e",
+    "fonts/WenQuanYi-LICENSE.txt": "4ecc2e4a222503c055457ab3b3df9bea63e1a493cb5aa62f6c78c53432090c71",
+    "fonts/wenquanyi_9pt.bdf.gz": "56e8a94a7047b3b4b60a5efbe021713e82b9bbc7530dfcd9fa7a653fef8addfe",
+    "fonts/ter-u14b.bdf.gz": "211bfb4e29971f369c60fa4026456fe9128db57690ffda4b6cb316fce07c8900",
+    "fonts/wenquanyi_12pt.bdf.gz": "b7ee8cb216df940635a49137fcd6bd3eb57df20723ecaf8c4c72f8d9bf880e5c"
   }
 }

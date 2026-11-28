@@ -908,12 +908,15 @@
     const title = $("todo-item-title").value.trim(), due = $("todo-due").value;
     if (!title) throw Error(OMI18n.t("请输入待办标题"));
     const item = {id: editingTodo || uid(), title, description: $("todo-description").value, due: due ? new Date(due).toISOString() : "", done: false};
+    OMReminder.validateDeadline(item.due, Number($("calendar-layout").value));
     change(data => { const old = data.todos.findIndex(t => t.id === item.id); if (old < 0) data.todos.push(item); else data.todos[old] = {...item, done: data.todos[old].done}; });
     editingTodo = null; $("todo-add").textContent = OMI18n.t("添加待办"); $("todo-item-title").value = $("todo-description").value = $("todo-due").value = "";
   }, OMI18n.t("待办已保存到本地工作区。"));
   bind("todo-export", () => jsonDownload("om6626-todos.json", {version: 1, todos: store.data.todos}), OMI18n.t("已导出待办。"));
   $("todo-import").addEventListener("change", e => action(async () => {
     const value = await jsonFile(e.target.files[0]); if (value.version !== 1 || !Array.isArray(value.todos)) throw Error(OMI18n.t("待办文件格式不符"));
+    const country=Number($("calendar-layout").value),now=new Date();
+    for(const item of value.todos)if(!item?.done)OMReminder.validateDeadline(item?.due,country,now);
     const merged = F.clone(store.data); merged.todos = [...merged.todos, ...value.todos.map(t => ({...t, id: uid()}))]; store.commit(merged); refreshLists(); await preview();
   }, OMI18n.t("待办已导入，并保留原有待办。")));
   function elementOptions() { options("element-list", draft.elements.map((e, i) => [i, `${i + 1}. ${e.type} ${e.text?.slice(0, 14) || ""}`])); }

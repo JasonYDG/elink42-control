@@ -2,14 +2,18 @@
 const OMCalendarFont = (() => {
   const script = new URL(document.currentScript.src), pending = new Map(), faces = new Map();
   const browserGlyphs = new Map();
+  const nativeStrikes = new Map();
   let browserContext;
+  async function readBdf(name) {
+    const asset = new URL(`fonts/${name}`, script); asset.search = script.search;
+    const response = await fetch(asset);
+    if (!response.ok) throw Error("无法加载日历字库");
+    return new Response(response.body.pipeThrough(new DecompressionStream("gzip"))).text();
+  }
   async function load(size = 12) {
     if (![10, 12].includes(size)) throw Error("日历字库仅支持10和12像素");
     if (!pending.has(size)) pending.set(size, (async () => {
-      const asset = new URL(`fonts/fusion-pixel-${size}px-monospaced-zh_hans.bdf.gz`, script); asset.search = script.search;
-      const response = await fetch(asset);
-      if (!response.ok) throw Error("无法加载日历字库");
-      const text = await new Response(response.body.pipeThrough(new DecompressionStream("gzip"))).text();
+      const text = await readBdf(`fusion-pixel-${size}px-monospaced-zh_hans.bdf.gz`);
       const next = new Map();
       for (const block of text.split("STARTCHAR ").slice(1)) {
         const encoding = block.match(/\nENCODING (\d+)/);
@@ -27,6 +31,31 @@ const OMCalendarFont = (() => {
       faces.set(size, next);
     })().catch(error => { pending.delete(size); throw error; }));
     await pending.get(size);
+  }
+  function nativeStrike(name) {
+    if (!nativeStrikes.has(name)) nativeStrikes.set(name, readBdf(name).then(text => {
+      const glyphs = new Map();
+      for (const block of text.split("STARTCHAR ").slice(1)) {
+        const code = block.match(/^ENCODING (\d+)\s*$/m);
+        if (code) glyphs.set(Number(code[1]), block);
+      }
+      if (!glyphs.has(65)) throw Error("点阵字库不完整");
+      return glyphs;
+    }).catch(error => { nativeStrikes.delete(name); throw error; }));
+    return nativeStrikes.get(name);
+  }
+  function nativeGlyph(strike, code, face, baseline) {
+    const block = strike.get(code), value = String.fromCodePoint(code);
+    if (!block) throw Error("点阵字库不支持字符：" + value);
+    const [w, h, x, bottom] = block.match(/^BBX (\d+) (\d+) (-?\d+) (-?\d+)\s*$/m).slice(1).map(Number);
+    const advance = Number(block.match(/^DWIDTH (\d+) 0\s*$/m)[1]) * 64;
+    const rows = block.split(/^BITMAP[ \t]*\r?\n/m)[1].split("ENDCHAR")[0].trim().split(/\s+/);
+    const pitch = Math.ceil(w / 8), bits = new Uint8Array(pitch * h);
+    if (w > 40 || h > 40 || !advance || advance > 4096 || rows.length !== h || (!w && code !== 32)) throw Error("字体无法在设备上显示：" + value);
+    rows.forEach((row, y) => {
+      for (let b = 0; b < pitch; b++) bits[y * pitch + b] = parseInt(row.slice(b * 2, b * 2 + 2), 16);
+    });
+    return {code, face, w, h, pitch, x, y: baseline - bottom - h, advance, bits};
   }
   const glyph = (c, size) => faces.get(size).get(c) || faces.get(size).get("?");
   const measure = (text, scale = 1, size = 12) => [...String(text)].reduce((width, c) => width + (scale === 1 ? glyph(c, size).advance : browserGlyph(c.codePointAt(0), size * scale).advance / 64), 0);
@@ -88,5 +117,5 @@ const OMCalendarFont = (() => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (g.rows[top + y] & (1 << (size - 1 - left - x))) bits[y * pitch + (x >> 3)] |= 128 >> (x & 7);
     return {code, face, w, h, pitch, x: w ? left : 0, y: h ? top - size / 2 : 0, advance: g.advance * 64, bits};
   }
-  return {load, measure, fit, draw, has, raster};
+  return {load, measure, fit, draw, has, raster, nativeStrike, nativeGlyph};
 })();

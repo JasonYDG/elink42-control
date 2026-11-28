@@ -1817,14 +1817,18 @@ const OMSdkOTA=(()=>{
 const OMCalendarFont = (() => {
   const script = new URL(document.currentScript.src), pending = new Map(), faces = new Map();
   const browserGlyphs = new Map();
+  const nativeStrikes = new Map();
   let browserContext;
+  async function readBdf(name) {
+    const asset = new URL(`fonts/${name}`, script); asset.search = script.search;
+    const response = await fetch(asset);
+    if (!response.ok) throw Error("无法加载日历字库");
+    return new Response(response.body.pipeThrough(new DecompressionStream("gzip"))).text();
+  }
   async function load(size = 12) {
     if (![10, 12].includes(size)) throw Error("日历字库仅支持10和12像素");
     if (!pending.has(size)) pending.set(size, (async () => {
-      const asset = new URL(`fonts/fusion-pixel-${size}px-monospaced-zh_hans.bdf.gz`, script); asset.search = script.search;
-      const response = await fetch(asset);
-      if (!response.ok) throw Error("无法加载日历字库");
-      const text = await new Response(response.body.pipeThrough(new DecompressionStream("gzip"))).text();
+      const text = await readBdf(`fusion-pixel-${size}px-monospaced-zh_hans.bdf.gz`);
       const next = new Map();
       for (const block of text.split("STARTCHAR ").slice(1)) {
         const encoding = block.match(/\nENCODING (\d+)/);
@@ -1842,6 +1846,31 @@ const OMCalendarFont = (() => {
       faces.set(size, next);
     })().catch(error => { pending.delete(size); throw error; }));
     await pending.get(size);
+  }
+  function nativeStrike(name) {
+    if (!nativeStrikes.has(name)) nativeStrikes.set(name, readBdf(name).then(text => {
+      const glyphs = new Map();
+      for (const block of text.split("STARTCHAR ").slice(1)) {
+        const code = block.match(/^ENCODING (\d+)\s*$/m);
+        if (code) glyphs.set(Number(code[1]), block);
+      }
+      if (!glyphs.has(65)) throw Error("点阵字库不完整");
+      return glyphs;
+    }).catch(error => { nativeStrikes.delete(name); throw error; }));
+    return nativeStrikes.get(name);
+  }
+  function nativeGlyph(strike, code, face, baseline) {
+    const block = strike.get(code), value = String.fromCodePoint(code);
+    if (!block) throw Error("点阵字库不支持字符：" + value);
+    const [w, h, x, bottom] = block.match(/^BBX (\d+) (\d+) (-?\d+) (-?\d+)\s*$/m).slice(1).map(Number);
+    const advance = Number(block.match(/^DWIDTH (\d+) 0\s*$/m)[1]) * 64;
+    const rows = block.split(/^BITMAP[ \t]*\r?\n/m)[1].split("ENDCHAR")[0].trim().split(/\s+/);
+    const pitch = Math.ceil(w / 8), bits = new Uint8Array(pitch * h);
+    if (w > 40 || h > 40 || !advance || advance > 4096 || rows.length !== h || (!w && code !== 32)) throw Error("字体无法在设备上显示：" + value);
+    rows.forEach((row, y) => {
+      for (let b = 0; b < pitch; b++) bits[y * pitch + b] = parseInt(row.slice(b * 2, b * 2 + 2), 16);
+    });
+    return {code, face, w, h, pitch, x, y: baseline - bottom - h, advance, bits};
   }
   const glyph = (c, size) => faces.get(size).get(c) || faces.get(size).get("?");
   const measure = (text, scale = 1, size = 12) => [...String(text)].reduce((width, c) => width + (scale === 1 ? glyph(c, size).advance : browserGlyph(c.codePointAt(0), size * scale).advance / 64), 0);
@@ -1903,7 +1932,7 @@ const OMCalendarFont = (() => {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (g.rows[top + y] & (1 << (size - 1 - left - x))) bits[y * pitch + (x >> 3)] |= 128 >> (x & 7);
     return {code, face, w, h, pitch, x: w ? left : 0, y: h ? top - size / 2 : 0, advance: g.advance * 64, bits};
   }
-  return {load, measure, fit, draw, has, raster};
+  return {load, measure, fit, draw, has, raster, nativeStrike, nativeGlyph};
 })();
 
 ;
@@ -2790,9 +2819,9 @@ const OMSchool = (() => {
 ;
 "use strict";
 const OMReminder = (() => {
-  const encoder=new TextEncoder(),none=65535,daySeconds=86400;
+  const encoder=new TextEncoder(),none=65535,daySeconds=86400,heading="日程提醒",maxDays=9999;
   const fixed="日程提醒项待办月日周一二三四五六还有天今天逾期待安排尚未设置日期其他提醒没有其他待办暂无今天，轻松一点设备未连接电量未读取…";
-  const faces=[[12,1],[10,2,500],[12,2,500],[12,3,500]];
+  const baselines=[6,7,5,-1]; // BDF baseline relative to each firmware text anchor.
   let cache;
   const supported=client=>client.sdkRevision>=18 && !!(client.sdkCapabilities&256);
   function title(value,max=100){
@@ -2800,25 +2829,38 @@ const OMReminder = (() => {
     if(/\p{Extended_Pictographic}/u.test(value))throw Error("离线提醒暂不支持表情符号，请使用文字标题");
     return value.trim();
   }
+  const reminderZone=(country,date)=>OMCalendar.zone(OMCalendar.byId(country??0)?.code||"CN",date);
+  const calendarDay=(epoch,zone)=>Math.floor((epoch+zone*3600)/daySeconds);
+  function deadline(due,today,zone){
+    const at=typeof due==="string"?Math.floor(Date.parse(due)/1000):NaN;
+    if(!Number.isFinite(at))throw Error("提醒日期无效");
+    const local=new Date((at+zone*3600)*1000);
+    if(at<0 || at>0xFFFFFFFF || local.getUTCFullYear()<1970 || local.getUTCFullYear()>2105)throw Error("离线提醒日期需要在1970至2105年内");
+    const day=calendarDay(at,zone);
+    if(day-today>maxDays)throw Error(`截止日期距今天最多 ${maxDays} 天`);
+    return {at,local,day};
+  }
+  function validateDeadline(due,country,date=new Date()){
+    if(!due)return;
+    const zone=reminderZone(country,date);
+    deadline(due,calendarDay(Math.floor(+date/1000),zone),zone);
+  }
   function entries(options){
     if(!Array.isArray(options.todos))throw Error("提醒数据需要待办列表");
-    const zone=OMCalendar.zone(OMCalendar.byId(options.country??0)?.code||"CN",options.date||new Date());
+    const date=options.date||new Date(),now=Math.floor(+date/1000);
+    if(!Number.isFinite(now))throw Error("提醒预览时间无效");
+    const zone=reminderZone(options.country,date),today=calendarDay(now,zone);
     const rows=options.todos.filter(item=>{if(!item || typeof item.done!=="boolean")throw Error("提醒完成状态无效");return !item.done;}).map(item=>{
-      const name=title(item.title);let day=none,minute=none,second=0,at=0xFFFFFFFF;
-      if(item.due){
-        if(typeof item.due!=="string" || !Number.isFinite(Date.parse(item.due)))throw Error("提醒日期无效");
-        at=Math.floor(Date.parse(item.due)/1000);const local=new Date((at+zone*3600)*1000);
-        if(at<0 || at>0xFFFFFFFF || local.getUTCFullYear()<1970 || local.getUTCFullYear()>2105)throw Error("离线提醒日期需要在1970至2105年内");
-        day=Math.floor((at+zone*3600)/daySeconds);minute=local.getUTCHours()*60+local.getUTCMinutes();second=local.getUTCSeconds();
-      }
-      return {id:item.id,title:name,day,minute,second,at};
+      const name=title(item.title);
+      if(!item.due)return {id:item.id,title:name,day:none,minute:none,second:0,at:0xFFFFFFFF};
+      const {at,local,day}=deadline(item.due,today,zone);
+      return {id:item.id,title:name,day,minute:local.getUTCHours()*60+local.getUTCMinutes(),second:local.getUTCSeconds(),at};
     });
     if(rows.length>64)throw Error("离线提醒最多64条未完成事项；请完成或精简后再同步，设备旧数据未改动。");
-    return {rows,zone,heading:title(options.title||"日程提醒",24)};
+    return {rows,zone,heading,now,today};
   }
   function model(options){
-    const data=entries(options),now=Math.floor(+(options.date||new Date())/1000),today=Math.floor((now+data.zone*3600)/daySeconds);
-    if(!Number.isFinite(now))throw Error("提醒预览时间无效");
+    const {now,today,...data}=entries(options);
     const order=data.rows.map((_,i)=>i).sort((a,b)=>data.rows[a].at-data.rows[b].at);
     const reached=order.filter(i=>data.rows[i].day===today && data.rows[i].at<=now).at(-1);
     if(reached!==undefined){order.splice(order.indexOf(reached),1);order.unshift(reached);}
@@ -2849,12 +2891,22 @@ const OMReminder = (() => {
   async function pack(options){
     const data=entries(options),device=CourseTable.deviceInfo(options).deviceName||"设备未连接";
     const key=JSON.stringify([data.rows,data.heading,device]);if(cache?.key===key)return cache.bytes.slice();
-    await Promise.all([OMCalendarFont.load(10),OMCalendarFont.load(12)]);
-    const sets=[new Set(fixed+device),new Set("日程提醒还有天今天逾期待安排0123456789…"+data.heading),new Set("0123456789月暂无待办…"),new Set("…")];
+    const [hanSmall,hanMain,latinSmall,latinMain]=await Promise.all([
+      "wenquanyi_9pt.bdf.gz","wenquanyi_12pt.bdf.gz","ter-u14b.bdf.gz","ter-u24b.bdf.gz"
+    ].map(OMCalendarFont.nativeStrike));
+    const sets=[new Set(fixed+device),new Set(" 日程提醒还有天今天逾期待安排月日周一二三四五六0123456789…"),new Set("0123456789月暂无待办…"),new Set("…")];
     for(let code=32;code<127;code++)sets[0].add(String.fromCodePoint(code));
     for(const row of data.rows)for(const char of row.title)for(const face of [0,2,3])sets[face].add(char);
-    const glyphs=[],advances=faces.map(()=>new Map());
-    sets.forEach((chars,face)=>[...chars].map(char=>char.codePointAt(0)).sort((a,b)=>a-b).forEach(code=>{const g=OMCalendarFont.raster(code,face,...faces[face]);glyphs.push(g);advances[face].set(String.fromCodePoint(code),g.advance/64);}));
+    const glyphs=[],advances=sets.map(()=>new Map());
+    sets.forEach((chars,face)=>{
+      const han=face?hanMain:hanSmall, latin=face?latinMain:latinSmall;
+      for(const code of [...chars].map(char=>char.codePointAt(0)).sort((a,b)=>a-b)){
+        const strike=latin.has(code)?latin:han;
+        const g=OMCalendarFont.nativeGlyph(strike,code,face,baselines[face]);
+        glyphs.push(g);
+        advances[face].set(String.fromCodePoint(code),g.advance/64);
+      }
+    });
     const measure=face=>value=>[...value].reduce((width,char)=>width+advances[face].get(char),0);
     const breaks=data.rows.map(row=>[lineBreak(row.title,measure(2)),lineBreak(row.title,measure(3)),lineBreak(row.title,measure(2))]);
     const cb=64,eb=64,gb=eb+data.rows.length*12,sb=gb+glyphs.length*16,strings=["",...new Set([data.heading,...data.rows.map(row=>row.title)])],offsets=new Map(),encoded=[];
@@ -2888,7 +2940,7 @@ const OMReminder = (() => {
     const bytes=await pack(options);await frame(options,bytes);
     return OMSchool.apply(client,options,external,progress,{bytes,supported,format:4});
   }
-  return {supported,model,pack,frame,render,apply,lineBreak};
+  return {supported,model,pack,frame,render,apply,lineBreak,validateDeadline};
 })();
 
 ;
@@ -4320,12 +4372,15 @@ const OMScreen = (() => {
     const title = $("todo-item-title").value.trim(), due = $("todo-due").value;
     if (!title) throw Error(OMI18n.t("请输入待办标题"));
     const item = {id: editingTodo || uid(), title, description: $("todo-description").value, due: due ? new Date(due).toISOString() : "", done: false};
+    OMReminder.validateDeadline(item.due, Number($("calendar-layout").value));
     change(data => { const old = data.todos.findIndex(t => t.id === item.id); if (old < 0) data.todos.push(item); else data.todos[old] = {...item, done: data.todos[old].done}; });
     editingTodo = null; $("todo-add").textContent = OMI18n.t("添加待办"); $("todo-item-title").value = $("todo-description").value = $("todo-due").value = "";
   }, OMI18n.t("待办已保存到本地工作区。"));
   bind("todo-export", () => jsonDownload("om6626-todos.json", {version: 1, todos: store.data.todos}), OMI18n.t("已导出待办。"));
   $("todo-import").addEventListener("change", e => action(async () => {
     const value = await jsonFile(e.target.files[0]); if (value.version !== 1 || !Array.isArray(value.todos)) throw Error(OMI18n.t("待办文件格式不符"));
+    const country=Number($("calendar-layout").value),now=new Date();
+    for(const item of value.todos)if(!item?.done)OMReminder.validateDeadline(item?.due,country,now);
     const merged = F.clone(store.data); merged.todos = [...merged.todos, ...value.todos.map(t => ({...t, id: uid()}))]; store.commit(merged); refreshLists(); await preview();
   }, OMI18n.t("待办已导入，并保留原有待办。")));
   function elementOptions() { options("element-list", draft.elements.map((e, i) => [i, `${i + 1}. ${e.type} ${e.text?.slice(0, 14) || ""}`])); }
